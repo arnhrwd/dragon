@@ -3,4 +3,12 @@
   <groupId>unimelb</groupId>
   <artifactId>dragon</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+  
+  <dependencies>
+	  <dependency>
+			<groupId>commons-logging</groupId>
+			<artifactId>commons-logging</artifactId>
+			<version>1.2</version>
+		</dependency>
+	</dependencies>
 </project>

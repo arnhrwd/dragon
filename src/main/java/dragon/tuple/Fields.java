@@ -5,22 +5,26 @@ import java.util.HashMap;
 
 public class Fields {
 	Object[] fields;
-	HashMap<String,Object> fieldMap;
+	HashMap<String,Integer> fieldMap;
 	
 	public Fields(String...fieldNames) {
-		fieldMap = new HashMap<String,Object>();
+		fieldMap = new HashMap<String,Integer>();
 		fields = new Object[fieldNames.length];
 		for(int i=0;i<fieldNames.length;i++) {
 			fields[i]=new Object();
-			fieldMap.put(fieldNames[i], fields[i]);
+			fieldMap.put(fieldNames[i], i);
 		}
 	}
 	
-	Object get(int i) {
+	public Object get(int i) {
 		return fields[i];
 	}
 	
-	HashMap<String,Object> getFieldMap(){
+	public void set(int i,Object value) {
+		fields[i]=value;
+	}
+	
+	public HashMap<String,Integer> getFieldMap(){
 		return fieldMap;
 	}
 }
