@@ -1,5 +1,6 @@
 package dragon;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
@@ -25,6 +26,7 @@ public class LocalCluster {
 		private DragonTopology dragonTopology;
 		
 		private HashSet<OutputCollector> outputsPending;
+		private Thread outputsSchedulerThread;
 		
 		public LocalCluster() {
 			
@@ -40,6 +42,31 @@ public class LocalCluster {
 		
 		public void runTask(Runnable task) {
 			
+		}
+		
+		public void outputsScheduler(){
+			outputsSchedulerThread = new Thread(){
+				public void run(){
+					ArrayList<OutputCollector> oc;
+					while(!isInterrupted()){
+						synchronized(outputsPending){
+							oc=new ArrayList<OutputCollector>(outputsPending);
+						}
+						if(oc.size()>0){
+							for(OutputCollector outputCollector : oc){
+								scheduleNetworkTask(outputCollector);
+							}
+						} else {
+							try {
+								sleep((Integer)conf.get(Config.DRAGON_OUTPUT_SCHEDULER_SLEEP));
+							} catch (InterruptedException e) {
+								log.info("interrupted");
+							}
+						}
+					}
+				}
+			};
+			outputsSchedulerThread.run();
 		}
 		
 		public void scheduleNetworkTask(final OutputCollector outputCollector){
@@ -66,9 +93,6 @@ public class LocalCluster {
 					}
 					if(reschedule){
 						synchronized(outputsPending){
-							if(!outputsPending.contains(outputCollector)){
-								scheduleNetworkTask(outputCollector);
-							}
 							outputsPending.add(outputCollector);
 						}
 					}
@@ -78,9 +102,6 @@ public class LocalCluster {
 		
 		public void outputPending(final OutputCollector outputCollector) {
 			synchronized(outputsPending){
-				if(!outputsPending.contains(outputCollector)){
-					scheduleNetworkTask(outputCollector);
-				}
 				outputsPending.add(outputCollector);
 			}
 		}

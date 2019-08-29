@@ -21,6 +21,7 @@ public class Config {
 	public static final String DRAGON_BASE_DIR="DRAGON_BASE_DIR";
 	public static final String DRAGON_PERSISTANCE_DIR="DRAGON_PERSISTANCE_DIR";
 	public static final String DRAGON_NETWORK_THREADS="DRAGON_NETWORK_THREADS";
+	public static final String DRAGON_OUTPUT_SCHEDULER_SLEEP="DRAGON_OUTPUT_SCHEDULER_SLEEP";
 	
 	public Config() {
 		conf = new HashMap<String,Object>();
@@ -29,6 +30,7 @@ public class Config {
 		put(DRAGON_BASE_DIR,"/tmp/dragon");
 		put(DRAGON_PERSISTANCE_DIR,"persistance");
 		put(DRAGON_NETWORK_THREADS,10);
+		put(DRAGON_OUTPUT_SCHEDULER_SLEEP,50);
 	}
 	
 	public Object put(String key, Object value) {
