@@ -7,6 +7,7 @@ import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
+import dragon.tuple.Tuple;
 
 
 public class IRichBolt implements Runnable {
@@ -19,7 +20,8 @@ public class IRichBolt implements Runnable {
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	private enum NEXTACTION {
 		open,
-		nextTuple,
+		execute,
+		emitPending,
 		close
 	};
 	
@@ -47,14 +49,30 @@ public class IRichBolt implements Runnable {
 		this.inputCollector=inputCollector;
 	}
 	
+	public String getComponentId(){
+		return context.getThisComponentId();
+	}
+	
+	public Integer getTaskId(){
+		return context.getThisTaskIndex();
+	}
+	
 	public void run() {
 		switch(nextAction){
 		case open:
 			open(conf,context,outputCollector);
-			nextAction=NEXTACTION.nextTuple;
+			nextAction=NEXTACTION.execute;
 			break;
-		case nextTuple:
-			nextTuple();
+		case execute:
+			Tuple tuple = inputCollector.getQueue().peek();
+			if(tuple!=null){
+				execute(tuple);
+				inputCollector.getQueue().poll();
+				// TODO: reschedule without delay
+			} else {
+				// TODO: reschedule after a small delay
+			}
+			nextAction=NEXTACTION.execute;
 			break;
 		case close:
 			close();
@@ -74,7 +92,7 @@ public class IRichBolt implements Runnable {
 		
 	}
 	
-	public void nextTuple() {
+	public void execute(Tuple tuple) {
 	
 	}
 	

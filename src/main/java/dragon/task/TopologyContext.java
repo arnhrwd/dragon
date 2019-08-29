@@ -5,6 +5,7 @@ import java.util.List;
 
 public class TopologyContext {
 	int taskIndex;
+	String componentId;
 	
 	public List<Integer> getComponentTasks(String componentId) {
 		List<Integer> taskIds = new ArrayList<Integer>();
@@ -13,5 +14,9 @@ public class TopologyContext {
 	
 	public int getThisTaskIndex() {
 		return taskIndex;
+	}
+	
+	public String getThisComponentId() {
+		return componentId;
 	}
 }
