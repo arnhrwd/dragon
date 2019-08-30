@@ -1,10 +1,13 @@
 package dragon.tuple;
 
-public class Values {
+import java.util.List;
 
-	public Object[] values;
-	
-	public Values(Object...objects) {
-		values=objects;
-	}
+
+public interface Values extends List<Object> {
+
+//	public Object[] values;
+//	
+//	public Values(Object...objects) {
+//		values=objects;
+//	}
 }

@@ -28,6 +28,22 @@ public class TopologyBuilder {
 	}
 	
 	public DragonTopology createTopology() {
-		return null;
+		DragonTopology topology=new DragonTopology();
+		for(String spoutId : spoutMap.keySet()) {
+			for(String boltId : boltMap.keySet()) {
+				if(boltMap.get(boltId).groupings.containsKey(spoutId)) {
+					// spoutId sends to boltId
+					topology.add(spoutId,boltId,boltMap.get(boltId).groupings.get(spoutId));
+				}
+			}
+		}
+		for(String fromBoltId : boltMap.keySet()) {
+			for(String toBoltId : boltMap.keySet()) {
+				if(boltMap.get(toBoltId).groupings.containsKey(fromBoltId)) {
+					topology.add(fromBoltId, toBoltId, boltMap.get(toBoltId).groupings.get(fromBoltId));
+				}
+			}
+		}
+		return topology;
 	}
 }

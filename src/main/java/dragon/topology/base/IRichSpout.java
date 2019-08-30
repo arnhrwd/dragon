@@ -2,6 +2,7 @@ package dragon.topology.base;
 
 import java.util.Map;
 
+import dragon.Config;
 import dragon.spout.SpoutOutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
@@ -71,6 +72,11 @@ public class IRichSpout implements Runnable {
 	
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		
+	}
+	
+	public Map<String, Object> getComponentConfiguration() {
+		Config conf = new Config();
+		return conf;
 	}
 
 }

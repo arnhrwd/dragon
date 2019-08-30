@@ -4,13 +4,20 @@ import java.util.HashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class Config {
+public class Config extends HashMap<String, Object>{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -5933157870455074368L;
+
+
 	private Log log = LogFactory.getLog(Config.class);
-	HashMap<String,Object> conf;
+
 	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
 	
+	public static final String TOPOLOGY_WORKERS="TOPOLOGY_WORKERS";
 	public static final String TOPOLOGY_TRIDENT_BATCH_EMIT_INTERVAL_MILLIS="TOPOLOGY_TRIDENT_BATCH_EMIT_INTERVAL_MILLIS";
 	public static final String TOPOLOGY_ENABLE_MESSAGE_TIMEOUTS="TOPOLOGY_ENABLE_MESSAGE_TIMEOUTS";
 	public static final String TOPOLOGY_MAX_SPOUT_PENDING="TOPOLOGY_MAX_SPOUT_PENDING";
@@ -24,21 +31,12 @@ public class Config {
 	public static final String DRAGON_OUTPUT_SCHEDULER_SLEEP="DRAGON_OUTPUT_SCHEDULER_SLEEP";
 	
 	public Config() {
-		conf = new HashMap<String,Object>();
 		put(DRAGON_OUTPUT_BUFFER_SIZE,1024);
 		put(DRAGON_INPUT_BUFFER_SIZE,1024);
 		put(DRAGON_BASE_DIR,"/tmp/dragon");
 		put(DRAGON_PERSISTANCE_DIR,"persistance");
 		put(DRAGON_NETWORK_THREADS,10);
 		put(DRAGON_OUTPUT_SCHEDULER_SLEEP,50);
-	}
-	
-	public Object put(String key, Object value) {
-		return conf.put(key, value);
-	}
-	
-	public Object get(String key){
-		return conf.get(key);
 	}
 	
 	public void setNumberWorkers(int numWorkers) {

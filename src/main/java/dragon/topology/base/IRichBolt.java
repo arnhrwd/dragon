@@ -2,6 +2,7 @@ package dragon.topology.base;
 
 import java.util.Map;
 
+import dragon.Config;
 import dragon.spout.SpoutOutputCollector;
 import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
@@ -19,7 +20,7 @@ public class IRichBolt implements Runnable {
 	private InputCollector inputCollector;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	private enum NEXTACTION {
-		open,
+		prepare,
 		execute,
 		emitPending,
 		close
@@ -29,7 +30,7 @@ public class IRichBolt implements Runnable {
 	
 	
 	public IRichBolt() {
-		nextAction=NEXTACTION.open;
+		nextAction=NEXTACTION.prepare;
 		
 	}
 	
@@ -59,8 +60,8 @@ public class IRichBolt implements Runnable {
 	
 	public void run() {
 		switch(nextAction){
-		case open:
-			open(conf,context,outputCollector);
+		case prepare:
+			prepare(conf,context,outputCollector);
 			nextAction=NEXTACTION.execute;
 			break;
 		case execute:
@@ -79,7 +80,7 @@ public class IRichBolt implements Runnable {
 		}
 	}
 	
-	public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
+	public void prepare(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
 			OutputCollector collector) {
 		
 	}
@@ -102,6 +103,11 @@ public class IRichBolt implements Runnable {
 	
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		
+	}
+	
+	public Map<String, Object> getComponentConfiguration() {
+		Config conf = new Config();
+		return conf;
 	}
 
 }

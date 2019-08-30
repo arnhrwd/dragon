@@ -114,5 +114,9 @@ public class LocalCluster {
 		public Config getConf(){
 			return conf;
 		}
+		
+		public DragonTopology getTopology() {
+			return dragonTopology;
+		}
 	
 }
