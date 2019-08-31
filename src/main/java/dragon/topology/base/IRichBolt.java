@@ -3,6 +3,7 @@ package dragon.topology.base;
 import java.util.Map;
 
 import dragon.Config;
+import dragon.LocalCluster;
 import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
@@ -14,6 +15,7 @@ public class IRichBolt implements Runnable, Cloneable {
 	private TopologyContext context;
 	private InputCollector inputCollector;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
+	private LocalCluster localCluster;
 	private enum NEXTACTION {
 		execute,
 		emitPending,
@@ -26,6 +28,10 @@ public class IRichBolt implements Runnable, Cloneable {
 	public IRichBolt() {
 		nextAction=NEXTACTION.execute;
 		
+	}
+	
+	public void setLocalCluster(LocalCluster localCluster) {
+		this.localCluster=localCluster;
 	}
 	
 	public void setTopologyContext(TopologyContext context) {
@@ -62,14 +68,14 @@ public class IRichBolt implements Runnable, Cloneable {
 		switch(nextAction){
 		case execute:
 			Tuple tuple = inputCollector.getQueue().peek();
+			nextAction=NEXTACTION.execute;
 			if(tuple!=null){
 				execute(tuple);
 				inputCollector.getQueue().poll();
-				// TODO: reschedule without delay
+				localCluster.runComponentTask(this);
 			} else {
-				// TODO: reschedule after a small delay
+				localCluster.runComponentTask(this);
 			}
-			nextAction=NEXTACTION.execute;
 			break;
 		case close:
 			close();

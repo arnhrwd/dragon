@@ -1,13 +1,24 @@
 package dragon.tuple;
 
-import java.util.List;
+import java.util.ArrayList;
 
 
-public interface Values extends List<Object> {
+public class Values extends ArrayList<Object>  {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 3560041625790748387L;
 
-//	public Object[] values;
-//	
-//	public Values(Object...objects) {
-//		values=objects;
-//	}
+	public Values() {
+		
+	}
+	
+	public Values(Object...objects) {
+		super(objects.length);
+		for(Object o: objects) {
+			add(o);
+		}
+	}
+	
+	
 }

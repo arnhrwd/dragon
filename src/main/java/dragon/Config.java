@@ -31,6 +31,7 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_OUTPUT_SCHEDULER_SLEEP="DRAGON_OUTPUT_SCHEDULER_SLEEP";
 	
 	public Config() {
+		super();
 		put(DRAGON_OUTPUT_BUFFER_SIZE,1024);
 		put(DRAGON_INPUT_BUFFER_SIZE,1024);
 		put(DRAGON_BASE_DIR,"/tmp/dragon");

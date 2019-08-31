@@ -15,6 +15,7 @@ import dragon.NetworkTask;
 import dragon.grouping.CustomStreamGrouping;
 import dragon.topology.base.Collector;
 import dragon.topology.base.IRichSpout;
+import dragon.tuple.Fields;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 
@@ -43,7 +44,8 @@ public class SpoutOutputCollector extends Collector {
 	
 	public synchronized List<Integer> emit(String streamId,Values values){
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
-		Tuple tuple = new Tuple(iRichSpout.getOutputFieldsDeclarer().fields,values);
+		Tuple tuple = new Tuple(iRichSpout.getOutputFieldsDeclarer().getFields(streamId),values);
+		//tuple = new Tuple(new Fields("number"),values);
 		for(String componentId : localCluster.getTopology().topology.get(iRichSpout.getComponentId()).keySet()) {
 			HashMap<String,HashSet<CustomStreamGrouping>> component = 
 					localCluster.getTopology().topology.get(iRichSpout.getComponentId()).get(componentId);

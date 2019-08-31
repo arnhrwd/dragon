@@ -1,0 +1,36 @@
+package dragon.examples;
+
+import java.util.Map;
+
+import dragon.spout.SpoutOutputCollector;
+import dragon.task.TopologyContext;
+import dragon.topology.OutputFieldsDeclarer;
+import dragon.topology.base.BaseRichSpout;
+import dragon.tuple.Fields;
+import dragon.tuple.Values;
+
+public class NumberSpout extends BaseRichSpout {
+
+	SpoutOutputCollector collector;
+	int num=0;
+	
+	@Override
+	public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
+			SpoutOutputCollector collector) {
+		this.collector=collector;
+	}
+	
+	@Override
+	public void nextTuple() {
+		if(num<10000) {
+			System.out.println("emitting "+num);
+			collector.emit(new Values(num));
+			num=num+1;
+		}
+	}
+	
+	@Override
+	public void declareOutputFields(OutputFieldsDeclarer declarer) {
+		declarer.declare(new Fields("number"));
+	}
+}

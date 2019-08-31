@@ -9,6 +9,7 @@ public class CircularBuffer<T> {
 	protected Integer head;
 	protected Integer tail;
 	protected Integer prev_tail;
+	protected Integer prev_head;
 	protected Integer size=1024;
 	
 	public CircularBuffer(){
@@ -20,8 +21,12 @@ public class CircularBuffer<T> {
 		init();
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void init(){
 		elements = new ArrayList<T>(size);
+		for(int i=0;i<size;i++) {
+			elements.add( null);
+		}
 		head=0;
 		tail=0;
 	}
@@ -31,6 +36,7 @@ public class CircularBuffer<T> {
 			if((tail+1)%size==head){
 				return false;
 			}
+			
 			elements.set(tail,element);
 			prev_tail=tail;
 			tail=(tail+1)%size;
@@ -41,7 +47,10 @@ public class CircularBuffer<T> {
 	public T poll(){
 		synchronized(elements){
 			if(head!=tail){
+				
 				T element=elements.get(head);
+				elements.set(head, null);
+				prev_head=head;
 				head=(head+1)%size;
 				return element;
 			}
@@ -52,6 +61,7 @@ public class CircularBuffer<T> {
 	public T peek(){
 		synchronized(elements){
 			if(head!=tail){
+				
 				T element=elements.get(head);
 				return element;
 			}

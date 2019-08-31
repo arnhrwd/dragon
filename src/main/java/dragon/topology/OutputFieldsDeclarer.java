@@ -2,6 +2,7 @@ package dragon.topology;
 
 import java.util.HashMap;
 
+import dragon.Constants;
 import dragon.tuple.Fields;
 
 public class OutputFieldsDeclarer {
@@ -13,14 +14,18 @@ public class OutputFieldsDeclarer {
 	}
 	
 	public void declare(Fields fields) {
-		this.fields=fields;
+		declare(Constants.DEFAULT_STREAM,fields);
 	}
 	
 	public void declare(boolean direct,Fields fields) {
-		this.fields=fields;
+		declare(Constants.DEFAULT_STREAM,fields);
 	}
 	
 	public void declare(String streamId,Fields fields) {
 		streamFields.put(streamId, fields);
+	}
+	
+	public Fields getFields(String streamId) {
+		return streamFields.get(streamId);
 	}
 }

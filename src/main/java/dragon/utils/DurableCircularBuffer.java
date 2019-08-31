@@ -1,11 +1,13 @@
 package dragon.utils;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import org.apache.commons.logging.Log;
@@ -77,7 +79,10 @@ public class DurableCircularBuffer<T> extends CircularBuffer<T> {
 	private void persistIndex(){
 		FileOutputStream file;
 		try {
-			file = new FileOutputStream(Paths.get(dir, INDEX_FILE).toString());
+			Path path = Paths.get(dir, INDEX_FILE);
+			File f = new File(path.getParent().toString());
+			f.mkdirs();
+			file = new FileOutputStream(path.toString());
 			ObjectOutputStream out = new ObjectOutputStream(file); 
 			out.writeObject(head);
 			out.writeObject(tail);
@@ -93,6 +98,9 @@ public class DurableCircularBuffer<T> extends CircularBuffer<T> {
 	private void persistElement(Integer i,T element){
 		FileOutputStream file;
 		try {
+			Path path = Paths.get(dir, i+".dat");
+			File f = new File(path.getParent().toString());
+			f.mkdirs();
 			file = new FileOutputStream(Paths.get(dir, i+".dat").toString());
 			ObjectOutputStream out = new ObjectOutputStream(file); 
 			out.writeObject(element);
@@ -107,7 +115,9 @@ public class DurableCircularBuffer<T> extends CircularBuffer<T> {
 	
 	public void put(T element) throws InterruptedException{
 		while(!offer(element)){
-			wait();
+			synchronized(this) {
+				wait();
+			}
 		}
 	}
 	
@@ -127,7 +137,10 @@ public class DurableCircularBuffer<T> extends CircularBuffer<T> {
 			T element = super.poll();
 			if(element!=null){
 				persistIndex();
-				notify();
+				persistElement(prev_head,null);
+				synchronized(this) {
+					notify();
+				}
 			}
 			return element;
 		}

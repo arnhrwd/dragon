@@ -1,6 +1,12 @@
 package dragon.tuple;
 
-public class Tuple {
+import java.io.Serializable;
+
+public class Tuple implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -8616313770722910200L;
 	private String sourceComponent;
 	private String sourceStreamId;
 	private Fields fields;
@@ -10,13 +16,13 @@ public class Tuple {
 	}
 	
 	public Tuple(Fields fields) {
-		this.fields=fields;
+		this.fields=fields.copy();
 	}
 	
 	public Tuple(Fields fields,Values values) {
-		this.fields=fields;
+		this.fields=fields.copy();
 		for(int i=0;i<values.size();i++) {
-			fields.set(i, values.get(i));
+			this.fields.set(i, values.get(i));
 		}
 	}
 	

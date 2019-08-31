@@ -5,12 +5,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.grouping.CustomStreamGrouping;
 import dragon.spout.SpoutOutputCollector;
+import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.BoltDeclarer;
@@ -34,18 +36,18 @@ public class LocalCluster {
 		private Config conf;
 		private DragonTopology dragonTopology;
 		
-		private HashSet<Collector> outputsPending;
+		private LinkedBlockingQueue<Collector> outputsPending;
 		private Thread outputsSchedulerThread;
 		
 		public LocalCluster() {
 			
 		}
 	
-		void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
+		public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
 			this.topologyName=topologyName;
 			this.conf=conf;
 			this.dragonTopology=dragonTopology;
-			outputsPending = new HashSet<Collector>();
+			outputsPending = new LinkedBlockingQueue<Collector>();
 			networkExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_NETWORK_THREADS));
 			
 			int totalParallelismHint=0;
@@ -70,10 +72,9 @@ public class LocalCluster {
 						spout.setOutputFieldsDeclarer(declarer);
 						TopologyContext context = new TopologyContext(spoutId,i,taskIds);
 						spout.setTopologyContext(context);
+						spout.setLocalCluster(this);
 						SpoutOutputCollector collector = new SpoutOutputCollector(this,spout);
-						
 						spout.open(conf, context, collector);
-						
 					} catch (CloneNotSupportedException e) {
 						log.error("could not clone object: "+e.toString());
 					}
@@ -100,8 +101,10 @@ public class LocalCluster {
 						bolt.setOutputFieldsDeclarer(declarer);
 						TopologyContext context = new TopologyContext(boltId,i,taskIds);
 						bolt.setTopologyContext(context);
+						InputCollector inputCollector = new InputCollector(this, bolt);
+						bolt.setInputCollector(inputCollector);
+						bolt.setLocalCluster(this);
 						OutputCollector collector = new OutputCollector(this,bolt);
-						
 						bolt.prepare(conf, context, collector);
 						
 					} catch (CloneNotSupportedException e) {
@@ -132,6 +135,8 @@ public class LocalCluster {
 				
 			}
 			
+			outputsScheduler();
+			
 			componentExecutorService = Executors.newFixedThreadPool((Integer)totalParallelismHint);
 			
 			for(String componentId : iRichBolts.keySet()) {
@@ -148,6 +153,8 @@ public class LocalCluster {
 					runComponentTask(spout);
 				}
 			}
+			
+			
 		}
 		
 		public void runComponentTask(Runnable task) {
@@ -155,64 +162,39 @@ public class LocalCluster {
 		}
 		
 		public void outputsScheduler(){
-			outputsSchedulerThread = new Thread(){
-				public void run(){
-					ArrayList<Collector> oc;
-					while(!isInterrupted()){
-						synchronized(outputsPending){
-							oc=new ArrayList<Collector>(outputsPending);
-						}
-						if(oc.size()>0){
-							for(Collector outputCollector : oc){
-								scheduleNetworkTask(outputCollector);
-							}
-						} else {
+			for(int i=0;i<(Integer)conf.get(Config.DRAGON_NETWORK_THREADS);i++) {
+				networkExecutorService.execute(new Runnable() {
+					public void run(){
+						while(true) {
 							try {
-								sleep((Integer)conf.get(Config.DRAGON_OUTPUT_SCHEDULER_SLEEP));
+								Collector collector = outputsPending.take();
+								synchronized(collector) {
+									NetworkTask networkTask = (NetworkTask) collector.getQueue().peek();
+									if(networkTask!=null) {
+										for(Integer taskId : networkTask.getTaskIds()) {
+											Tuple tuple = networkTask.getTuple();
+											String name = networkTask.getComponentId();
+											if(iRichBolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
+												collector.getQueue().poll();
+											} 
+										}
+									}
+								}
 							} catch (InterruptedException e) {
-								log.info("interrupted");
-							}
-						}
-					}
-				}
-			};
-			outputsSchedulerThread.run();
-		}
-		
-		public void scheduleNetworkTask(final Collector outputCollector){
-			networkExecutorService.execute(new Runnable(){
-				public void run() {
-					boolean reschedule=false;
-					synchronized(outputsPending){
-						outputsPending.remove(outputCollector);
-					}
-					
-					NetworkTask networkTask = outputCollector.getQueue().peek();
-					while(networkTask!=null){
-						for(Integer taskId : networkTask.getTaskIds()) {
-							Tuple tuple = networkTask.getTuple();
-							String name = networkTask.getName();
-							if(iRichBolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
-								outputCollector.getQueue().poll();
-								networkTask = outputCollector.getQueue().peek();
-							} else {
-								reschedule=true;
 								break;
 							}
 						}
 					}
-					if(reschedule){
-						synchronized(outputsPending){
-							outputsPending.add(outputCollector);
-						}
-					}
-				}
-			});
+				});
+			}
+			
 		}
 		
 		public void outputPending(final Collector outputCollector) {
-			synchronized(outputsPending){
-				outputsPending.add(outputCollector);
+			try {
+				outputsPending.put(outputCollector);
+			} catch (InterruptedException e) {
+				log.error("interruptep while adding output pending");
 			}
 		}
 		

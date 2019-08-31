@@ -25,6 +25,12 @@ public class BoltDeclarer extends Declarer {
 		return bolt;
 	}
 	
+	@Override
+	public BoltDeclarer setNumTasks(int numTasks) {
+		super.setNumTasks(numTasks);
+		return this;
+	}
+	
 	public BoltDeclarer(String name, int parallelismHint) {
 		super(name, parallelismHint);
 		groupings=new HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>>();
@@ -52,32 +58,32 @@ public class BoltDeclarer extends Declarer {
 		hs.add(grouping);
 	}
 	
-	BoltDeclarer shuffleGrouping(String componentId) {
+	public BoltDeclarer shuffleGrouping(String componentId) {
 		put(componentId,new ShuffleGrouping());
 		return this;
 	}
 	
-	BoltDeclarer shuffleGrouping(String componentId, String streamId) {
+	public BoltDeclarer shuffleGrouping(String componentId, String streamId) {
 		put(componentId,streamId,new ShuffleGrouping());
 		return this;
 	}
 	
-	BoltDeclarer allGrouping(String componentId) {
+	public BoltDeclarer allGrouping(String componentId) {
 		put(componentId,new AllGrouping());
 		return this;
 	}
 	
-	BoltDeclarer allGrouping(String componentId, String streamId) {
+	public BoltDeclarer allGrouping(String componentId, String streamId) {
 		put(componentId,streamId,new AllGrouping());
 		return this;
 	}
 	
-	BoltDeclarer fieldGrouping(String componentId, Fields fields) {
+	public BoltDeclarer fieldGrouping(String componentId, Fields fields) {
 		put(componentId,new FieldGrouping(fields));
 		return this;
 	}
 	
-	BoltDeclarer customGrouping(String componentId, CustomStreamGrouping customStreamGrouping) {
+	public BoltDeclarer customGrouping(String componentId, CustomStreamGrouping customStreamGrouping) {
 		put(componentId,customStreamGrouping);
 		return this;
 	}

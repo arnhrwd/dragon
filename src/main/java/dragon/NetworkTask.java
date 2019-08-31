@@ -1,18 +1,23 @@
 package dragon;
 
+import java.io.Serializable;
 import java.util.HashSet;
 
 import dragon.tuple.Tuple;
 
-public class NetworkTask {
+public class NetworkTask implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 6164101511657361631L;
 	private Tuple tuple;
 	private HashSet<Integer> taskIds;
-	private String name;
+	private String componentId;
 
-	public NetworkTask(Tuple tuple,HashSet<Integer> taskIds,String name) {
+	public NetworkTask(Tuple tuple,HashSet<Integer> taskIds,String componentId) {
 		this.tuple=tuple;
 		this.taskIds=taskIds;
-		this.name=name;
+		this.componentId=componentId;
 	}
 	
 	public Tuple getTuple() {
@@ -23,7 +28,7 @@ public class NetworkTask {
 		return taskIds;
 	}
 	
-	public String getName() {
-		return name;
+	public String getComponentId() {
+		return componentId;
 	}
 }
