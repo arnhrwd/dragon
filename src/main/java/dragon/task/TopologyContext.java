@@ -1,14 +1,19 @@
 package dragon.task;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class TopologyContext {
 	int taskIndex;
 	String componentId;
+	List<Integer> taskIds;
+	
+	public TopologyContext(String componentId,int taskIndex,List<Integer> taskIds) {
+		this.componentId=componentId;
+		this.taskIndex=taskIndex;
+		this.taskIds=taskIds;
+	}
 	
 	public List<Integer> getComponentTasks(String componentId) {
-		List<Integer> taskIds = new ArrayList<Integer>();
 		return taskIds;
 	}
 	

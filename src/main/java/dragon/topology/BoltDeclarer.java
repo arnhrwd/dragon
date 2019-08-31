@@ -21,6 +21,10 @@ public class BoltDeclarer extends Declarer {
 	// the components that this bolt listens to
 	public HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> groupings;
 	
+	public IRichBolt getBolt() {
+		return bolt;
+	}
+	
 	public BoltDeclarer(String name, int parallelismHint) {
 		super(name, parallelismHint);
 		groupings=new HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>>();

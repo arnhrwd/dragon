@@ -6,6 +6,9 @@ import java.util.HashSet;
 import dragon.grouping.CustomStreamGrouping;
 
 public class DragonTopology {
+	public HashMap<String,SpoutDeclarer> spoutMap;
+	public HashMap<String,BoltDeclarer> boltMap;
+	
 	public HashMap<String,HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>>> topology;
 	
 	public DragonTopology() {
@@ -33,5 +36,27 @@ public class DragonTopology {
 		}
 		
 		
+	}
+	
+	public HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> getFromComponent(String componentId){
+		return topology.get(componentId);
+	}
+	
+	public HashMap<String,HashSet<CustomStreamGrouping>> getFromToComponent(String fromComponentId, String toComponentId){
+		return getFromComponent(fromComponentId).get(toComponentId);
+	}
+	
+	public HashSet<CustomStreamGrouping> getFromToStream(String fromComponentId, String toComponentId, String streamId){
+		return getFromToComponent(fromComponentId,toComponentId).get(streamId);
+	}
+
+
+	public void setSpoutMap(HashMap<String, SpoutDeclarer> spoutMap) {
+		this.spoutMap=spoutMap;		
+	}
+
+
+	public void setBoltMap(HashMap<String, BoltDeclarer> boltMap) {
+		this.boltMap=boltMap;
 	}
 }

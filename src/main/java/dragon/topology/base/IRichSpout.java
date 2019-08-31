@@ -7,15 +7,11 @@ import dragon.spout.SpoutOutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
-public class IRichSpout implements Runnable {
-	@SuppressWarnings("rawtypes")
-	private Map conf;
+public class IRichSpout implements Runnable, Cloneable {
 	private TopologyContext context;
-	private SpoutOutputCollector collector;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	
 	private enum NEXTACTION {
-		open,
 		nextTuple,
 		close
 	};
@@ -23,23 +19,11 @@ public class IRichSpout implements Runnable {
 	private NEXTACTION nextAction;
 	
 	public IRichSpout() {
-		nextAction=NEXTACTION.open;
-		outputFieldsDeclarer = new OutputFieldsDeclarer();
-	}
-	
-	public void prepareToOpen(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
-			SpoutOutputCollector collector) {
-		this.conf=conf;
-		this.context=context;
-		this.collector=collector;
+		nextAction=NEXTACTION.nextTuple;
 	}
 	
 	public void run() {
 		switch(nextAction){
-		case open:
-			open(conf,context,collector);
-			nextAction=NEXTACTION.nextTuple;
-			break;
 		case nextTuple:
 			nextTuple();
 			break;
@@ -47,6 +31,26 @@ public class IRichSpout implements Runnable {
 			close();
 		}
 		
+	}
+	
+	public void setTopologyContext(TopologyContext context) {
+		this.context=context;
+	}
+	
+	public String getComponentId() {
+		return context.getThisComponentId();
+	}
+	
+	public int getTaskId() {
+		return context.getThisTaskIndex();
+	}
+	
+	public void setOutputFieldsDeclarer(OutputFieldsDeclarer declarer) {
+		this.outputFieldsDeclarer=declarer;
+	}
+	
+	public OutputFieldsDeclarer getOutputFieldsDeclarer() {
+		return outputFieldsDeclarer;
 	}
 	
 	public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
@@ -78,5 +82,9 @@ public class IRichSpout implements Runnable {
 		Config conf = new Config();
 		return conf;
 	}
+	
+	public Object clone()throws CloneNotSupportedException{  
+		return super.clone();  
+	}  
 
 }

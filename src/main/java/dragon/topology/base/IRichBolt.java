@@ -3,7 +3,6 @@ package dragon.topology.base;
 import java.util.Map;
 
 import dragon.Config;
-import dragon.spout.SpoutOutputCollector;
 import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
@@ -11,16 +10,11 @@ import dragon.topology.OutputFieldsDeclarer;
 import dragon.tuple.Tuple;
 
 
-public class IRichBolt implements Runnable {
-
-	@SuppressWarnings("rawtypes")
-	private Map conf;
+public class IRichBolt implements Runnable, Cloneable {
 	private TopologyContext context;
-	private OutputCollector outputCollector;
 	private InputCollector inputCollector;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	private enum NEXTACTION {
-		prepare,
 		execute,
 		emitPending,
 		close
@@ -30,24 +24,24 @@ public class IRichBolt implements Runnable {
 	
 	
 	public IRichBolt() {
-		nextAction=NEXTACTION.prepare;
+		nextAction=NEXTACTION.execute;
 		
+	}
+	
+	public void setTopologyContext(TopologyContext context) {
+		this.context=context;
 	}
 	
 	public OutputFieldsDeclarer getOutputFieldsDeclarer() {
 		return outputFieldsDeclarer;
 	}
 	
-	public InputCollector getInputCollector() {
-		return inputCollector;
+	public void setInputCollector(InputCollector inputCollector) {
+		this.inputCollector = inputCollector;
 	}
 	
-	public void prepareToOpen(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
-			OutputCollector outputCollector, InputCollector inputCollector) {
-		this.conf=conf;
-		this.context=context;
-		this.outputCollector=outputCollector;
-		this.inputCollector=inputCollector;
+	public InputCollector getInputCollector() {
+		return inputCollector;
 	}
 	
 	public String getComponentId(){
@@ -58,12 +52,14 @@ public class IRichBolt implements Runnable {
 		return context.getThisTaskIndex();
 	}
 	
+	public void setOutputFieldsDeclarer(OutputFieldsDeclarer declarer) {
+		this.outputFieldsDeclarer=declarer;
+	}
+	
+	
+	
 	public void run() {
 		switch(nextAction){
-		case prepare:
-			prepare(conf,context,outputCollector);
-			nextAction=NEXTACTION.execute;
-			break;
 		case execute:
 			Tuple tuple = inputCollector.getQueue().peek();
 			if(tuple!=null){
@@ -109,5 +105,10 @@ public class IRichBolt implements Runnable {
 		Config conf = new Config();
 		return conf;
 	}
+	
+	public Object clone()throws CloneNotSupportedException{  
+		return super.clone();  
+	}  
+
 
 }

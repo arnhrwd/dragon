@@ -8,7 +8,7 @@ import dragon.task.WorkerTopologyContext;
 public class ShuffleGrouping extends AbstractGrouping  {
 
 	private List<Integer> targetTasks;
-	private int index=0;
+	private int index;
 	
 	@Override
 	public List<Integer> chooseTasks(int arg0, List<Object> values) {
@@ -18,6 +18,7 @@ public class ShuffleGrouping extends AbstractGrouping  {
 
 	@Override
 	public void prepare(WorkerTopologyContext arg0, GlobalStreamId arg1, List<Integer> targetTasks) {
+		index=0;
 		this.targetTasks=targetTasks;
 	}
 

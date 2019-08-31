@@ -13,23 +13,20 @@ import dragon.Constants;
 import dragon.LocalCluster;
 import dragon.NetworkTask;
 import dragon.grouping.CustomStreamGrouping;
+import dragon.topology.base.Collector;
 import dragon.topology.base.IRichBolt;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
-import dragon.utils.DurableCircularBuffer;
 
 
-public class OutputCollector {
+
+public class OutputCollector extends Collector {
 	private Log log = LogFactory.getLog(OutputCollector.class);
-	private DurableCircularBuffer<NetworkTask> outputQueue;
-	private LocalCluster localCluster;
 	private IRichBolt iRichBolt;
 	
 	public OutputCollector(LocalCluster localCluster,IRichBolt iRichBolt) {
-		outputQueue=new DurableCircularBuffer<NetworkTask>(
-				(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE),
-				localCluster.getPersistanceDir()+"/"+iRichBolt.getComponentId()+"_"+iRichBolt.getTaskId());
-		this.localCluster=localCluster;
+		super(localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE),
+			localCluster.getPersistanceDir()+"/"+iRichBolt.getComponentId()+"_"+iRichBolt.getTaskId());
 		this.iRichBolt=iRichBolt;
 	}
 	
@@ -39,6 +36,10 @@ public class OutputCollector {
 	
 	public synchronized List<Integer> emit(String streamId,Tuple anchorTuple, Values values){
 		return emit(streamId,values);
+	}
+	
+	public synchronized List<Integer> emit(Values values){
+		return emit(Constants.DEFAULT_STREAM,values);
 	}
 	
 	public synchronized List<Integer> emit(String streamId,Values values){
@@ -62,15 +63,10 @@ public class OutputCollector {
 		return receivingTaskIds;
 	}
 	
-	public synchronized List<Integer> emit(Values values){
-		return emit(Constants.DEFAULT_STREAM,values);
-	}
 	
 	public void ack(Tuple tuple) {
 		
 	}
 	
-	public DurableCircularBuffer<NetworkTask> getQueue(){
-		return outputQueue;
-	}
+	
 }

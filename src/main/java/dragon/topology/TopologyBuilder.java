@@ -7,8 +7,8 @@ import dragon.topology.base.IRichSpout;
 
 public class TopologyBuilder {
 	
-	HashMap<String,SpoutDeclarer> spoutMap;
-	HashMap<String,BoltDeclarer> boltMap;
+	private HashMap<String,SpoutDeclarer> spoutMap;
+	private HashMap<String,BoltDeclarer> boltMap;
 	
 	public TopologyBuilder() {
 		spoutMap=new HashMap<String,SpoutDeclarer>();
@@ -44,6 +44,8 @@ public class TopologyBuilder {
 				}
 			}
 		}
+		topology.setSpoutMap(spoutMap);
+		topology.setBoltMap(boltMap);
 		return topology;
 	}
 }

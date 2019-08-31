@@ -7,7 +7,7 @@ import dragon.topology.base.IRichSpout;
 
 public class SpoutDeclarer extends Declarer {
 	private Log log = LogFactory.getLog(SpoutDeclarer.class);
-	IRichSpout spout;
+	private IRichSpout spout;
 	
 	public SpoutDeclarer(String name, int parallelismHint) {
 		super(name, parallelismHint);
@@ -17,6 +17,9 @@ public class SpoutDeclarer extends Declarer {
 		super(name, parallelismHint);
 		this.spout=spout;
 	}
-
+	
+	public IRichSpout getSpout() {
+		return spout;
+	}
 	
 }
