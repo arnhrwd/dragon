@@ -9,9 +9,9 @@ public class Fields implements Serializable, Cloneable {
 	 * 
 	 */
 	private static final long serialVersionUID = -134149710944581963L;
-	Object[] values;
-	HashMap<String,Integer> fieldMap;
-	String[] fieldNames;
+	private Object[] values;
+	private HashMap<String,Integer> fieldMap;
+	private String[] fieldNames;
 	
 	public Fields(String...fieldNames) {
 		this.fieldNames=fieldNames;
@@ -42,6 +42,18 @@ public class Fields implements Serializable, Cloneable {
 	
 	public Object[] getValues() {
 		return values;
+	}
+	
+	public String[] getFieldNames() {
+		return fieldNames;
+	}
+	
+	public String getFieldNamesAsString() {
+		String names="<";
+		for(String name : fieldNames) {
+			names+=name+",";
+		}
+		return names+">";
 	}
 
 }

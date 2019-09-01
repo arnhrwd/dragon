@@ -22,10 +22,15 @@ public class ShuffleBolt extends BaseRichBolt {
 		//System.out.println("shuffeBolt["+myId+"] received "+tuple.getValueByField("number"));
 		seen++;
 		//System.out.println("shuffeBolt["+myId+"] seen "+seen);
-		collector.emit(new Values(tuple.getFields().getValues()));
+		if(((Integer)tuple.getValueByField("number"))%2==0){
+			collector.emit("even",new Values(tuple.getFields().getValues()));
+		} else {
+			collector.emit("odd",new Values(tuple.getFields().getValues()));
+		}
 	}
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		declarer.declare(new Fields("number"));
+		declarer.declare("even",new Fields("number"));
+		declarer.declare("odd",new Fields("number"));
 	}
 }
