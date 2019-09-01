@@ -3,7 +3,6 @@ package dragon;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -92,7 +91,7 @@ public class LocalCluster {
 			}
 		}
 		
-		// allocate bolts and open them
+		// allocate bolts and prepare them
 		iRichBolts = new HashMap<String,HashMap<Integer,IRichBolt>>();
 		for(String boltId : dragonTopology.boltMap.keySet()) {
 			log.debug("allocating bolt ["+boltId+"]");
