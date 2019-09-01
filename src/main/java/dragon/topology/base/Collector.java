@@ -51,6 +51,11 @@ public class Collector {
 	public synchronized List<Integer> emit(String streamId,Values values){
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
 		Fields fields = component.getOutputFieldsDeclarer().getFields(streamId);
+		if(fields==null) {
+			localCluster.setShouldTerminate("no fields have been declared for ["+
+					component.getComponentId()+"] on stream ["+streamId+
+					"] however it is attempting to emit on that stream");
+		}
 		if(values.size()!=fields.getFieldNames().length) {
 			localCluster.setShouldTerminate("the number of values in ["+values+
 					"] does not match the number of fields ["+

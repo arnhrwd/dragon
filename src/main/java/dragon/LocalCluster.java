@@ -131,6 +131,9 @@ public class LocalCluster {
 			log.debug("preparing groupings for spout["+fromComponentId+"]");
 			HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> 
 				fromComponent = dragonTopology.getFromComponent(fromComponentId);
+			if(fromComponent==null) {
+				throw new RuntimeException("spout ["+fromComponentId+"] has no components listening to it");
+			}
 			log.debug(fromComponent);
 			for(String toComponentId : fromComponent.keySet()) {
 				HashMap<String,HashSet<CustomStreamGrouping>> 
@@ -158,6 +161,7 @@ public class LocalCluster {
 				log.debug(fromComponentId+" is a sink");
 				continue;
 			}
+			log.debug(fromComponent);
 			for(String toComponentId : fromComponent.keySet()) {
 				HashMap<String,HashSet<CustomStreamGrouping>> 
 					streams = dragonTopology.getFromToComponent(fromComponentId, toComponentId);

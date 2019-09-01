@@ -16,13 +16,18 @@ public class NumberBolt extends BaseRichBolt {
 	}
 	
 	public void execute(Tuple tuple) {
-		Integer number = (Integer)tuple.getValueByField("number");
-		if(numbers.contains(number)) {
-			System.out.println("ERROR");
-			System.exit(-1);
+		if(tuple.getSourceStreamId().equals("odd")||tuple.getSourceStreamId().equals("even")) {
+			Integer number = (Integer)tuple.getValueByField("number");
+			if(numbers.contains(number)) {
+				System.out.println("ERROR");
+				System.exit(-1);
+			}
+			//System.out.println("received "+number+" from task id "+tuple.getSourceTaskId());
+			numbers.add(number);
+			System.out.println("received "+numbers.size()+" numbers");
+		} else {
+			String uuid = (String)tuple.getValueByField("uuid");
+			System.out.println("recieved "+uuid);
 		}
-		//System.out.println("received "+number+" from task id "+tuple.getSourceTaskId());
-		numbers.add(number);
-		System.out.println("received "+numbers.size()+" numbers");
 	}
 }
