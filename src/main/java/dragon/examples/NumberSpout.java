@@ -22,10 +22,13 @@ public class NumberSpout extends BaseRichSpout {
 	
 	@Override
 	public void nextTuple() {
-		if(num<10000) {
+		if(num<1000000) {
 			System.out.println("emitting "+num);
 			collector.emit(new Values(num));
-			num=num+1;
+			num++;
+		} else if(num==1000000) {
+			System.out.println("finished emitting");
+			num++;
 		}
 	}
 	

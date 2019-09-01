@@ -3,9 +3,13 @@ package dragon.topology;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import dragon.grouping.CustomStreamGrouping;
 
 public class DragonTopology {
+	private Log log = LogFactory.getLog(DragonTopology.class);
 	public HashMap<String,SpoutDeclarer> spoutMap;
 	public HashMap<String,BoltDeclarer> boltMap;
 	
@@ -28,11 +32,13 @@ public class DragonTopology {
 		}
 		HashMap<String,HashSet<CustomStreamGrouping>> toComponent = fromComponent.get(toComponentId);
 		for(String streamId : hashMap.keySet()) {
+			log.debug("connecting ["+fromComponentId+"] to ["+toComponentId+"] on stream["+streamId+"]");
 			if(!toComponent.containsKey(streamId)) {
 				toComponent.put(streamId,new HashSet<CustomStreamGrouping>());
 			}
 			HashSet<CustomStreamGrouping> stream = toComponent.get(streamId);
 			stream.addAll(hashMap.get(streamId));
+			log.debug(stream);
 		}
 		
 		

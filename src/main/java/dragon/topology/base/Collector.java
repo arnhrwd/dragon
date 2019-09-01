@@ -2,18 +2,20 @@ package dragon.topology.base;
 
 import dragon.LocalCluster;
 import dragon.NetworkTask;
-import dragon.utils.DurableCircularBuffer;
+import dragon.utils.CircularBuffer;
+
 
 public class Collector {
-	protected DurableCircularBuffer<NetworkTask> outputQueue;
+	protected CircularBuffer<NetworkTask> outputQueue;
 	protected LocalCluster localCluster;
+	public Object lock = new Object();
 	
-	public Collector(LocalCluster localCluster,int bufSize, String persitanceDir) {
+	public Collector(LocalCluster localCluster,int bufSize) {
 		this.localCluster=localCluster;
-		outputQueue=new DurableCircularBuffer<NetworkTask>(bufSize,persitanceDir);
+		outputQueue=new CircularBuffer<NetworkTask>(bufSize);
 	}
 	
-	public DurableCircularBuffer<NetworkTask> getQueue(){
+	public CircularBuffer<NetworkTask> getQueue(){
 		return outputQueue;
 	}
 }

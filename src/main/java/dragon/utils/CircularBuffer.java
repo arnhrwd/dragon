@@ -31,6 +31,14 @@ public class CircularBuffer<T> {
 		tail=0;
 	}
 	
+	public void put(T element) throws InterruptedException {
+		while(!offer(element)) {
+			synchronized(this) {
+				wait();
+			}
+		}
+	}
+	
 	public boolean offer(T element){
 		synchronized(elements){
 			if((tail+1)%size==head){
@@ -52,6 +60,9 @@ public class CircularBuffer<T> {
 				elements.set(head, null);
 				prev_head=head;
 				head=(head+1)%size;
+				synchronized(this) {
+					notify();
+				}
 				return element;
 			}
 			return null;

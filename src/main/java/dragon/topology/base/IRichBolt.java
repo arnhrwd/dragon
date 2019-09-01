@@ -2,6 +2,9 @@ package dragon.topology.base;
 
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import dragon.Config;
 import dragon.LocalCluster;
 import dragon.task.InputCollector;
@@ -12,13 +15,13 @@ import dragon.tuple.Tuple;
 
 
 public class IRichBolt implements Runnable, Cloneable {
+	private Log log = LogFactory.getLog(IRichBolt.class);
 	private TopologyContext context;
 	private InputCollector inputCollector;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	private LocalCluster localCluster;
 	private enum NEXTACTION {
 		execute,
-		emitPending,
 		close
 	};
 	

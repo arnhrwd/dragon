@@ -25,8 +25,7 @@ public class OutputCollector extends Collector {
 	private IRichBolt iRichBolt;
 	
 	public OutputCollector(LocalCluster localCluster,IRichBolt iRichBolt) {
-		super(localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE),
-			localCluster.getPersistanceDir()+"/"+iRichBolt.getComponentId()+"_"+iRichBolt.getTaskId());
+		super(localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE));
 		this.iRichBolt=iRichBolt;
 	}
 	
@@ -44,8 +43,13 @@ public class OutputCollector extends Collector {
 	
 	public synchronized List<Integer> emit(String streamId,Values values){
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
-		Tuple tuple = new Tuple(iRichBolt.getOutputFieldsDeclarer().fields,values);
-		for(String componentId : localCluster.getTopology().topology.get(iRichBolt.getComponentId()).keySet()) {
+		Tuple tuple = new Tuple(iRichBolt.getOutputFieldsDeclarer().
+				getFields(streamId),values);
+		tuple.setSourceComponent(iRichBolt.getComponentId());
+		tuple.setSourceTaskId(iRichBolt.getTaskId());
+		tuple.setSourceStreamId(streamId);
+		for(String componentId : localCluster.getTopology().topology.
+				get(iRichBolt.getComponentId()).keySet()) {
 			HashMap<String,HashSet<CustomStreamGrouping>> component = 
 					localCluster.getTopology().topology.get(iRichBolt.getComponentId()).get(componentId);
 			HashSet<CustomStreamGrouping> stream = component.get(streamId);

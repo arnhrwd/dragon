@@ -115,8 +115,36 @@ public class LocalCluster {
 			
 			// prepare groupings
 			for(String fromComponentId : dragonTopology.spoutMap.keySet()) {
+				log.debug("preparing groupings for spout["+fromComponentId+"]");
 				HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> 
 					fromComponent = dragonTopology.getFromComponent(fromComponentId);
+				log.debug(fromComponent);
+				for(String toComponentId : fromComponent.keySet()) {
+					HashMap<String,HashSet<CustomStreamGrouping>> 
+						streams = dragonTopology.getFromToComponent(fromComponentId, toComponentId);
+					BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(toComponentId);
+					ArrayList<Integer> taskIds=new ArrayList<Integer>();
+					for(int i=0;i<boltDeclarer.getNumTasks();i++) {
+						taskIds.add(i);
+					}
+					for(String streamId : streams.keySet()) {
+						HashSet<CustomStreamGrouping> groupings = dragonTopology.getFromToStream(fromComponentId, toComponentId, streamId);
+						for(CustomStreamGrouping grouping : groupings) {
+							grouping.prepare(null, null, taskIds);
+						}
+					}
+				}
+				
+			}
+			
+			for(String fromComponentId : dragonTopology.boltMap.keySet()) {
+				log.debug("preparing groupings for bolt["+fromComponentId+"]");
+				HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> 
+					fromComponent = dragonTopology.getFromComponent(fromComponentId);
+				if(fromComponent==null) {
+					log.debug(fromComponentId+" is a sink");
+					continue;
+				}
 				for(String toComponentId : fromComponent.keySet()) {
 					HashMap<String,HashSet<CustomStreamGrouping>> 
 						streams = dragonTopology.getFromToComponent(fromComponentId, toComponentId);
@@ -137,6 +165,7 @@ public class LocalCluster {
 			
 			outputsScheduler();
 			
+			log.debug("starting a component executor with "+totalParallelismHint+" threads");
 			componentExecutorService = Executors.newFixedThreadPool((Integer)totalParallelismHint);
 			
 			for(String componentId : iRichBolts.keySet()) {
@@ -168,16 +197,25 @@ public class LocalCluster {
 						while(true) {
 							try {
 								Collector collector = outputsPending.take();
-								synchronized(collector) {
+								//log.debug("network task pending "+outputsPending.size());
+								synchronized(collector.lock) {
+									//log.debug("peeking on queue");
 									NetworkTask networkTask = (NetworkTask) collector.getQueue().peek();
 									if(networkTask!=null) {
+										//log.debug("processing network task");
 										for(Integer taskId : networkTask.getTaskIds()) {
 											Tuple tuple = networkTask.getTuple();
 											String name = networkTask.getComponentId();
 											if(iRichBolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
+												//log.debug("removing from queue");
 												collector.getQueue().poll();
-											} 
+											} else {
+												//log.debug("blocked");
+												outputPending(collector);
+											}
 										}
+									} else {
+										//log.debug("queue empty!");
 									}
 								}
 							} catch (InterruptedException e) {
@@ -193,6 +231,7 @@ public class LocalCluster {
 		public void outputPending(final Collector outputCollector) {
 			try {
 				outputsPending.put(outputCollector);
+				//log.debug("outputPending pending "+outputsPending.size());
 			} catch (InterruptedException e) {
 				log.error("interruptep while adding output pending");
 			}

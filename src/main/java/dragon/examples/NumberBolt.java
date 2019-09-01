@@ -1,5 +1,6 @@
 package dragon.examples;
 
+import java.util.HashSet;
 import java.util.Map;
 
 import dragon.task.OutputCollector;
@@ -9,16 +10,19 @@ import dragon.tuple.Tuple;
 
 public class NumberBolt extends BaseRichBolt {
 	
-	int expected=0;
+	HashSet<Integer> numbers;
 	public void prepare(@SuppressWarnings("rawtypes") Map conf, TopologyContext context, OutputCollector collector) {
-		
+		numbers=new HashSet<Integer>();
 	}
 	
 	public void execute(Tuple tuple) {
-		System.out.println("received number: "+(Integer)tuple.getValueByField("number"));
-		if(expected!=(Integer)tuple.getValueByField("number")) {
+		Integer number = (Integer)tuple.getValueByField("number");
+		if(numbers.contains(number)) {
+			System.out.println("ERROR");
 			System.exit(-1);
 		}
-		expected++;
+		//System.out.println("received "+number+" from task id "+tuple.getSourceTaskId());
+		numbers.add(number);
+		System.out.println("received "+numbers.size()+" numbers");
 	}
 }

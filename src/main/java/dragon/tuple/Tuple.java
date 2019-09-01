@@ -9,6 +9,7 @@ public class Tuple implements Serializable {
 	private static final long serialVersionUID = -8616313770722910200L;
 	private String sourceComponent;
 	private String sourceStreamId;
+	private Integer sourceTaskId;
 	private Fields fields;
 	
 	public Tuple() {
@@ -40,12 +41,28 @@ public class Tuple implements Serializable {
 		return fields.get(fields.getFieldMap().get(fieldName));
 	}
 	
+	public void setSourceComponent(String componentId) {
+		this.sourceComponent=componentId;
+	}
+	
+	public void setSourceStreamId(String streamId) {
+		this.sourceStreamId=streamId;
+	}
+	
+	public void setSourceTaskId(Integer taskId) {
+		this.sourceTaskId = taskId;
+	}
+	
 	public String getSourceComponent() {
 		return sourceComponent;
 	}
 	
 	public String getSourceStreamId() {
 		return sourceStreamId;
+	}
+	
+	public Integer getSourceTaskId() {
+		return sourceTaskId;
 	}
 
 }

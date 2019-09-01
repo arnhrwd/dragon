@@ -4,23 +4,21 @@ import dragon.Config;
 import dragon.LocalCluster;
 import dragon.topology.base.IRichBolt;
 import dragon.tuple.Tuple;
-import dragon.utils.DurableCircularBuffer;
+import dragon.utils.CircularBuffer;
 
 public class InputCollector {
-	private DurableCircularBuffer<Tuple> inputQueue;
+	private CircularBuffer<Tuple> inputQueue;
 	private LocalCluster localCluster;
 	private IRichBolt iRichBolt;
 	
 	public InputCollector(LocalCluster localCluster,IRichBolt iRichBolt){
-		inputQueue=new DurableCircularBuffer<Tuple>(
-				(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE),
-				localCluster.getPersistanceDir()+"/"+iRichBolt.getComponentId()+"_"+iRichBolt.getTaskId());
+		inputQueue=new CircularBuffer<Tuple>((Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE));
 		this.localCluster = localCluster;
 		this.iRichBolt=iRichBolt;
 		
 	}
 	
-	public DurableCircularBuffer<Tuple> getQueue(){
+	public CircularBuffer<Tuple> getQueue(){
 		return inputQueue;
 	}
 }

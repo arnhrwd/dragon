@@ -2,11 +2,14 @@ package dragon.topology;
 
 import java.util.HashMap;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import dragon.topology.base.IRichBolt;
 import dragon.topology.base.IRichSpout;
 
 public class TopologyBuilder {
-	
+	private Log log = LogFactory.getLog(TopologyBuilder.class);
 	private HashMap<String,SpoutDeclarer> spoutMap;
 	private HashMap<String,BoltDeclarer> boltMap;
 	
@@ -33,6 +36,7 @@ public class TopologyBuilder {
 			for(String boltId : boltMap.keySet()) {
 				if(boltMap.get(boltId).groupings.containsKey(spoutId)) {
 					// spoutId sends to boltId
+					log.debug("connecting spout["+spoutId+"] to bolt["+boltId+"]");
 					topology.add(spoutId,boltId,boltMap.get(boltId).groupings.get(spoutId));
 				}
 			}
@@ -40,6 +44,7 @@ public class TopologyBuilder {
 		for(String fromBoltId : boltMap.keySet()) {
 			for(String toBoltId : boltMap.keySet()) {
 				if(boltMap.get(toBoltId).groupings.containsKey(fromBoltId)) {
+					log.debug("connecting bolt["+fromBoltId+"] to bolt["+toBoltId+"]");
 					topology.add(fromBoltId, toBoltId, boltMap.get(toBoltId).groupings.get(fromBoltId));
 				}
 			}

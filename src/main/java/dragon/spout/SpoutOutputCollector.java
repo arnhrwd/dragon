@@ -25,8 +25,7 @@ public class SpoutOutputCollector extends Collector {
 	private IRichSpout iRichSpout;
 	
 	public SpoutOutputCollector(LocalCluster localCluster,IRichSpout iRichSpout) {
-		super(localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE),
-			localCluster.getPersistanceDir()+"/"+iRichSpout.getComponentId()+"_"+iRichSpout.getTaskId());
+		super(localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE));
 		this.iRichSpout=iRichSpout;
 	}
 	
@@ -44,9 +43,13 @@ public class SpoutOutputCollector extends Collector {
 	
 	public synchronized List<Integer> emit(String streamId,Values values){
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
-		Tuple tuple = new Tuple(iRichSpout.getOutputFieldsDeclarer().getFields(streamId),values);
-		//tuple = new Tuple(new Fields("number"),values);
-		for(String componentId : localCluster.getTopology().topology.get(iRichSpout.getComponentId()).keySet()) {
+		Tuple tuple = new Tuple(iRichSpout.getOutputFieldsDeclarer().
+				getFields(streamId),values);
+		tuple.setSourceComponent(iRichSpout.getComponentId());
+		tuple.setSourceTaskId(iRichSpout.getTaskId());
+		tuple.setSourceStreamId(streamId);
+		for(String componentId : localCluster.getTopology().topology.
+				get(iRichSpout.getComponentId()).keySet()) {
 			HashMap<String,HashSet<CustomStreamGrouping>> component = 
 					localCluster.getTopology().topology.get(iRichSpout.getComponentId()).get(componentId);
 			HashSet<CustomStreamGrouping> stream = component.get(streamId);

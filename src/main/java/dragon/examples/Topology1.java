@@ -12,7 +12,8 @@ public class Topology1 {
 		TopologyBuilder topologyBuilder = new TopologyBuilder();
 		
 		topologyBuilder.setSpout("numberSpout", new NumberSpout(), 1).setNumTasks(1);
-		topologyBuilder.setBolt("numberBolt", new NumberBolt(), 1).setNumTasks(1).allGrouping("numberSpout");
+		topologyBuilder.setBolt("shuffleBolt", new ShuffleBolt(), 10).shuffleGrouping("numberSpout");
+		topologyBuilder.setBolt("numberBolt", new NumberBolt(), 1).setNumTasks(1).allGrouping("shuffleBolt");
 		
 		LocalCluster localCluster = new LocalCluster();
 		Config conf = new Config();
