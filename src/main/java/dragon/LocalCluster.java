@@ -3,6 +3,7 @@ package dragon;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -20,6 +21,7 @@ import dragon.topology.DragonTopology;
 import dragon.topology.OutputFieldsDeclarer;
 import dragon.topology.SpoutDeclarer;
 import dragon.topology.base.Collector;
+import dragon.topology.base.Component;
 import dragon.topology.base.IRichBolt;
 import dragon.topology.base.IRichSpout;
 import dragon.tuple.Tuple;
@@ -38,11 +40,17 @@ public class LocalCluster {
 	
 	private LinkedBlockingQueue<Collector> outputsPending;
 	
+	private ArrayList<HashSet<Component>> standby;
+	private Integer standbyIndex=0;
+	private int maxStandbyDelay=1000;
+	private Thread standbyThread;
+	
 	private boolean shouldTerminate=false;
 	
 	public LocalCluster() {
 		
 	}
+
 
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
 		this.topologyName=topologyName;
@@ -56,6 +64,7 @@ public class LocalCluster {
 		// allocate spouts and open them
 		iRichSpouts = new HashMap<String,HashMap<Integer,IRichSpout>>();
 		for(String spoutId : dragonTopology.spoutMap.keySet()) {
+			log.debug("allocating spout ["+spoutId+"]");
 			iRichSpouts.put(spoutId, new HashMap<Integer,IRichSpout>());
 			HashMap<Integer,IRichSpout> hm = iRichSpouts.get(spoutId);
 			SpoutDeclarer spoutDeclarer = dragonTopology.spoutMap.get(spoutId);
@@ -75,6 +84,7 @@ public class LocalCluster {
 					spout.setTopologyContext(context);
 					spout.setLocalCluster(this);
 					SpoutOutputCollector collector = new SpoutOutputCollector(this,spout);
+					spout.setOutputCollector(collector);
 					spout.open(conf, context, collector);
 				} catch (CloneNotSupportedException e) {
 					log.error("could not clone object: "+e.toString());
@@ -85,6 +95,7 @@ public class LocalCluster {
 		// allocate bolts and open them
 		iRichBolts = new HashMap<String,HashMap<Integer,IRichBolt>>();
 		for(String boltId : dragonTopology.boltMap.keySet()) {
+			log.debug("allocating bolt ["+boltId+"]");
 			iRichBolts.put(boltId, new HashMap<Integer,IRichBolt>());
 			HashMap<Integer,IRichBolt> hm = iRichBolts.get(boltId);
 			BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(boltId);
@@ -106,6 +117,7 @@ public class LocalCluster {
 					bolt.setInputCollector(inputCollector);
 					bolt.setLocalCluster(this);
 					OutputCollector collector = new OutputCollector(this,bolt);
+					bolt.setOutputCollector(collector);
 					bolt.prepare(conf, context, collector);
 					
 				} catch (CloneNotSupportedException e) {
@@ -164,11 +176,42 @@ public class LocalCluster {
 			
 		}
 		
+		standby =  new ArrayList<HashSet<Component>>(maxStandbyDelay);
+		for(int i=0;i<maxStandbyDelay;i++) {
+			standby.add(new HashSet<Component>());
+		}
+		
+		standbyThread = new Thread() {
+			public void run() {
+				while(!shouldTerminate) {
+					try {
+						Thread.sleep(1);
+					} catch (InterruptedException e) {
+						log.debug("terminating standby thread");
+						break;
+					}
+					synchronized(standby) {
+						for(Component component : standby.get(standbyIndex)) {
+							//log.debug("rescheduling: "+component);
+							runComponentTask(component);
+						}
+						standby.get(standbyIndex).clear();
+						standbyIndex=(standbyIndex+1)%maxStandbyDelay;
+					}
+				}
+			}
+		};
+		
+		standbyThread.start();
+		
+		
+		
 		outputsScheduler();
 		
 		log.debug("starting a component executor with "+totalParallelismHint+" threads");
 		componentExecutorService = Executors.newFixedThreadPool((Integer)totalParallelismHint);
 		
+		log.debug("scheduling bolts to run");
 		for(String componentId : iRichBolts.keySet()) {
 			HashMap<Integer,IRichBolt> component = iRichBolts.get(componentId);
 			for(Integer taskId : component.keySet()) {
@@ -176,6 +219,8 @@ public class LocalCluster {
 				runComponentTask(bolt);
 			}
 		}
+		
+		log.debug("scheduling spouts to run");
 		for(String componentId : iRichSpouts.keySet()) {
 			HashMap<Integer,IRichSpout> component = iRichSpouts.get(componentId);
 			for(Integer taskId : component.keySet()) {
@@ -187,6 +232,14 @@ public class LocalCluster {
 		
 	}
 	
+	public void standbyComponentTask(Component task) {
+		synchronized(standby) {
+			//log.debug("putting on standby: "+task);
+			standby.get((standbyIndex+(Integer)conf.
+					get(Config.DRAGON_COMPONENT_IDLE_TIME_MS))%maxStandbyDelay).add(task);
+		}
+	}
+	
 	public void runComponentTask(Runnable task) {
 		if(!shouldTerminate) {
 			componentExecutorService.execute(task);
@@ -194,6 +247,7 @@ public class LocalCluster {
 	}
 	
 	public void outputsScheduler(){
+		log.debug("starting the outputs scheduler with "+(Integer)conf.get(Config.DRAGON_NETWORK_THREADS)+" threads");
 		for(int i=0;i<(Integer)conf.get(Config.DRAGON_NETWORK_THREADS);i++) {
 			networkExecutorService.execute(new Runnable() {
 				public void run(){

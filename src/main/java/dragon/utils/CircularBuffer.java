@@ -31,6 +31,14 @@ public class CircularBuffer<T> {
 		tail=0;
 	}
 	
+	public int getNumElements() {
+		synchronized(elements) {
+			if(tail==head) return 0;
+			if(tail>head) return tail-head;
+			return size-(head-tail);
+		}
+	}
+	
 	public void put(T element) throws InterruptedException {
 		while(!offer(element)) {
 			synchronized(this) {

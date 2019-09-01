@@ -4,10 +4,19 @@ import dragon.LocalCluster;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
-public class Component {
+public class Component implements Runnable{
 	private TopologyContext context;
 	private LocalCluster localCluster;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
+	private Collector collector;
+	
+	public void setOutputCollector(Collector collector) {
+		this.collector=collector;
+	}
+	
+	public Collector getOutputCollector() {
+		return collector;
+	}
 	
 	public void setLocalCluster(LocalCluster localCluster) {
 		this.localCluster=localCluster;
@@ -35,5 +44,10 @@ public class Component {
 	
 	public OutputFieldsDeclarer getOutputFieldsDeclarer() {
 		return outputFieldsDeclarer;
+	}
+
+	public void run() {
+		// TODO Auto-generated method stub
+		
 	}
 }

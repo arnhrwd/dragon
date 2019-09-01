@@ -12,16 +12,27 @@ import dragon.topology.OutputFieldsDeclarer;
 import dragon.tuple.Tuple;
 
 
-public class IRichBolt extends Bolt implements Runnable, Cloneable {
+public class IRichBolt extends Bolt implements Cloneable {
 	private Log log = LogFactory.getLog(IRichBolt.class);
 	
+	@Override
 	public void run() {
+		
 		Tuple tuple = getInputCollector().getQueue().poll();
 		if(tuple!=null){
+			getOutputCollector().resetEmit();
 			execute(tuple);
 			getLocalCluster().runComponentTask(this);
 		} else {
+			//getLocalCluster().runComponentTask(this);
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			getLocalCluster().runComponentTask(this);
+			//getLocalCluster().standbyComponentTask(this);
 		}
 	}
 	

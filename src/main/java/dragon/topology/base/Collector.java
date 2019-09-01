@@ -20,10 +20,11 @@ import dragon.utils.CircularBuffer;
 
 public class Collector {
 	private Log log = LogFactory.getLog(Collector.class);
-	protected CircularBuffer<NetworkTask> outputQueue;
-	protected LocalCluster localCluster;
-	protected Component component;
+	private CircularBuffer<NetworkTask> outputQueue;
+	private LocalCluster localCluster;
+	private Component component;
 	public Object lock = new Object();
+	private boolean emitted;
 	
 	public Collector(Component component,LocalCluster localCluster,int bufSize) {
 		this.component = component;
@@ -79,7 +80,20 @@ public class Collector {
 				}
 			}
 		}
+		setEmit();
 		return receivingTaskIds;
+	}
+	
+	public void resetEmit() {
+		emitted=false;
+	}
+	
+	public boolean didEmit() {
+		return emitted;
+	}
+	
+	public void setEmit() {
+		emitted=true;
 	}
 	
 }

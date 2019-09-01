@@ -7,13 +7,26 @@ import dragon.spout.SpoutOutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
-public class IRichSpout extends Spout implements Runnable, Cloneable {
+public class IRichSpout extends Spout implements Cloneable {
 	
+	@Override
 	public void run() {
+		getOutputCollector().resetEmit();
 		nextTuple();
-		getLocalCluster().runComponentTask(this);
+		if(getOutputCollector().didEmit()) {
+			getLocalCluster().runComponentTask(this);
+		} else {
+			try {
+				Thread.sleep(1);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			getLocalCluster().runComponentTask(this);
+			//getLocalCluster().standbyComponentTask(this);
+		}
 	}
-	
+
 	public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
 			SpoutOutputCollector collector) {
 		

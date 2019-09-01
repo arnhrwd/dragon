@@ -29,6 +29,7 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_PERSISTANCE_DIR="DRAGON_PERSISTANCE_DIR";
 	public static final String DRAGON_NETWORK_THREADS="DRAGON_NETWORK_THREADS";
 	public static final String DRAGON_OUTPUT_SCHEDULER_SLEEP="DRAGON_OUTPUT_SCHEDULER_SLEEP";
+	public static final String DRAGON_COMPONENT_IDLE_TIME_MS="DRAGON_COMPONENT_IDLE_TIME_MS";
 	
 	public Config() {
 		super();
@@ -38,6 +39,7 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_PERSISTANCE_DIR,"persistance");
 		put(DRAGON_NETWORK_THREADS,10);
 		put(DRAGON_OUTPUT_SCHEDULER_SLEEP,50);
+		put(DRAGON_COMPONENT_IDLE_TIME_MS,50);
 	}
 	
 	public void setNumberWorkers(int numWorkers) {
