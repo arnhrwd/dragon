@@ -44,7 +44,12 @@ public class LocalCluster {
 	private LinkedBlockingQueue<Component> componentsPending;
 
 	private Thread tickThread;
+	private Thread tickCounterThread;
 	private long tickTime=0;
+	private long tickCounterTime=0;
+	
+	private HashMap<String,Integer> boltTickCount;
+	
 	int totalParallelismHint=0;
 	
 	private boolean shouldTerminate=false;
@@ -192,25 +197,60 @@ public class LocalCluster {
 		}
 		
 		
+		boltTickCount = new HashMap<String,Integer>();
+		for(String boltId : iRichBolts.keySet()) {
+			if(boltConfs.get(boltId).containsKey(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS)) {
+				boltTickCount.put(boltId, (Integer)boltConfs.get(boltId).get(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS));
+			}
+		}
+		
+		tickCounterThread = new Thread() {
+			public void run() {
+				while(!shouldTerminate) {
+					if(tickCounterTime==tickTime) {
+						synchronized(tickCounterThread){
+							try {
+								wait();
+							} catch (InterruptedException e) {
+								break;
+							}
+						}
+					}
+					while(tickCounterTime<tickTime) {
+						for(String boltId:boltTickCount.keySet()) {
+							Integer count = boltTickCount.get(boltId);
+							count--;
+							if(count==0) {
+								issueTickTuple(boltId);
+								count=(Integer)boltConfs.get(boltId).get(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS);
+							}
+							boltTickCount.put(boltId, count);
+						}
+						tickCounterTime++;
+					}
+				}
+			}
+		};
+		tickCounterThread.start();
+		
 		tickThread = new Thread() {
 			public void run() {
-				ArrayList<Component> reschedule = new ArrayList<Component>(totalComponents);
 				while(!shouldTerminate) {
 					try {
-						Thread.sleep(1);
+						Thread.sleep(1000);
 					} catch (InterruptedException e) {
 						log.debug("terminating tick thread");
 						break;
 					}
 					tickTime++;
+					synchronized(tickCounterThread) {
+						tickCounterThread.notify();
+					}
 				}
 			}
 		};
-		
 		tickThread.start();
-		
-		
-		
+
 		outputsScheduler();
 		
 		log.debug("starting a component executor with "+totalParallelismHint+" threads");
@@ -234,12 +274,16 @@ public class LocalCluster {
 			}
 		}
 		
-		runComponentTask();
+		runComponentThreads();
 		
 		
 	}
 	
-	public void runComponentTask() {
+	private void issueTickTuple(String boltId) {
+		
+	}
+	
+	private void runComponentThreads() {
 		for(int i=0;i<totalParallelismHint;i++){
 			componentExecutorService.execute(new Runnable(){
 				public void run(){
@@ -262,7 +306,7 @@ public class LocalCluster {
 	}
 
 	
-	public void outputsScheduler(){
+	private void outputsScheduler(){
 		log.debug("starting the outputs scheduler with "+(Integer)conf.get(Config.DRAGON_NETWORK_THREADS)+" threads");
 		for(int i=0;i<(Integer)conf.get(Config.DRAGON_NETWORK_THREADS);i++) {
 			networkExecutorService.execute(new Runnable() {
