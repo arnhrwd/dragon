@@ -22,17 +22,9 @@ public class IRichBolt extends Bolt implements Cloneable {
 		if(tuple!=null){
 			getOutputCollector().resetEmit();
 			execute(tuple);
-			getLocalCluster().componentPending(this);
+
 		} else {
-			//getLocalCluster().runComponentTask(this);
-//			try {
-//				Thread.sleep(1);
-//			} catch (InterruptedException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-			getLocalCluster().componentStandby(this);
-			//getLocalCluster().standbyComponentTask(this);
+			log.error("nothing on the queue!");
 		}
 	}
 	
