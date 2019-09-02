@@ -21,7 +21,7 @@ public class OutputCollector extends Collector {
 		super(iRichBolt,localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE));
 	}
 	
-
+	@Deprecated
 	public void ack(Tuple tuple) {
 		
 	}

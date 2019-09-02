@@ -30,6 +30,8 @@ public class LocalCluster {
 	private Log log = LogFactory.getLog(LocalCluster.class);
 	private HashMap<String,HashMap<Integer,IRichBolt>> iRichBolts;
 	private HashMap<String,HashMap<Integer,IRichSpout>> iRichSpouts;
+	private HashMap<String,Config> spoutConfs;
+	private HashMap<String,Config> boltConfs;
 	private ExecutorService componentExecutorService;
 	private ExecutorService networkExecutorService;
 	
@@ -38,11 +40,11 @@ public class LocalCluster {
 	private DragonTopology dragonTopology;
 	
 	private LinkedBlockingQueue<Collector> outputsPending;
-	
-	private ArrayList<HashSet<Component>> standby;
-	private Integer standbyIndex=0;
-	private int maxStandbyDelay=1000;
-	private Thread standbyThread;
+	private LinkedBlockingQueue<Component> componentsPending;
+
+	private Thread tickThread;
+	private long tickTime=0;
+	int totalParallelismHint=0;
 	
 	private boolean shouldTerminate=false;
 	
@@ -56,12 +58,14 @@ public class LocalCluster {
 		this.conf=conf;
 		this.dragonTopology=dragonTopology;
 		outputsPending = new LinkedBlockingQueue<Collector>();
+		componentsPending = new LinkedBlockingQueue<Component>();
 		networkExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_NETWORK_THREADS));
 		
-		int totalParallelismHint=0;
+		
 		
 		// allocate spouts and open them
 		iRichSpouts = new HashMap<String,HashMap<Integer,IRichSpout>>();
+		spoutConfs = new HashMap<String,Config>();
 		for(String spoutId : dragonTopology.spoutMap.keySet()) {
 			log.debug("allocating spout ["+spoutId+"]");
 			iRichSpouts.put(spoutId, new HashMap<Integer,IRichSpout>());
@@ -69,6 +73,8 @@ public class LocalCluster {
 			SpoutDeclarer spoutDeclarer = dragonTopology.spoutMap.get(spoutId);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
 			totalParallelismHint+=spoutDeclarer.getParallelismHint();
+			Config spoutConf = (Config) spoutDeclarer.getSpout().getComponentConfiguration();
+			spoutConfs.put(spoutId, spoutConf);
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				taskIds.add(i);
 			}
@@ -93,12 +99,15 @@ public class LocalCluster {
 		
 		// allocate bolts and prepare them
 		iRichBolts = new HashMap<String,HashMap<Integer,IRichBolt>>();
+		boltConfs = new HashMap<String,Config>();
 		for(String boltId : dragonTopology.boltMap.keySet()) {
 			log.debug("allocating bolt ["+boltId+"]");
 			iRichBolts.put(boltId, new HashMap<Integer,IRichBolt>());
 			HashMap<Integer,IRichBolt> hm = iRichBolts.get(boltId);
 			BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(boltId);
 			totalParallelismHint+=boltDeclarer.getParallelismHint();
+			Config boltConf = (Config) boltDeclarer.getBolt().getComponentConfiguration();
+			boltConfs.put(boltId, boltConf);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 				taskIds.add(i);
@@ -179,33 +188,22 @@ public class LocalCluster {
 			
 		}
 		
-		standby =  new ArrayList<HashSet<Component>>(maxStandbyDelay);
-		for(int i=0;i<maxStandbyDelay;i++) {
-			standby.add(new HashSet<Component>());
-		}
 		
-		standbyThread = new Thread() {
+		tickThread = new Thread() {
 			public void run() {
 				while(!shouldTerminate) {
 					try {
 						Thread.sleep(1);
 					} catch (InterruptedException e) {
-						log.debug("terminating standby thread");
+						log.debug("terminating tick thread");
 						break;
 					}
-					synchronized(standby) {
-						for(Component component : standby.get(standbyIndex)) {
-							//log.debug("rescheduling: "+component);
-							runComponentTask(component);
-						}
-						standby.get(standbyIndex).clear();
-						standbyIndex=(standbyIndex+1)%maxStandbyDelay;
-					}
+					tickTime++;
 				}
 			}
 		};
 		
-		standbyThread.start();
+		tickThread.start();
 		
 		
 		
@@ -219,7 +217,7 @@ public class LocalCluster {
 			HashMap<Integer,IRichBolt> component = iRichBolts.get(componentId);
 			for(Integer taskId : component.keySet()) {
 				IRichBolt bolt = component.get(taskId);
-				runComponentTask(bolt);
+				componentPending(bolt);
 			}
 		}
 		
@@ -228,24 +226,30 @@ public class LocalCluster {
 			HashMap<Integer,IRichSpout> component = iRichSpouts.get(componentId);
 			for(Integer taskId : component.keySet()) {
 				IRichSpout spout = component.get(taskId);
-				runComponentTask(spout);
+				componentPending(spout);
 			}
 		}
 		
+		runComponentTask();
+		
 		
 	}
 	
-	public void standbyComponentTask(Component task) {
-		synchronized(standby) {
-			//log.debug("putting on standby: "+task);
-			standby.get((standbyIndex+(Integer)conf.
-					get(Config.DRAGON_COMPONENT_IDLE_TIME_MS))%maxStandbyDelay).add(task);
-		}
-	}
-	
-	public void runComponentTask(Runnable task) {
-		if(!shouldTerminate) {
-			componentExecutorService.execute(task);
+	public void runComponentTask() {
+		for(int i=0;i<totalParallelismHint;i++){
+			componentExecutorService.execute(new Runnable(){
+				public void run(){
+					while(!shouldTerminate){
+						Component component;
+						try {
+							component = componentsPending.take();
+						} catch (InterruptedException e) {
+							break;
+						}
+						component.run();
+					}
+				}
+			});
 		}
 	}
 	
@@ -286,6 +290,14 @@ public class LocalCluster {
 			});
 		}
 		
+	}
+	
+	public void componentPending(final Component component){
+		try {
+			componentsPending.put(component);
+		} catch (InterruptedException e){
+			log.error("interruptep while adding component pending");
+		}
 	}
 	
 	public void outputPending(final Collector outputCollector) {

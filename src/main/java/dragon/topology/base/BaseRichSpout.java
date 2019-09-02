@@ -15,11 +15,13 @@ public class BaseRichSpout extends IRichSpout {
 	}
 	
 	@Override
+	@Deprecated
 	public void ack(Object id) {
 		
 	}
 	
 	@Override
+	@Deprecated
 	public void fail(Object id) {
 		
 	}

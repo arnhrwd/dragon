@@ -36,10 +36,12 @@ public class Collector {
 		return outputQueue;
 	}
 	
+	@Deprecated
 	public synchronized List<Integer> emit(Tuple anchorTuple, Values values){
 		return emit(values);
 	}
 	
+	@Deprecated
 	public synchronized List<Integer> emit(String streamId,Tuple anchorTuple, Values values){
 		return emit(streamId,values);
 	}
@@ -126,6 +128,7 @@ public class Collector {
 		setEmit();
 	}
 	
+	@Deprecated
 	public synchronized void emitDirect(int taskId, String streamId, Tuple anchorTuple, Values values){
 		emitDirect(taskId,Constants.DEFAULT_STREAM,values);
 	}

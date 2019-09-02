@@ -22,7 +22,7 @@ public class IRichBolt extends Bolt implements Cloneable {
 		if(tuple!=null){
 			getOutputCollector().resetEmit();
 			execute(tuple);
-			getLocalCluster().runComponentTask(this);
+			getLocalCluster().componentPending(this);
 		} else {
 			//getLocalCluster().runComponentTask(this);
 			try {
@@ -31,7 +31,7 @@ public class IRichBolt extends Bolt implements Cloneable {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			getLocalCluster().runComponentTask(this);
+			getLocalCluster().componentPending(this);
 			//getLocalCluster().standbyComponentTask(this);
 		}
 	}
@@ -41,10 +41,12 @@ public class IRichBolt extends Bolt implements Cloneable {
 		
 	}
 	
+	@Deprecated
 	public void ack(Object id) {
 		
 	}
 	
+	@Deprecated
 	public void fail(Object id) {
 		
 	}

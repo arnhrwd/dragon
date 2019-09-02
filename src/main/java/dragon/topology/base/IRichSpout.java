@@ -14,7 +14,7 @@ public class IRichSpout extends Spout implements Cloneable {
 		getOutputCollector().resetEmit();
 		nextTuple();
 		if(getOutputCollector().didEmit()) {
-			getLocalCluster().runComponentTask(this);
+			getLocalCluster().componentPending(this);
 		} else {
 			try {
 				Thread.sleep(1);
@@ -22,7 +22,7 @@ public class IRichSpout extends Spout implements Cloneable {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			getLocalCluster().runComponentTask(this);
+			getLocalCluster().componentPending(this);
 			//getLocalCluster().standbyComponentTask(this);
 		}
 	}
@@ -32,10 +32,12 @@ public class IRichSpout extends Spout implements Cloneable {
 		
 	}
 	
+	@Deprecated
 	public void ack(Object id) {
 		
 	}
 	
+	@Deprecated
 	public void fail(Object id) {
 		
 	}
