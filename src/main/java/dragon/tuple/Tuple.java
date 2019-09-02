@@ -33,6 +33,14 @@ public class Tuple implements Serializable {
 		}
 	}
 	
+	public Object getValue(int index){
+		return fields.getValues()[index];
+	}
+	
+	public Object[] getValues(){
+		return fields.getValues();
+	}
+	
 	public Fields getFields() {
 		return fields;
 	}

@@ -55,5 +55,9 @@ public class Fields implements Serializable, Cloneable {
 		}
 		return names+">";
 	}
+	
+	public int size(){
+		return fieldNames.length;
+	}
 
 }

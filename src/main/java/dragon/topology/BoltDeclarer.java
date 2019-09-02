@@ -9,6 +9,7 @@ import org.apache.commons.logging.LogFactory;
 import dragon.Constants;
 import dragon.grouping.AllGrouping;
 import dragon.grouping.CustomStreamGrouping;
+import dragon.grouping.DirectGrouping;
 import dragon.grouping.FieldGrouping;
 import dragon.grouping.ShuffleGrouping;
 import dragon.topology.base.IRichBolt;
@@ -78,13 +79,33 @@ public class BoltDeclarer extends Declarer {
 		return this;
 	}
 	
-	public BoltDeclarer fieldGrouping(String componentId, Fields fields) {
+	public BoltDeclarer fieldsGrouping(String componentId, Fields fields) {
 		put(componentId,new FieldGrouping(fields));
+		return this;
+	}
+	
+	public BoltDeclarer fieldsGrouping(String componentId, String streamId, Fields fields) {
+		put(componentId,streamId,new FieldGrouping(fields));
 		return this;
 	}
 	
 	public BoltDeclarer customGrouping(String componentId, CustomStreamGrouping customStreamGrouping) {
 		put(componentId,customStreamGrouping);
+		return this;
+	}
+	
+	public BoltDeclarer customGrouping(String componentId, String streamId, CustomStreamGrouping customStreamGrouping) {
+		put(componentId,streamId,customStreamGrouping);
+		return this;
+	}
+	
+	public BoltDeclarer directGrouping(String componentId) {
+		put(componentId,new DirectGrouping());
+		return this;
+	}
+	
+	public BoltDeclarer directGrouping(String componentId, String streamId){
+		put(componentId,streamId,new DirectGrouping());
 		return this;
 	}
 

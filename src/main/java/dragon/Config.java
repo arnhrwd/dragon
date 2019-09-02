@@ -22,6 +22,9 @@ public class Config extends HashMap<String, Object>{
 	public static final String TOPOLOGY_ENABLE_MESSAGE_TIMEOUTS="TOPOLOGY_ENABLE_MESSAGE_TIMEOUTS";
 	public static final String TOPOLOGY_MAX_SPOUT_PENDING="TOPOLOGY_MAX_SPOUT_PENDING";
 	public static final String TOPOLOGY_MESSAGE_TIMEOUT_SECS="TOPOLOGY_MESSAGE_TIMEOUT_SECS";
+	public static final String TOPOLOGY_EXECUTOR_RECEIVE_BUFFER_SIZE="TOPOLOGY_EXECUTOR_RECEIVE_BUFFER_SIZE";
+	public static final String TOPOLOGY_EXECUTOR_SEND_BUFFER_SIZE="TOPOLOGY_EXECUTOR_SEND_BUFFER_SIZE";
+	public static final String TOPOLOGY_TICK_TUPLE_FREQ_SECS="TOPOLOGY_TICK_TUPLE_FREQ_SECS";
 	
 	public static final String DRAGON_OUTPUT_BUFFER_SIZE="DRAGON_OUTPUT_BUFFER_SIZE";
 	public static final String DRAGON_INPUT_BUFFER_SIZE="DRAGON_INPUT_BUFFER_SIZE";
@@ -42,7 +45,7 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_COMPONENT_IDLE_TIME_MS,50);
 	}
 	
-	public void setNumberWorkers(int numWorkers) {
+	public void setNumWorkers(int numWorkers) {
 		this.numWorkers=numWorkers;
 	}
 	
