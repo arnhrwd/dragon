@@ -250,7 +250,11 @@ public class LocalCluster {
 						} catch (InterruptedException e) {
 							break;
 						}
-						component.run();
+						// TODO:the synchronization can be switched if the component's
+						// execute/nextTuple is thread safe
+						synchronized(component) {
+							component.run();
+						}	
 					}
 				}
 			});
