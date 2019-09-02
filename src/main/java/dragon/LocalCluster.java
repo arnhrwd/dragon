@@ -267,6 +267,7 @@ public class LocalCluster {
 		for(int i=0;i<(Integer)conf.get(Config.DRAGON_NETWORK_THREADS);i++) {
 			networkExecutorService.execute(new Runnable() {
 				public void run(){
+					HashSet<Integer> doneTaskIds=new HashSet<Integer>();
 					while(!shouldTerminate) {
 						try {
 							Collector collector = outputsPending.take();
@@ -276,17 +277,23 @@ public class LocalCluster {
 								NetworkTask networkTask = (NetworkTask) collector.getQueue().peek();
 								if(networkTask!=null) {
 									//log.debug("processing network task");
+									Tuple tuple = networkTask.getTuple();
+									String name = networkTask.getComponentId();
+									doneTaskIds.clear();
 									for(Integer taskId : networkTask.getTaskIds()) {
-										Tuple tuple = networkTask.getTuple();
-										String name = networkTask.getComponentId();
 										if(iRichBolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
 											//log.debug("removing from queue");
+											doneTaskIds.add(taskId);
 											componentPending(iRichBolts.get(name).get(taskId));
-											collector.getQueue().poll();
 										} else {
 											//log.debug("blocked");
-											outputPending(collector);
 										}
+									}
+									networkTask.getTaskIds().removeAll(doneTaskIds);
+									if(networkTask.getTaskIds().size()==0) {
+										collector.getQueue().poll();
+									} else {
+										outputPending(collector);
 									}
 								} else {
 									//log.debug("queue empty!");
