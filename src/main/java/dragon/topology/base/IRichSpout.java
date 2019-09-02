@@ -16,13 +16,13 @@ public class IRichSpout extends Spout implements Cloneable {
 		if(getOutputCollector().didEmit()) {
 			getLocalCluster().componentPending(this);
 		} else {
-			try {
-				Thread.sleep(1);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			getLocalCluster().componentPending(this);
+//			try {
+//				Thread.sleep(1);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+			getLocalCluster().componentStandby(this);
 			//getLocalCluster().standbyComponentTask(this);
 		}
 	}

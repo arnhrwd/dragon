@@ -34,6 +34,10 @@ public class LocalCluster {
 	private HashMap<String,Config> boltConfs;
 	private ExecutorService componentExecutorService;
 	private ExecutorService networkExecutorService;
+	private ArrayList<Boolean> componentsStandbyLock;
+	private ArrayList<Component> componentsStandby;
+	private HashMap<Component,Integer> componentIndex;
+	private int totalComponents=0;
 	
 	private String topologyName;
 	private Config conf;
@@ -51,6 +55,13 @@ public class LocalCluster {
 	public LocalCluster() {
 		
 	}
+	
+	private void addComponentStandby(Component component){
+		componentsStandbyLock.add(false);
+		componentsStandby.add(component);
+		componentIndex.put(component,totalComponents);
+		totalComponents++;
+	}
 
 
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
@@ -60,7 +71,9 @@ public class LocalCluster {
 		outputsPending = new LinkedBlockingQueue<Collector>();
 		componentsPending = new LinkedBlockingQueue<Component>();
 		networkExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_NETWORK_THREADS));
-		
+		componentsStandbyLock = new ArrayList<Boolean>();
+		componentsStandby=new ArrayList<Component>();
+		componentIndex=new HashMap<Component,Integer>();
 		
 		
 		// allocate spouts and open them
@@ -81,6 +94,7 @@ public class LocalCluster {
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				try {
 					IRichSpout spout=(IRichSpout) spoutDeclarer.getSpout().clone();
+					addComponentStandby(spout);
 					hm.put(i, spout);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					spout.declareOutputFields(declarer);
@@ -115,6 +129,7 @@ public class LocalCluster {
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 				try {
 					IRichBolt bolt=(IRichBolt) boltDeclarer.getBolt().clone();
+					addComponentStandby(bolt);
 					hm.put(i, bolt);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					bolt.declareOutputFields(declarer);
@@ -199,6 +214,14 @@ public class LocalCluster {
 						break;
 					}
 					tickTime++;
+					for(int i=0;i<totalComponents;i++){
+						synchronized(componentsStandbyLock.get(i)){
+							if(componentsStandbyLock.get(i)){
+								componentPending(componentsStandby.get(i));
+								componentsStandbyLock.set(i, false);
+							}
+						}
+					}
 				}
 			}
 		};
@@ -297,6 +320,13 @@ public class LocalCluster {
 			componentsPending.put(component);
 		} catch (InterruptedException e){
 			log.error("interruptep while adding component pending");
+		}
+	}
+	
+	public void componentStandby(final Component component){
+		Integer i = componentIndex.get(component);
+		synchronized(componentsStandbyLock.get(i)){
+			componentsStandbyLock.set(i, true);
 		}
 	}
 	
