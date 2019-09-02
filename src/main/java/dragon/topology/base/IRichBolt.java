@@ -14,11 +14,21 @@ import dragon.tuple.Tuple;
 
 public class IRichBolt extends Bolt implements Cloneable {
 	private Log log = LogFactory.getLog(IRichBolt.class);
+	private Tuple tickTuple=null;
+	
+	public void setTickTuple(Tuple tuple) {
+		tickTuple=tuple;
+	}
 	
 	@Override
 	public void run() {
-		
-		Tuple tuple = getInputCollector().getQueue().poll();
+		Tuple tuple;
+		if(tickTuple!=null) {
+			tuple=tickTuple;
+			tickTuple=null;
+		} else {
+			tuple = getInputCollector().getQueue().poll();
+		}
 		if(tuple!=null){
 			getOutputCollector().resetEmit();
 			execute(tuple);

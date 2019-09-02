@@ -280,7 +280,15 @@ public class LocalCluster {
 	}
 	
 	private void issueTickTuple(String boltId) {
-		
+		Tuple tuple=new Tuple();
+		tuple.setSourceComponent(Constants.SYSTEM_COMPONENT_ID);
+		tuple.setSourceStreamId(Constants.SYSTEM_TICK_STREAM_ID);
+		for(IRichBolt bolt : iRichBolts.get(boltId).values()) {
+			synchronized(bolt) {
+				bolt.setTickTuple(tuple);
+				componentPending(bolt);
+			}
+		}
 	}
 	
 	private void runComponentThreads() {
