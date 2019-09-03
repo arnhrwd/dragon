@@ -9,7 +9,7 @@ import org.apache.commons.logging.LogFactory;
 import dragon.grouping.CustomStreamGrouping;
 
 public class DragonTopology {
-	private Log log = LogFactory.getLog(DragonTopology.class);
+	private static Log log = LogFactory.getLog(DragonTopology.class);
 	public HashMap<String,SpoutDeclarer> spoutMap;
 	public HashMap<String,BoltDeclarer> boltMap;
 	
