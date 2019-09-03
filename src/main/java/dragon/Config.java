@@ -11,7 +11,7 @@ public class Config extends HashMap<String, Object>{
 	private static final long serialVersionUID = -5933157870455074368L;
 
 
-	private Log log = LogFactory.getLog(Config.class);
+	private static Log log = LogFactory.getLog(Config.class);
 
 	
 	int numWorkers=1;
