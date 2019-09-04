@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
+import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -20,6 +20,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import dragon.network.Node;
 
 public class Run {
 	private static Log log = LogFactory.getLog(Run.class);
@@ -94,26 +96,47 @@ public class Run {
 	public static void main(String[] args) throws Exception {
 		Options options = new Options();
 		Option jarOption = new Option("j", "jar", true, "path to topology jar file");
-		jarOption.setRequired(true);
+		jarOption.setRequired(false);
 		options.addOption(jarOption);
 		Option classOption = new Option("c", "class", true, "toplogy class name");
-		classOption.setRequired(true);
+		classOption.setRequired(false);
 		options.addOption(classOption);
+		Option daemonOption = new Option("d", "daemon", false, "start as a daemon");
+		daemonOption.setRequired(false);
+		options.addOption(daemonOption);
+		Option nodeOption = new Option("n","node",true,"hostname:port of existing node");
+		nodeOption.setRequired(false);
+		options.addOption(nodeOption);
+		
 		CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
         CommandLine cmd;
 
         try {
             cmd = parser.parse(options, args);
-            String jarPath = cmd.getOptionValue("jar");
-    		String topologyClass = cmd.getOptionValue("class");
-    		Class c = loadJarFileClass(jarPath,topologyClass);
-    		String[] newargs = cmd.getArgs();
-    		Method cmain = c.getMethod("main", String[].class);
-    		cmain.invoke(cmain, (Object) newargs);
+            if(!cmd.hasOption("daemon")){
+	            if(!cmd.hasOption("jar") || !cmd.hasOption("class")){
+	            	throw new ParseException("must provide a jar file and class to run");
+	            }
+            	String jarPath = cmd.getOptionValue("jar");
+	    		String topologyClass = cmd.getOptionValue("class");
+	    		Class c = loadJarFileClass(jarPath,topologyClass);
+	    		String[] newargs = cmd.getArgs();
+	    		Method cmain = c.getMethod("main", String[].class);
+	    		cmain.invoke(cmain, (Object) newargs);
+            } else {
+            	if(cmd.hasOption("node")){
+            		InetAddress a = InetAddress.getByName("");
+            		log.info("starting dragon node and joining to ");
+            		new Node();
+            	} else {
+	            	log.info("starting dragon node");
+	            	new Node();
+            	}
+            }
         } catch (ParseException e) {
             System.out.println(e.getMessage());
-            formatter.printHelp("dragon -j jarPath -c className [args]", options);
+            formatter.printHelp("dragon [-j jarPath -c className [args]] [-d [-n hostname:port]]", options);
             System.exit(1);
         }
 		

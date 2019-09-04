@@ -1,5 +1,6 @@
 package dragon.topology;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -8,7 +9,11 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.grouping.CustomStreamGrouping;
 
-public class DragonTopology {
+public class DragonTopology implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -8549081242975660772L;
 	private static Log log = LogFactory.getLog(DragonTopology.class);
 	public HashMap<String,SpoutDeclarer> spoutMap;
 	public HashMap<String,BoltDeclarer> boltMap;

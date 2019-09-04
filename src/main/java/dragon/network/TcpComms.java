@@ -1,10 +1,12 @@
 package dragon.network;
 
 import dragon.NetworkTask;
+import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.service.ServiceMessage;
 
 public class TcpComms implements IComms {
 
-	public void open() {
+	public void open(boolean serviceOnly) {
 		// TODO Auto-generated method stub
 		
 	}
@@ -14,22 +16,22 @@ public class TcpComms implements IComms {
 		
 	}
 
-	public void sendServiceResponse(ServiceCommand response) {
+	public void sendServiceMessage(ServiceMessage response) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	public ServiceCommand receiveServiceRequest() {
+	public ServiceMessage receiveServiceMessage() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public void sendNodeCommand(NodeDescriptor desc, NodeCommand command) {
+	public void sendNodeMessage(NodeDescriptor desc, NodeMessage command) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	public NodeCommand receiveNodeCommand() {
+	public NodeMessage receiveNodeMessage() {
 		// TODO Auto-generated method stub
 		return null;
 	}
