@@ -140,7 +140,7 @@ public class Run {
             } else {
             	if(cmd.hasOption("host")){
             		log.info("starting dragon node and joining to "+cmd.getOptionValue("host"));
-            		new Node();
+            		new Node(DragonSubmitter.node);
             	} else {
 	            	log.info("starting dragon node");
 	            	new Node();

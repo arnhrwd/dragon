@@ -11,7 +11,9 @@ public class NodeMessage extends Message {
 	private static final long serialVersionUID = -1656333391539097974L;
 
 	public static enum NodeMessageType {
-		JOIN_REQUEST
+		JOIN_REQUEST,
+		ACCEPTING_JOIN,
+		JOIN_COMPLETE
 	}
 	
 	private NodeMessageType type;
