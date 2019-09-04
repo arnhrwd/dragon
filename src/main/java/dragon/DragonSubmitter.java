@@ -5,6 +5,7 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.network.IComms;
 import dragon.network.Node;
+import dragon.network.NodeDescriptor;
 import dragon.network.TcpComms;
 import dragon.network.messages.service.RunTopology;
 import dragon.network.messages.service.ServiceMessage;
@@ -12,9 +13,10 @@ import dragon.topology.DragonTopology;
 
 public class DragonSubmitter {
 	private static Log log = LogFactory.getLog(Node.class);
+	public static NodeDescriptor node;
 	public static void submitTopology(String string, Config conf, DragonTopology topology) {
 		IComms comms = new TcpComms();
-		comms.open(true);
+		comms.open(node);
 		comms.sendServiceMessage(new RunTopology(string,conf,topology));
 		ServiceMessage message = comms.receiveServiceMessage();
 		switch(message.getType()){

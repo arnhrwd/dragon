@@ -6,13 +6,24 @@ import dragon.network.messages.service.ServiceMessage;
 
 public class TcpComms implements IComms {
 
-	public void open(boolean serviceOnly) {
+	public void open(NodeDescriptor serivceNode) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	
+	public void open() {
 		// TODO Auto-generated method stub
 		
 	}
 
 	public void close() {
 		// TODO Auto-generated method stub
+		
+	}
+	
+	public NodeDescriptor getMyNodeDescriptor() {
+		return null;
 		
 	}
 
@@ -46,4 +57,5 @@ public class TcpComms implements IComms {
 		return null;
 	}
 
+	
 }

@@ -14,7 +14,7 @@ public class RunTopology extends ServiceMessage {
 	public Config conf;
 	
 	public RunTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
-		super(ServiceMessage.ServiceCommandType.RUN_TOPOLOGY);
+		super(ServiceMessage.ServiceMessageType.RUN_TOPOLOGY);
 		this.dragonTopology = dragonTopology;
 	}
 	

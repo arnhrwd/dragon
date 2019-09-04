@@ -1,6 +1,7 @@
 package dragon.network;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -9,6 +10,8 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
 import dragon.LocalCluster;
+import dragon.network.messages.node.JoinRequest;
+import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.RunTopology;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.TopologyExists;
@@ -20,11 +23,34 @@ public class Node {
 	private ExecutorService networkExecutorService;
 	private HashMap<String,LocalCluster> localClusters;
 	private Thread serviceThread;
+	private Thread nodeThread;
 	private boolean shouldTerminate=false;
+	private HashSet<NodeMessage> pendingJoinRequests;
+	
+	private enum NodeState {
+		JOINING,
+		JOIN_REQUESTED,
+		OPERATIONAL
+	}
+	
+	private NodeState nodeState;
+	
+	public Node(NodeDescriptor existingNode) {
+		nodeState=NodeState.JOINING;
+		init();
+		comms.sendNodeMessage(existingNode, new JoinRequest());
+		
+	}
 	public Node() {
+		nodeState=NodeState.OPERATIONAL;
+		init();
+	}
+	
+	private void init() {
+		pendingJoinRequests = new HashSet<NodeMessage>();
 		comms = new TcpComms();
-		log.debug("starting comms");
-		comms.open(false);
+		log.debug("opening comms");
+		comms.open();
 		serviceThread=new Thread(){
 			public void run(){
 				while(!shouldTerminate){
@@ -48,7 +74,24 @@ public class Node {
 		};
 		log.debug("starting service thread");
 		serviceThread.start();
-		
+		nodeThread=new Thread() {
+			public void run() {
+				while(!shouldTerminate) {
+					NodeMessage message = comms.receiveNodeMessage();
+					switch(message.getType()) {
+					case JOIN_REQUEST:
+						if(nodeState!=NodeState.OPERATIONAL) {
+							pendingJoinRequests.add(message);
+						} else {
+							
+						}
+						break;
+					}
+				}
+			}
+		};
+		log.debug("starting node thread");
+		nodeThread.start();
 	}
 	
 	

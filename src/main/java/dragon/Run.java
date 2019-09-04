@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -22,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.network.Node;
+import dragon.network.NodeDescriptor;
 
 public class Run {
 	private static Log log = LogFactory.getLog(Run.class);
@@ -94,6 +94,7 @@ public class Run {
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String[] args) throws Exception {
+		Config conf = new Config(Constants.DRAGON_PROPERTIES);
 		Options options = new Options();
 		Option jarOption = new Option("j", "jar", true, "path to topology jar file");
 		jarOption.setRequired(false);
@@ -104,9 +105,12 @@ public class Run {
 		Option daemonOption = new Option("d", "daemon", false, "start as a daemon");
 		daemonOption.setRequired(false);
 		options.addOption(daemonOption);
-		Option nodeOption = new Option("n","node",true,"hostname:port of existing node");
+		Option nodeOption = new Option("h","host",true,"hostname of existing node");
 		nodeOption.setRequired(false);
 		options.addOption(nodeOption);
+		Option portOption = new Option("p","port",true,"port number of existing node");
+		portOption.setRequired(false);
+		options.addOption(portOption);
 		
 		CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
@@ -114,6 +118,14 @@ public class Run {
 
         try {
             cmd = parser.parse(options, args);
+            DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_MAIN_NODE),
+    				(Integer)conf.get(Config.DRAGON_NETWORK_SERVICE_PORT));
+			if(cmd.hasOption("host")) {
+				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+			}
+			if(cmd.hasOption("port")) {
+				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
+			}
             if(!cmd.hasOption("daemon")){
 	            if(!cmd.hasOption("jar") || !cmd.hasOption("class")){
 	            	throw new ParseException("must provide a jar file and class to run");
@@ -122,12 +134,12 @@ public class Run {
 	    		String topologyClass = cmd.getOptionValue("class");
 	    		Class c = loadJarFileClass(jarPath,topologyClass);
 	    		String[] newargs = cmd.getArgs();
+	    		
 	    		Method cmain = c.getMethod("main", String[].class);
 	    		cmain.invoke(cmain, (Object) newargs);
             } else {
-            	if(cmd.hasOption("node")){
-            		InetAddress a = InetAddress.getByName("");
-            		log.info("starting dragon node and joining to ");
+            	if(cmd.hasOption("host")){
+            		log.info("starting dragon node and joining to "+cmd.getOptionValue("host"));
             		new Node();
             	} else {
 	            	log.info("starting dragon node");
@@ -136,7 +148,7 @@ public class Run {
             }
         } catch (ParseException e) {
             System.out.println(e.getMessage());
-            formatter.printHelp("dragon [-j jarPath -c className [args]] [-d [-n hostname:port]]", options);
+            formatter.printHelp("dragon [-d] [-h host] [-p port] [-j jarPath -c className [args]]", options);
             System.exit(1);
         }
 		

@@ -8,7 +8,7 @@ public class TopologySubmitted extends ServiceMessage {
 	public String topologyName;
 	
 	public TopologySubmitted(String topologyName) {
-		super(ServiceMessage.ServiceCommandType.TOPOLOGY_SUBMITTED);
+		super(ServiceMessage.ServiceMessageType.TOPOLOGY_SUBMITTED);
 		this.topologyName = topologyName;
 	}
 

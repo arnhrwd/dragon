@@ -7,17 +7,28 @@ import dragon.network.messages.service.ServiceMessage;
 public interface IComms {
 	
 	/**
-	 * Prepare the comms layer for operation.
-	 * @param serviceOnly is true if only the service features are required.
+	 * Prepare the comms layer for operation. Connect to the supplied node
+	 * for service. Implies that other comms features are not required.
 	 */
-	public void open(boolean serviceOnly);
+	public void open(NodeDescriptor serivceNode);
+	
+	/**
+	 * Prepare the comms layer for operation. Make a service port available
+	 * as well as other comms features.
+	 * @param serviceOnly
+	 */
+	public void open();
 	
 	/**
 	 * Terminate the comms layer operation.
 	 */
 	public void close();
 	
-	public NodeDescriptor createNodeDescriptor(String hostname,int port);
+	/**
+	 * 
+	 * @return the node descriptor for this node
+	 */
+	public NodeDescriptor getMyNodeDescriptor();
 	
 	
 	/**
