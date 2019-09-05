@@ -7,9 +7,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.network.Node.NodeState;
-import dragon.network.messages.node.AcceptingJoin;
-import dragon.network.messages.node.ContextUpdate;
-import dragon.network.messages.node.JoinComplete;
+import dragon.network.messages.node.AcceptingJoinMessage;
+import dragon.network.messages.node.ContextUpdateMessage;
+import dragon.network.messages.node.JoinCompleteMessage;
 import dragon.network.messages.node.NodeMessage;
 
 public class NodeProcessor extends Thread {
@@ -38,7 +38,7 @@ public class NodeProcessor extends Thread {
 				} else {
 					node.setNodeState(NodeState.ACCEPTING_JOIN);
 					context.put(message.getSender());
-					node.getComms().sendNodeMessage(message.getSender(),new AcceptingJoin(nextNode,context));
+					node.getComms().sendNodeMessage(message.getSender(),new AcceptingJoinMessage(nextNode,context));
 					nextNode=message.getSender();
 				}
 				break;
@@ -46,12 +46,12 @@ public class NodeProcessor extends Thread {
 				if(node.getNodeState()!=NodeState.JOIN_REQUESTED) {
 					log.error("unexpected message: "+NodeMessage.NodeMessageType.ACCEPTING_JOIN.name());
 				} else {
-					AcceptingJoin aj = (AcceptingJoin) message;
+					AcceptingJoinMessage aj = (AcceptingJoinMessage) message;
 					nextNode=aj.nextNode;
-					node.getComms().sendNodeMessage(message.getSender(), new JoinComplete());
+					node.getComms().sendNodeMessage(message.getSender(), new JoinCompleteMessage());
 					context.putAll(aj.context);
 					for(NodeDescriptor descriptor : context.values()) {
-						node.getComms().sendNodeMessage(descriptor, new ContextUpdate(context));
+						node.getComms().sendNodeMessage(descriptor, new ContextUpdateMessage(context));
 					}
 					processPendingJoins();
 				}
@@ -64,12 +64,12 @@ public class NodeProcessor extends Thread {
 				}
 				break;
 			case CONTEXT_UPDATE:
-				ContextUpdate cu = (ContextUpdate) message;
+				ContextUpdateMessage cu = (ContextUpdateMessage) message;
 				boolean hit=false;
 				for(String key : context.keySet()) {
 					if(!cu.context.containsKey(key)) {
 						context.putAll(cu.context);
-						node.getComms().sendNodeMessage(message.getSender(), new ContextUpdate(context));
+						node.getComms().sendNodeMessage(message.getSender(), new ContextUpdateMessage(context));
 						hit=true;
 						break;
 					}
@@ -85,11 +85,15 @@ public class NodeProcessor extends Thread {
 			NodeMessage m = (NodeMessage) pendingJoinRequests.toArray()[0];
 			node.setNodeState(NodeState.ACCEPTING_JOIN);
 			context.put(m.getSender());
-			node.getComms().sendNodeMessage(m.getSender(),new AcceptingJoin(nextNode,context));
+			node.getComms().sendNodeMessage(m.getSender(),new AcceptingJoinMessage(nextNode,context));
 			nextNode=m.getSender();
 			pendingJoinRequests.remove(m);
 		} else {
 			node.setNodeState(NodeState.OPERATIONAL);
 		}
+	}
+	
+	public NodeContext getContext() {
+		return context;
 	}
 }

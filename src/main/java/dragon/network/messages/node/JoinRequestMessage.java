@@ -1,14 +1,14 @@
 package dragon.network.messages.node;
 
 
-public class JoinRequest extends NodeMessage {
+public class JoinRequestMessage extends NodeMessage {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 4994962717012324017L;
 
-	public JoinRequest() {
+	public JoinRequestMessage() {
 		super(NodeMessage.NodeMessageType.JOIN_REQUEST);
 	}
 

@@ -11,7 +11,9 @@ public class ServiceMessage extends Message {
 	public static enum ServiceMessageType {
 		RUN_TOPOLOGY,
 		TOPOLOGY_EXISTS,
-		TOPOLOGY_SUBMITTED
+		TOPOLOGY_SUBMITTED,
+		GET_NODE_CONTEXT,
+		NODE_CONTEXT
 	}
 	
 	private ServiceMessageType type;

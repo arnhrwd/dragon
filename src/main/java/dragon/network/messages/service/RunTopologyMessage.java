@@ -3,7 +3,7 @@ package dragon.network.messages.service;
 import dragon.Config;
 import dragon.topology.DragonTopology;
 
-public class RunTopology extends ServiceMessage {
+public class RunTopologyMessage extends ServiceMessage {
 	/**
 	 * 
 	 */
@@ -13,7 +13,7 @@ public class RunTopology extends ServiceMessage {
 	public String topologyName;
 	public Config conf;
 	
-	public RunTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
+	public RunTopologyMessage(String topologyName, Config conf, DragonTopology dragonTopology) {
 		super(ServiceMessage.ServiceMessageType.RUN_TOPOLOGY);
 		this.dragonTopology = dragonTopology;
 	}

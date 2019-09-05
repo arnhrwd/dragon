@@ -7,7 +7,7 @@ import dragon.network.IComms;
 import dragon.network.Node;
 import dragon.network.NodeDescriptor;
 import dragon.network.TcpComms;
-import dragon.network.messages.service.RunTopology;
+import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.topology.DragonTopology;
 
@@ -17,7 +17,7 @@ public class DragonSubmitter {
 	public static void submitTopology(String string, Config conf, DragonTopology topology) {
 		IComms comms = new TcpComms();
 		comms.open(node);
-		comms.sendServiceMessage(new RunTopology(string,conf,topology));
+		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
 		ServiceMessage message = comms.receiveServiceMessage();
 		switch(message.getType()){
 		case TOPOLOGY_EXISTS:

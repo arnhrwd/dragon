@@ -9,7 +9,7 @@ import org.apache.commons.logging.LogFactory;
 
 
 import dragon.LocalCluster;
-import dragon.network.messages.node.JoinRequest;
+import dragon.network.messages.node.JoinRequestMessage;
 
 
 
@@ -35,12 +35,19 @@ public class Node {
 		nodeState=NodeState.JOINING;
 		init();
 		log.debug("sending join request to "+existingNode.toString());
-		comms.sendNodeMessage(existingNode, new JoinRequest());
+		comms.sendNodeMessage(existingNode, new JoinRequestMessage());
 		
 	}
 	public Node() {
 		nodeState=NodeState.OPERATIONAL;
 		init();
+	}
+	
+	private void init() {
+		comms = new TcpComms();
+		comms.open();
+		serviceThread=new ServiceProcessor(this);
+		nodeThread=new NodeProcessor(this);
 	}
 	
 	public IComms getComms() {
@@ -59,11 +66,8 @@ public class Node {
 		this.nodeState=nodeState;
 	}
 	
-	private void init() {
-		comms = new TcpComms();
-		comms.open();
-		serviceThread=new ServiceProcessor(this);
-		nodeThread=new NodeProcessor(this);
+	public NodeProcessor getNodeProcessor() {
+		return this.nodeThread;
 	}
 	
 	
