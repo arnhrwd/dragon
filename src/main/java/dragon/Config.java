@@ -4,8 +4,7 @@ package dragon;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -44,21 +43,13 @@ public class Config extends HashMap<String, Object>{
 	
 	public Config() {
 		super();
+		defaults();
 	}
 	
 	public Config(String file) throws IOException {
 		super();
-		// DEFAULTS
-		put(DRAGON_OUTPUT_BUFFER_SIZE,1024);
-		put(DRAGON_INPUT_BUFFER_SIZE,1024);
-		put(DRAGON_BASE_DIR,"/tmp/dragon");
-		put(DRAGON_PERSISTANCE_DIR,"persistance");
-		put(DRAGON_NETWORK_THREADS,10);
-		put(DRAGON_ROUTER_THREADS,10);
-		put(DRAGON_OUTPUT_SCHEDULER_SLEEP,50);
-		put(DRAGON_COMPONENT_IDLE_TIME_MS,50);
-		put(DRAGON_NETWORK_MAIN_NODE,"localhost");
-		put(DRAGON_NETWORK_SERVICE_PORT,4000);
+		defaults();
+		
 		
 		Properties props = new Properties();
 		FileInputStream propStream=null;
@@ -110,6 +101,19 @@ public class Config extends HashMap<String, Object>{
         		log.error(propName+" is unknown, ignoring");
         	}
         }
+	}
+	
+	public void defaults() {
+		put(DRAGON_OUTPUT_BUFFER_SIZE,1024);
+		put(DRAGON_INPUT_BUFFER_SIZE,1024);
+		put(DRAGON_BASE_DIR,"/tmp/dragon");
+		put(DRAGON_PERSISTANCE_DIR,"persistance");
+		put(DRAGON_NETWORK_THREADS,10);
+		put(DRAGON_ROUTER_THREADS,10);
+		put(DRAGON_OUTPUT_SCHEDULER_SLEEP,50);
+		put(DRAGON_COMPONENT_IDLE_TIME_MS,50);
+		put(DRAGON_NETWORK_MAIN_NODE,"localhost");
+		put(DRAGON_NETWORK_SERVICE_PORT,4000);
 	}
 
 	public void setNumWorkers(int numWorkers) {

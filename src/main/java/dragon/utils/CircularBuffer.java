@@ -11,6 +11,7 @@ public class CircularBuffer<T> {
 	protected Integer prev_tail;
 	protected Integer prev_head;
 	protected Integer size=1024;
+	public Object lock = new Object();
 	
 	public CircularBuffer(){
 		init();
@@ -21,7 +22,6 @@ public class CircularBuffer<T> {
 		init();
 	}
 	
-	@SuppressWarnings("unchecked")
 	private void init(){
 		elements = new ArrayList<T>(size);
 		for(int i=0;i<size;i++) {

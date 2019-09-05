@@ -23,7 +23,7 @@ public class Collector {
 	private CircularBuffer<NetworkTask> outputQueue;
 	private LocalCluster localCluster;
 	private Component component;
-	public Object lock = new Object();
+	
 	private boolean emitted;
 	
 	public Collector(Component component,LocalCluster localCluster,int bufSize) {
@@ -81,7 +81,7 @@ public class Collector {
 				receivingTaskIds.addAll(taskIds);
 				try {
 					outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId));
-					localCluster.outputPending(this);
+					localCluster.outputPending(this.outputQueue);
 				} catch (InterruptedException e) {
 					log.error("failed to emit tuple: "+e.toString());
 				}
@@ -120,7 +120,7 @@ public class Collector {
 			receivingTaskIds.add(taskId);
 			try {
 				outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId));
-				localCluster.outputPending(this);
+				localCluster.outputPending(this.outputQueue);
 			} catch (InterruptedException e) {
 				log.error("failed to emit tuple: "+e.toString());
 			}

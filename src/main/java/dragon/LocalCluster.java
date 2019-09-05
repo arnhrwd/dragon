@@ -24,6 +24,7 @@ import dragon.topology.base.Component;
 import dragon.topology.base.IRichBolt;
 import dragon.topology.base.IRichSpout;
 import dragon.tuple.Tuple;
+import dragon.utils.CircularBuffer;
 
 
 public class LocalCluster {
@@ -40,7 +41,7 @@ public class LocalCluster {
 	private Config conf;
 	private DragonTopology dragonTopology;
 	
-	private LinkedBlockingQueue<Collector> outputsPending;
+	private LinkedBlockingQueue<CircularBuffer<NetworkTask>> outputsPending;
 	private LinkedBlockingQueue<Component> componentsPending;
 
 	private Thread tickThread;
@@ -63,7 +64,7 @@ public class LocalCluster {
 		this.topologyName=topologyName;
 		this.conf=conf;
 		this.dragonTopology=dragonTopology;
-		outputsPending = new LinkedBlockingQueue<Collector>();
+		outputsPending = new LinkedBlockingQueue<CircularBuffer<NetworkTask>>();
 		componentsPending = new LinkedBlockingQueue<Component>();
 		networkExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_NETWORK_THREADS));
 		
@@ -322,11 +323,11 @@ public class LocalCluster {
 					HashSet<Integer> doneTaskIds=new HashSet<Integer>();
 					while(!shouldTerminate) {
 						try {
-							Collector collector = outputsPending.take();
+							CircularBuffer<NetworkTask> queue = outputsPending.take();
 							//log.debug("network task pending "+outputsPending.size());
-							synchronized(collector.lock) {
+							synchronized(queue.lock) {
 								//log.debug("peeking on queue");
-								NetworkTask networkTask = (NetworkTask) collector.getQueue().peek();
+								NetworkTask networkTask = (NetworkTask) queue.peek();
 								if(networkTask!=null) {
 									//log.debug("processing network task");
 									Tuple tuple = networkTask.getTuple();
@@ -343,9 +344,9 @@ public class LocalCluster {
 									}
 									networkTask.getTaskIds().removeAll(doneTaskIds);
 									if(networkTask.getTaskIds().size()==0) {
-										collector.getQueue().poll();
+										queue.poll();
 									} else {
-										outputPending(collector);
+										outputPending(queue);
 									}
 								} else {
 									//log.debug("queue empty!");
@@ -369,9 +370,9 @@ public class LocalCluster {
 		}
 	}
 	
-	public void outputPending(final Collector outputCollector) {
+	public void outputPending(final CircularBuffer<NetworkTask> queue) {
 		try {
-			outputsPending.put(outputCollector);
+			outputsPending.put(queue);
 			//log.debug("outputPending pending "+outputsPending.size());
 		} catch (InterruptedException e) {
 			log.error("interruptep while adding output pending");
