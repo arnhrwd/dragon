@@ -13,8 +13,9 @@ public class NetworkTask implements Serializable {
 	private Tuple tuple;
 	private HashSet<Integer> taskIds;
 	private String componentId;
+	private String topologyId;
 
-	public NetworkTask(Tuple tuple,HashSet<Integer> taskIds,String componentId) {
+	public NetworkTask(Tuple tuple,HashSet<Integer> taskIds,String componentId, String topologyId) {
 		this.tuple=tuple;
 		this.taskIds=taskIds;
 		this.componentId=componentId;
@@ -30,6 +31,10 @@ public class NetworkTask implements Serializable {
 	
 	public String getComponentId() {
 		return componentId;
+	}
+	
+	public String getTopologyId() {
+		return topologyId;
 	}
 
 }

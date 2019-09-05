@@ -18,8 +18,10 @@ import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.BoltDeclarer;
 import dragon.topology.DragonTopology;
+import dragon.topology.GroupingsSet;
 import dragon.topology.OutputFieldsDeclarer;
 import dragon.topology.SpoutDeclarer;
+import dragon.topology.StreamMap;
 import dragon.topology.base.Collector;
 import dragon.topology.base.Component;
 import dragon.topology.base.IRichBolt;
@@ -153,22 +155,22 @@ public class LocalCluster {
 		// prepare groupings
 		for(String fromComponentId : dragonTopology.spoutMap.keySet()) {
 			log.debug("preparing groupings for spout["+fromComponentId+"]");
-			HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> 
-				fromComponent = dragonTopology.getFromComponent(fromComponentId);
+			HashMap<String,StreamMap> 
+				fromComponent = dragonTopology.getDestComponentMap(fromComponentId);
 			if(fromComponent==null) {
 				throw new RuntimeException("spout ["+fromComponentId+"] has no components listening to it");
 			}
 			log.debug(fromComponent);
 			for(String toComponentId : fromComponent.keySet()) {
-				HashMap<String,HashSet<CustomStreamGrouping>> 
-					streams = dragonTopology.getFromToComponent(fromComponentId, toComponentId);
+				HashMap<String,GroupingsSet> 
+					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
 				BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(toComponentId);
 				ArrayList<Integer> taskIds=new ArrayList<Integer>();
 				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 					taskIds.add(i);
 				}
 				for(String streamId : streams.keySet()) {
-					HashSet<CustomStreamGrouping> groupings = dragonTopology.getFromToStream(fromComponentId, toComponentId, streamId);
+					HashSet<CustomStreamGrouping> groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
 					for(CustomStreamGrouping grouping : groupings) {
 						grouping.prepare(null, null, taskIds);
 					}
@@ -179,23 +181,23 @@ public class LocalCluster {
 		
 		for(String fromComponentId : dragonTopology.boltMap.keySet()) {
 			log.debug("preparing groupings for bolt["+fromComponentId+"]");
-			HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> 
-				fromComponent = dragonTopology.getFromComponent(fromComponentId);
+			HashMap<String,StreamMap> 
+				fromComponent = dragonTopology.getDestComponentMap(fromComponentId);
 			if(fromComponent==null) {
 				log.debug(fromComponentId+" is a sink");
 				continue;
 			}
 			log.debug(fromComponent);
 			for(String toComponentId : fromComponent.keySet()) {
-				HashMap<String,HashSet<CustomStreamGrouping>> 
-					streams = dragonTopology.getFromToComponent(fromComponentId, toComponentId);
+				HashMap<String,GroupingsSet> 
+					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
 				BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(toComponentId);
 				ArrayList<Integer> taskIds=new ArrayList<Integer>();
 				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 					taskIds.add(i);
 				}
 				for(String streamId : streams.keySet()) {
-					HashSet<CustomStreamGrouping> groupings = dragonTopology.getFromToStream(fromComponentId, toComponentId, streamId);
+					GroupingsSet groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
 					for(CustomStreamGrouping grouping : groupings) {
 						grouping.prepare(null, null, taskIds);
 					}
@@ -391,6 +393,9 @@ public class LocalCluster {
 		return conf.get(Config.DRAGON_BASE_DIR)+"/"+conf.get(Config.DRAGON_PERSISTANCE_DIR);
 	}
 	
+	public String getTopologyId() {
+		return topologyName;
+	}
 	
 	public Config getConf(){
 		return conf;

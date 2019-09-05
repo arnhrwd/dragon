@@ -43,6 +43,9 @@ public class Router {
 						NetworkTask task = node.getComms().receiveNetworkTask();
 						try {
 							streamInputQueues.put(task);
+							node.getLocalClusters().get(task.getTopologyId())
+							.outputPending(streamInputQueues.get(task.getTuple()
+									.getSourceStreamId()));
 						} catch (InterruptedException e) {
 							log.error("interrupted");
 							break;

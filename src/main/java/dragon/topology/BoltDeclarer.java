@@ -20,7 +20,7 @@ public class BoltDeclarer extends Declarer {
 	private IRichBolt bolt;
 	
 	// the components that this bolt listens to
-	public HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> groupings;
+	public HashMap<String,StreamMap> groupings;
 	
 	public IRichBolt getBolt() {
 		return bolt;
@@ -34,12 +34,12 @@ public class BoltDeclarer extends Declarer {
 	
 	public BoltDeclarer(String name, int parallelismHint) {
 		super(name, parallelismHint);
-		groupings=new HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>>();
+		groupings=new HashMap<String,StreamMap>();
 	}
 	
 	public BoltDeclarer(String name, IRichBolt bolt, int parallelismHint) {
 		super(name, parallelismHint);
-		groupings=new HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>>();
+		groupings=new HashMap<String,StreamMap>();
 		this.bolt=bolt;
 	}
 	
@@ -49,11 +49,11 @@ public class BoltDeclarer extends Declarer {
 	
 	private void put(String componentId,String streamId,CustomStreamGrouping grouping) {
 		if(!groupings.containsKey(componentId)) {
-			groupings.put(componentId, new HashMap<String,HashSet<CustomStreamGrouping>>());
+			groupings.put(componentId, new StreamMap());
 		}
-		HashMap<String,HashSet<CustomStreamGrouping>> map = groupings.get(componentId);
+		HashMap<String,GroupingsSet> map = groupings.get(componentId);
 		if(!map.containsKey(streamId)) {
-			map.put(streamId, new HashSet<CustomStreamGrouping>());
+			map.put(streamId, new GroupingsSet());
 		}
 		HashSet<CustomStreamGrouping> hs = map.get(streamId);
 		hs.add(grouping);

@@ -1,7 +1,6 @@
 package dragon.topology.base;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -12,6 +11,8 @@ import dragon.Constants;
 import dragon.LocalCluster;
 import dragon.NetworkTask;
 import dragon.grouping.CustomStreamGrouping;
+import dragon.topology.GroupingsSet;
+import dragon.topology.StreamMap;
 import dragon.tuple.Fields;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
@@ -67,17 +68,15 @@ public class Collector {
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
 		tuple.setSourceStreamId(streamId);
-		for(String componentId : localCluster.getTopology().topology.
-				get(component.getComponentId()).keySet()) {
-			HashMap<String,HashSet<CustomStreamGrouping>> toComponent = 
-					localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
-			HashSet<CustomStreamGrouping> stream = toComponent.get(streamId);
-			if(stream!=null) {
-				for(CustomStreamGrouping grouping : stream) {
+		for(String componentId : localCluster.getTopology().topology.get(component.getComponentId()).keySet()) {
+			StreamMap streamMap = localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
+			GroupingsSet groupingsSet = streamMap.get(streamId);
+			if(groupingsSet!=null) {
+				for(CustomStreamGrouping grouping : groupingsSet) {
 					List<Integer> taskIds = grouping.chooseTasks(0, values);
 					receivingTaskIds.addAll(taskIds);
 					try {
-						outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId));
+						outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId,localCluster.getTopologyId()));
 						localCluster.outputPending(this.outputQueue);
 					} catch (InterruptedException e) {
 						log.error("failed to emit tuple: "+e.toString());
@@ -111,14 +110,12 @@ public class Collector {
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
 		tuple.setSourceStreamId(streamId);
-		for(String componentId : localCluster.getTopology().topology.
-				get(component.getComponentId()).keySet()) {
-			HashMap<String,HashSet<CustomStreamGrouping>> toComponent = 
-					localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
+		for(String componentId : localCluster.getTopology().topology.get(component.getComponentId()).keySet()) {
+			//StreamMap toComponent = localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
 			List<Integer> taskIds = new ArrayList<Integer>();
 			receivingTaskIds.add(taskId);
 			try {
-				outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId));
+				outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId,localCluster.getTopologyId()));
 				localCluster.outputPending(this.outputQueue);
 			} catch (InterruptedException e) {
 				log.error("failed to emit tuple: "+e.toString());

@@ -2,12 +2,11 @@ package dragon.topology;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.HashSet;
+
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import dragon.grouping.CustomStreamGrouping;
 
 public class DragonTopology implements Serializable {
 	/**
@@ -18,47 +17,46 @@ public class DragonTopology implements Serializable {
 	public HashMap<String,SpoutDeclarer> spoutMap;
 	public HashMap<String,BoltDeclarer> boltMap;
 	
-	public HashMap<String,HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>>> topology;
+	public SourceComponentMap topology;
 	
 	public DragonTopology() {
-		topology=new HashMap<String,HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>>>();
+		topology=new SourceComponentMap();
 	}
 	
 
-	public void add(String fromComponentId, String toComponentId, HashMap<String, HashSet<CustomStreamGrouping>> hashMap) {
+	public void add(String fromComponentId, String toComponentId, StreamMap hashMap) {
 		if(!topology.containsKey(fromComponentId)) {
-			topology.put(fromComponentId,new HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>>());
+			topology.put(fromComponentId,new DestComponentMap());
 		}
-		HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> fromComponent =
-				topology.get(fromComponentId);
+		DestComponentMap destComponentMap = topology.get(fromComponentId);
 		
-		if(!fromComponent.containsKey(toComponentId)) {
-			fromComponent.put(toComponentId, new HashMap<String,HashSet<CustomStreamGrouping>>());
+		if(!destComponentMap.containsKey(toComponentId)) {
+			destComponentMap.put(toComponentId, new StreamMap());
 		}
-		HashMap<String,HashSet<CustomStreamGrouping>> toComponent = fromComponent.get(toComponentId);
+		StreamMap streamMap = destComponentMap.get(toComponentId);
 		for(String streamId : hashMap.keySet()) {
 			log.debug("connecting ["+fromComponentId+"] to ["+toComponentId+"] on stream["+streamId+"]");
-			if(!toComponent.containsKey(streamId)) {
-				toComponent.put(streamId,new HashSet<CustomStreamGrouping>());
+			if(!streamMap.containsKey(streamId)) {
+				streamMap.put(streamId,new GroupingsSet());
 			}
-			HashSet<CustomStreamGrouping> stream = toComponent.get(streamId);
-			stream.addAll(hashMap.get(streamId));
-			log.debug(stream);
+			GroupingsSet groupingsSet = streamMap.get(streamId);
+			groupingsSet.addAll(hashMap.get(streamId));
+			log.debug(groupingsSet);
 		}
 		
 		
 	}
 	
-	public HashMap<String,HashMap<String,HashSet<CustomStreamGrouping>>> getFromComponent(String componentId){
+	public DestComponentMap getDestComponentMap(String componentId){
 		return topology.get(componentId);
 	}
 	
-	public HashMap<String,HashSet<CustomStreamGrouping>> getFromToComponent(String fromComponentId, String toComponentId){
-		return getFromComponent(fromComponentId).get(toComponentId);
+	public StreamMap getStreamMap(String fromComponentId, String toComponentId){
+		return getDestComponentMap(fromComponentId).get(toComponentId);
 	}
 	
-	public HashSet<CustomStreamGrouping> getFromToStream(String fromComponentId, String toComponentId, String streamId){
-		return getFromToComponent(fromComponentId,toComponentId).get(streamId);
+	public GroupingsSet getGroupingsSet(String fromComponentId, String toComponentId, String streamId){
+		return getStreamMap(fromComponentId,toComponentId).get(streamId);
 	}
 
 
