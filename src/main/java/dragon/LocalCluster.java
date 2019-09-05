@@ -95,7 +95,6 @@ public class LocalCluster {
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				try {
 					IRichSpout spout=(IRichSpout) spoutDeclarer.getSpout().clone();
-					
 					hm.put(i, spout);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					spout.declareOutputFields(declarer);
@@ -132,7 +131,6 @@ public class LocalCluster {
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 				try {
 					IRichBolt bolt=(IRichBolt) boltDeclarer.getBolt().clone();
-					
 					hm.put(i, bolt);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					bolt.declareOutputFields(declarer);

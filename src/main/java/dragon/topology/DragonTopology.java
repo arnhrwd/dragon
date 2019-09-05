@@ -18,6 +18,7 @@ public class DragonTopology implements Serializable {
 	public HashMap<String,BoltDeclarer> boltMap;
 	
 	public SourceComponentMap topology;
+	public ComponentEmbedding embedding;
 	
 	public DragonTopology() {
 		topology=new SourceComponentMap();
