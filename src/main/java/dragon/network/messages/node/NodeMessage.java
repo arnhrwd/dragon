@@ -13,7 +13,8 @@ public class NodeMessage extends Message {
 	public static enum NodeMessageType {
 		JOIN_REQUEST,
 		ACCEPTING_JOIN,
-		JOIN_COMPLETE
+		JOIN_COMPLETE,
+		CONTEXT_UPDATE
 	}
 	
 	private NodeMessageType type;
