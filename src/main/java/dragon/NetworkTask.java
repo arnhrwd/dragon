@@ -31,4 +31,5 @@ public class NetworkTask implements Serializable {
 	public String getComponentId() {
 		return componentId;
 	}
+
 }

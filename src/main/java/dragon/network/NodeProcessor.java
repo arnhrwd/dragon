@@ -28,6 +28,8 @@ public class NodeProcessor extends Thread {
 		log.debug("starting node processor");
 		start();
 	}
+	
+	@Override
 	public void run() {
 		while(!shouldTerminate) {
 			NodeMessage message = node.getComms().receiveNodeMessage();

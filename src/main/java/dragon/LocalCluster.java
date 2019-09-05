@@ -27,7 +27,7 @@ import dragon.tuple.Tuple;
 
 
 public class LocalCluster {
-	private Log log = LogFactory.getLog(LocalCluster.class);
+	private static Log log = LogFactory.getLog(LocalCluster.class);
 	private HashMap<String,HashMap<Integer,IRichBolt>> iRichBolts;
 	private HashMap<String,HashMap<Integer,IRichSpout>> iRichSpouts;
 	private HashMap<String,Config> spoutConfs;

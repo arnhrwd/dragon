@@ -61,8 +61,43 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_NETWORK_SERVICE_PORT,4000);
 		
 		Properties props = new Properties();
-        FileInputStream propStream = new FileInputStream(file);
-        props.load(propStream);
+		FileInputStream propStream=null;
+		try {
+			log.debug("looking for "+file+" in working directory");
+			propStream = new FileInputStream(file);
+		} catch (FileNotFoundException e) {
+			
+		}
+		if(propStream==null) {
+			try {
+				log.debug("looking for "+file+" in ../conf");
+				propStream = new FileInputStream("../conf/"+file);
+			} catch (FileNotFoundException e) {
+				
+			}
+		}
+		if(propStream==null) {
+			try {
+				log.debug("looking for "+file+" in /etc/dragon");
+				propStream = new FileInputStream("/etc/dragon/"+file);
+			} catch (FileNotFoundException e) {
+				
+			}
+		}
+		if(propStream==null) {
+			try {
+				String home = System.getenv("HOME");
+				log.debug("looking for "+file+" in "+home+"/.dragon");
+				propStream = new FileInputStream(home+"/.dragon/"+file);
+			} catch (FileNotFoundException e) {
+				
+			}
+		}
+		if(propStream==null) {
+			log.warn("cannot find "+file+" - using defaults");
+			return;
+		}
+		props.load(propStream);
         for(Object prop : props.keySet()) {
         	String propName = (String) prop;
         	if(containsKey(propName)) {
@@ -76,9 +111,6 @@ public class Config extends HashMap<String, Object>{
         	}
         }
 	}
-	
-	
-	
 
 	public void setNumWorkers(int numWorkers) {
 		this.numWorkers=numWorkers;

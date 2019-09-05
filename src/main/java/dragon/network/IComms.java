@@ -1,5 +1,7 @@
 package dragon.network;
 
+import java.io.IOException;
+
 import dragon.NetworkTask;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceMessage;
@@ -9,15 +11,17 @@ public interface IComms {
 	/**
 	 * Prepare the comms layer for operation. Connect to the supplied node
 	 * for service. Implies that other comms features are not required.
+	 * @throws IOException 
 	 */
-	public void open(NodeDescriptor serivceNode);
+	public void open(NodeDescriptor serviceNode) throws IOException;
 	
 	/**
 	 * Prepare the comms layer for operation. Make a service port available
 	 * as well as other comms features.
 	 * @param serviceOnly
+	 * @throws IOException 
 	 */
-	public void open();
+	public void open() throws IOException;
 	
 	/**
 	 * Terminate the comms layer operation.

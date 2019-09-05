@@ -13,7 +13,8 @@ public class ServiceMessage extends Message {
 		TOPOLOGY_EXISTS,
 		TOPOLOGY_SUBMITTED,
 		GET_NODE_CONTEXT,
-		NODE_CONTEXT
+		NODE_CONTEXT,
+		SERVICE_DONE
 	}
 	
 	private ServiceMessageType type;

@@ -19,6 +19,8 @@ public class ServiceProcessor extends Thread {
 		log.debug("starting service processor");
 		start();
 	}
+	
+	@Override
 	public void run(){
 		while(!shouldTerminate){
 			ServiceMessage command = node.getComms().receiveServiceMessage();
@@ -36,6 +38,7 @@ public class ServiceProcessor extends Thread {
 				break;
 			case GET_NODE_CONTEXT:
 				node.getComms().sendServiceMessage(new NodeContextMessage(node.getNodeProcessor().getContext()));
+				break;
 			default:
 			}
 		}
