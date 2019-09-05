@@ -3,7 +3,9 @@ package dragon;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -60,25 +62,49 @@ public class Run {
 	
 	// get an arraylist of all the loaded classes in a jar file
 	@SuppressWarnings("rawtypes")
-	private static ArrayList<Class> loadJarFile(String filePath) throws Exception {
+	private static URLClassLoader loadJarFile(String filePath) throws Exception {
 	 
 	    ArrayList<Class> availableClasses = new ArrayList<Class>();
 	     
 	    ArrayList<String> classNames = getClassNamesFromJar(filePath);
 	    File f = new File(filePath);
-	 
 	    URLClassLoader classLoader = new URLClassLoader(new URL[]{f.toURI().toURL()});
 	    for (String className : classNames) {
 	        try {
 	            Class cc = classLoader.loadClass(className);
-	            availableClasses.add(cc);
+	            if(cc!=null) {
+		            availableClasses.add(cc);
+		            try {
+		            	log.debug("loaded class "+cc.getCanonicalName()+" ");
+		            } catch (InternalError e) {
+		           
+		            } catch (IncompatibleClassChangeError e) {
+		            	
+		            }
+	            }
 	        } catch (ClassNotFoundException e) {
-	            log.error("Class " + className + " was not found! "+e.toString());
+	            //log.warn("Class " + className + " was not found! "+e.toString());
+	        } catch (NoClassDefFoundError e) {
+	        	//log.warn("Class definition for " + className + " was not found! "+e.toString());
+	        } catch (IllegalAccessError e) {
+	        	//log.warn("Illegal access error for " + className +": "+e.toString());
+	        } catch (UnsupportedClassVersionError e) {
+	        	//log.warn("Unsupported class version error for " + className +": "+e.toString());
 	        }
 	    }
 	    classLoader.close();
-	    return availableClasses;
+	    return classLoader;
 	}
+	
+	private static boolean addClassPath(String filePath) throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, MalformedURLException {
+		File f = new File(filePath);
+		ClassLoader cl = ClassLoader.getSystemClassLoader();
+		Method m = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
+        m.setAccessible(true);
+        m.invoke(cl, (Object)f.toURI().toURL());
+        return true;
+	}
+	
 	
 	@SuppressWarnings("rawtypes")
 	private static Class loadJarFileClass(String filePath, String className) throws ClassNotFoundException, IOException  {
@@ -115,7 +141,7 @@ public class Run {
 		CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
         CommandLine cmd;
-
+        
         try {
             cmd = parser.parse(options, args);
             DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_MAIN_NODE),
@@ -132,6 +158,7 @@ public class Run {
 	            }
             	String jarPath = cmd.getOptionValue("jar");
 	    		String topologyClass = cmd.getOptionValue("class");
+	    		addClassPath(jarPath);
 	    		Class c = loadJarFileClass(jarPath,topologyClass);
 	    		String[] newargs = cmd.getArgs();
 	    		

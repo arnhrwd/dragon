@@ -3,6 +3,7 @@ package dragon;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -23,7 +24,9 @@ import dragon.topology.base.Collector;
 import dragon.topology.base.Component;
 import dragon.topology.base.IRichBolt;
 import dragon.topology.base.IRichSpout;
+import dragon.tuple.Fields;
 import dragon.tuple.Tuple;
+import dragon.tuple.Values;
 import dragon.utils.CircularBuffer;
 
 
@@ -80,7 +83,9 @@ public class LocalCluster {
 			SpoutDeclarer spoutDeclarer = dragonTopology.spoutMap.get(spoutId);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
 			totalParallelismHint+=spoutDeclarer.getParallelismHint();
-			Config spoutConf = (Config) spoutDeclarer.getSpout().getComponentConfiguration();
+			Map<String,Object> bc = spoutDeclarer.getSpout().getComponentConfiguration();
+			Config spoutConf = new Config();
+			spoutConf.putAll(bc);
 			spoutConfs.put(spoutId, spoutConf);
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				taskIds.add(i);
@@ -114,7 +119,9 @@ public class LocalCluster {
 			HashMap<Integer,IRichBolt> hm = iRichBolts.get(boltId);
 			BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(boltId);
 			totalParallelismHint+=boltDeclarer.getParallelismHint();
-			Config boltConf = (Config) boltDeclarer.getBolt().getComponentConfiguration();
+			Map<String,Object> bc = boltDeclarer.getBolt().getComponentConfiguration();
+			Config boltConf = new Config();
+			boltConf.putAll(bc);
 			boltConfs.put(boltId, boltConf);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
@@ -281,7 +288,8 @@ public class LocalCluster {
 	}
 	
 	private void issueTickTuple(String boltId) {
-		Tuple tuple=new Tuple();
+		Tuple tuple=new Tuple(new Fields("tick"));
+		tuple.setValues(new Values("0"));
 		tuple.setSourceComponent(Constants.SYSTEM_COMPONENT_ID);
 		tuple.setSourceStreamId(Constants.SYSTEM_TICK_STREAM_ID);
 		for(IRichBolt bolt : iRichBolts.get(boltId).values()) {

@@ -72,20 +72,19 @@ public class Collector {
 			HashMap<String,HashSet<CustomStreamGrouping>> toComponent = 
 					localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
 			HashSet<CustomStreamGrouping> stream = toComponent.get(streamId);
-			if(stream==null) {
-				localCluster.setShouldTerminate("stream ["+streamId+
-						"] is not listened to by component ["+componentId+"]");
-			}
-			for(CustomStreamGrouping grouping : stream) {
-				List<Integer> taskIds = grouping.chooseTasks(0, values);
-				receivingTaskIds.addAll(taskIds);
-				try {
-					outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId));
-					localCluster.outputPending(this.outputQueue);
-				} catch (InterruptedException e) {
-					log.error("failed to emit tuple: "+e.toString());
+			if(stream!=null) {
+				for(CustomStreamGrouping grouping : stream) {
+					List<Integer> taskIds = grouping.chooseTasks(0, values);
+					receivingTaskIds.addAll(taskIds);
+					try {
+						outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId));
+						localCluster.outputPending(this.outputQueue);
+					} catch (InterruptedException e) {
+						log.error("failed to emit tuple: "+e.toString());
+					}
 				}
 			}
+			
 		}
 		setEmit();
 		return receivingTaskIds;

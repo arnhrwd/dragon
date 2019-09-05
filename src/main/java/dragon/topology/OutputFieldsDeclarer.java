@@ -19,11 +19,11 @@ public class OutputFieldsDeclarer {
 	}
 	
 	public void declare(boolean direct,Fields fields) {
-		if(direct==false){
+		//if(direct==false){
 			declare(Constants.DEFAULT_STREAM,fields);
-		} else {
+		//} else {
 			directStreamFields.put(Constants.DEFAULT_STREAM,fields);
-		}
+		//}
 	}
 	
 	public void declare(String streamId,Fields fields) {
