@@ -80,7 +80,7 @@ public class LocalCluster {
 		this.dragonTopology=dragonTopology;
 		outputsPending = new LinkedBlockingQueue<CircularBuffer<NetworkTask>>();
 		componentsPending = new LinkedBlockingQueue<Component>();
-		networkExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_NETWORK_THREADS));
+		networkExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS));
 		
 		
 		
@@ -324,8 +324,8 @@ public class LocalCluster {
 
 	
 	private void outputsScheduler(){
-		log.debug("starting the outputs scheduler with "+(Integer)conf.get(Config.DRAGON_NETWORK_THREADS)+" threads");
-		for(int i=0;i<(Integer)conf.get(Config.DRAGON_NETWORK_THREADS);i++) {
+		log.debug("starting the outputs scheduler with "+(Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS)+" threads");
+		for(int i=0;i<(Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS);i++) {
 			networkExecutorService.execute(new Runnable() {
 				public void run(){
 					HashSet<Integer> doneTaskIds=new HashSet<Integer>();

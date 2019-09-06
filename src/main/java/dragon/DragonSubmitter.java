@@ -15,6 +15,7 @@ import dragon.network.messages.service.NodeContextMessage;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.topology.DragonTopology;
+import dragon.topology.RoundRobinEmbedding;
 
 public class DragonSubmitter {
 	private static Log log = LogFactory.getLog(Node.class);
@@ -35,7 +36,8 @@ public class DragonSubmitter {
 			throw new RuntimeException("could not obtain node context");
 		}
 		
-		//TODO: do the topology mapping
+		RoundRobinEmbedding rre = new RoundRobinEmbedding();
+		topology.embedding = rre.generateEmbedding(topology, context);
 		
 		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
 		message = comms.receiveServiceMessage();

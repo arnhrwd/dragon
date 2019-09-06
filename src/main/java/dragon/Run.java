@@ -144,8 +144,8 @@ public class Run {
         
         try {
             cmd = parser.parse(options, args);
-            DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_MAIN_NODE),
-    				(Integer)conf.get(Config.DRAGON_NETWORK_SERVICE_PORT));
+            DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
+    				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_SERVICE_PORT));
 			if(cmd.hasOption("host")) {
 				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
 			}
