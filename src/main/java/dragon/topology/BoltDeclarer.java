@@ -12,17 +12,18 @@ import dragon.grouping.CustomStreamGrouping;
 import dragon.grouping.DirectGrouping;
 import dragon.grouping.FieldGrouping;
 import dragon.grouping.ShuffleGrouping;
-import dragon.topology.base.IRichBolt;
+import dragon.topology.base.Bolt;
+
 import dragon.tuple.Fields;
 
 public class BoltDeclarer extends Declarer {
-	private Log log = LogFactory.getLog(BoltDeclarer.class);
-	private IRichBolt bolt;
+	private static Log log = LogFactory.getLog(BoltDeclarer.class);
+	private Bolt bolt;
 	
 	// the components that this bolt listens to
 	public HashMap<String,StreamMap> groupings;
 	
-	public IRichBolt getBolt() {
+	public Bolt getBolt() {
 		return bolt;
 	}
 	
@@ -37,7 +38,7 @@ public class BoltDeclarer extends Declarer {
 		groupings=new HashMap<String,StreamMap>();
 	}
 	
-	public BoltDeclarer(String name, IRichBolt bolt, int parallelismHint) {
+	public BoltDeclarer(String name, Bolt bolt, int parallelismHint) {
 		super(name, parallelismHint);
 		groupings=new HashMap<String,StreamMap>();
 		this.bolt=bolt;

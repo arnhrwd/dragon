@@ -22,10 +22,12 @@ import dragon.topology.GroupingsSet;
 import dragon.topology.OutputFieldsDeclarer;
 import dragon.topology.SpoutDeclarer;
 import dragon.topology.StreamMap;
-import dragon.topology.base.Collector;
+import dragon.topology.base.Bolt;
+
 import dragon.topology.base.Component;
-import dragon.topology.base.IRichBolt;
-import dragon.topology.base.IRichSpout;
+
+
+import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
@@ -34,8 +36,8 @@ import dragon.utils.CircularBuffer;
 
 public class LocalCluster {
 	private static Log log = LogFactory.getLog(LocalCluster.class);
-	private HashMap<String,HashMap<Integer,IRichBolt>> iRichBolts;
-	private HashMap<String,HashMap<Integer,IRichSpout>> iRichSpouts;
+	private HashMap<String,HashMap<Integer,Bolt>> iRichBolts;
+	private HashMap<String,HashMap<Integer,Spout>> iRichSpouts;
 	private HashMap<String,Config> spoutConfs;
 	private HashMap<String,Config> boltConfs;
 	private ExecutorService componentExecutorService;
@@ -76,12 +78,12 @@ public class LocalCluster {
 		
 		
 		// allocate spouts and open them
-		iRichSpouts = new HashMap<String,HashMap<Integer,IRichSpout>>();
+		iRichSpouts = new HashMap<String,HashMap<Integer,Spout>>();
 		spoutConfs = new HashMap<String,Config>();
 		for(String spoutId : dragonTopology.spoutMap.keySet()) {
 			log.debug("allocating spout ["+spoutId+"]");
-			iRichSpouts.put(spoutId, new HashMap<Integer,IRichSpout>());
-			HashMap<Integer,IRichSpout> hm = iRichSpouts.get(spoutId);
+			iRichSpouts.put(spoutId, new HashMap<Integer,Spout>());
+			HashMap<Integer,Spout> hm = iRichSpouts.get(spoutId);
 			SpoutDeclarer spoutDeclarer = dragonTopology.spoutMap.get(spoutId);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
 			totalParallelismHint+=spoutDeclarer.getParallelismHint();
@@ -94,7 +96,7 @@ public class LocalCluster {
 			}
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				try {
-					IRichSpout spout=(IRichSpout) spoutDeclarer.getSpout().clone();
+					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
 					hm.put(i, spout);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					spout.declareOutputFields(declarer);
@@ -112,12 +114,12 @@ public class LocalCluster {
 		}
 		
 		// allocate bolts and prepare them
-		iRichBolts = new HashMap<String,HashMap<Integer,IRichBolt>>();
+		iRichBolts = new HashMap<String,HashMap<Integer,Bolt>>();
 		boltConfs = new HashMap<String,Config>();
 		for(String boltId : dragonTopology.boltMap.keySet()) {
 			log.debug("allocating bolt ["+boltId+"]");
-			iRichBolts.put(boltId, new HashMap<Integer,IRichBolt>());
-			HashMap<Integer,IRichBolt> hm = iRichBolts.get(boltId);
+			iRichBolts.put(boltId, new HashMap<Integer,Bolt>());
+			HashMap<Integer,Bolt> hm = iRichBolts.get(boltId);
 			BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(boltId);
 			totalParallelismHint+=boltDeclarer.getParallelismHint();
 			Map<String,Object> bc = boltDeclarer.getBolt().getComponentConfiguration();
@@ -130,7 +132,7 @@ public class LocalCluster {
 			}
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 				try {
-					IRichBolt bolt=(IRichBolt) boltDeclarer.getBolt().clone();
+					Bolt bolt=(Bolt) boltDeclarer.getBolt().clone();
 					hm.put(i, bolt);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					bolt.declareOutputFields(declarer);
@@ -275,9 +277,9 @@ public class LocalCluster {
 		
 		log.debug("scheduling spouts to run");
 		for(String componentId : iRichSpouts.keySet()) {
-			HashMap<Integer,IRichSpout> component = iRichSpouts.get(componentId);
+			HashMap<Integer,Spout> component = iRichSpouts.get(componentId);
 			for(Integer taskId : component.keySet()) {
-				IRichSpout spout = component.get(taskId);
+				Spout spout = component.get(taskId);
 				componentPending(spout);
 			}
 		}
@@ -292,7 +294,7 @@ public class LocalCluster {
 		tuple.setValues(new Values("0"));
 		tuple.setSourceComponent(Constants.SYSTEM_COMPONENT_ID);
 		tuple.setSourceStreamId(Constants.SYSTEM_TICK_STREAM_ID);
-		for(IRichBolt bolt : iRichBolts.get(boltId).values()) {
+		for(Bolt bolt : iRichBolts.get(boltId).values()) {
 			synchronized(bolt) {
 				bolt.setTickTuple(tuple);
 				componentPending(bolt);

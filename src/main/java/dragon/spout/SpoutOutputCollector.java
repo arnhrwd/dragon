@@ -8,14 +8,15 @@ import dragon.LocalCluster;
 
 
 import dragon.topology.base.Collector;
-import dragon.topology.base.IRichSpout;
+
+import dragon.topology.base.Spout;
 
 public class SpoutOutputCollector extends Collector {
-	private Log log = LogFactory.getLog(SpoutOutputCollector.class);
+	private static Log log = LogFactory.getLog(SpoutOutputCollector.class);
 	
 	
-	public SpoutOutputCollector(LocalCluster localCluster,IRichSpout iRichSpout) {
-		super(iRichSpout,localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE));
+	public SpoutOutputCollector(LocalCluster localCluster,Spout spout) {
+		super(spout,localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE));
 
 	}
 	

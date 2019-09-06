@@ -6,7 +6,7 @@ import dragon.spout.SpoutOutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
-public class BaseRichSpout extends IRichSpout {
+public class BaseRichSpout extends Spout implements IRichSpout {
 
 	@Override
 	public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
@@ -14,14 +14,11 @@ public class BaseRichSpout extends IRichSpout {
 		
 	}
 	
-	@Override
-	@Deprecated
+	
 	public void ack(Object id) {
 		
 	}
 	
-	@Override
-	@Deprecated
 	public void fail(Object id) {
 		
 	}

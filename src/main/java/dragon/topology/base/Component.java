@@ -1,10 +1,13 @@
 package dragon.topology.base;
 
+import java.util.Map;
+
+import dragon.Config;
 import dragon.LocalCluster;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
-public class Component implements Runnable{
+public class Component implements Runnable, Cloneable{
 	private TopologyContext context;
 	private LocalCluster localCluster;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
@@ -50,4 +53,13 @@ public class Component implements Runnable{
 		// TODO Auto-generated method stub
 		
 	}
+	
+	public Map<String, Object> getComponentConfiguration() {
+		Config conf = new Config();
+		return conf;
+	}
+	
+	public Object clone()throws CloneNotSupportedException{  
+		return super.clone();  
+	}  
 }
