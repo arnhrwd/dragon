@@ -2,8 +2,7 @@ package dragon.network;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -17,12 +16,14 @@ import dragon.network.messages.node.JoinRequestMessage;
 public class Node {
 	private static Log log = LogFactory.getLog(Node.class);
 	private IComms comms;
-	private ExecutorService networkExecutorService;
+
 	private HashMap<String,LocalCluster> localClusters;
 	private ServiceProcessor serviceThread;
 	private NodeProcessor nodeThread;
 	private boolean shouldTerminate=false;
 	private Config conf;
+	
+	private Router router;
 	
 	public enum NodeState {
 		JOINING,
@@ -50,6 +51,7 @@ public class Node {
 	private void init() throws IOException {
 		comms = new TcpComms(conf);
 		comms.open();
+		router = new Router(this,conf);
 		serviceThread=new ServiceProcessor(this);
 		nodeThread=new NodeProcessor(this);
 	}
@@ -72,6 +74,10 @@ public class Node {
 	
 	public NodeProcessor getNodeProcessor() {
 		return this.nodeThread;
+	}
+	
+	public Router getRouter(){
+		return router;
 	}
 	
 	

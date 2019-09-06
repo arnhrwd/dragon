@@ -34,7 +34,10 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_NETWORK_THREADS="dragon.network.threads";
 	public static final String DRAGON_OUTPUT_SCHEDULER_SLEEP="dragon.output.scheduler.sleep";
 	public static final String DRAGON_COMPONENT_IDLE_TIME_MS="dragon.component.idle.time.ms";
-	public static final String DRAGON_ROUTER_THREADS="dragon.router.threads";
+	public static final String DRAGON_ROUTER_INPUT_THREADS="dragon.router.input.threads";
+	public static final String DRAGON_ROUTER_OUTPUT_THREADS="dragon.router.output.threads";
+	public static final String DRAGON_ROUTER_INPUT_BUFFER_SIZE="dragon.router.input.buffer.size";
+	public static final String DRAGON_ROUTER_OUTPUT_BUFFER_SIZE="dragon.router.output.buffer.size";
 	public static final String DRAGON_NETWORK_MAIN_NODE="dragon.network.main.node";
 	public static final String DRAGON_NETWORK_SERVICE_PORT="dragon.network.service.port";
 	
@@ -109,7 +112,10 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_BASE_DIR,"/tmp/dragon");
 		put(DRAGON_PERSISTANCE_DIR,"persistance");
 		put(DRAGON_NETWORK_THREADS,10);
-		put(DRAGON_ROUTER_THREADS,10);
+		put(DRAGON_ROUTER_INPUT_THREADS,10);
+		put(DRAGON_ROUTER_OUTPUT_THREADS,10);
+		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,1024);
+		put(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,1024);
 		put(DRAGON_OUTPUT_SCHEDULER_SLEEP,50);
 		put(DRAGON_COMPONENT_IDLE_TIME_MS,50);
 		put(DRAGON_NETWORK_MAIN_NODE,"localhost");

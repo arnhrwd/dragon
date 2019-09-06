@@ -75,11 +75,29 @@ public class Collector {
 				for(CustomStreamGrouping grouping : groupingsSet) {
 					List<Integer> taskIds = grouping.chooseTasks(0, values);
 					receivingTaskIds.addAll(taskIds);
-					try {
-						outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId,localCluster.getTopologyId()));
-						localCluster.outputPending(this.outputQueue);
-					} catch (InterruptedException e) {
-						log.error("failed to emit tuple: "+e.toString());
+					HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
+					for(Integer taskId : taskIds){
+						if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){
+							remoteTaskIds.add(taskId);
+						}
+					}
+					if(!remoteTaskIds.isEmpty()){
+						NetworkTask task = new NetworkTask(tuple,remoteTaskIds,componentId,localCluster.getTopologyId());
+						try {
+							localCluster.getNode().getRouter().put(task);
+						} catch (InterruptedException e) {
+							log.error("failed to emit tuple: "+e.toString());
+						}
+					}
+					HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
+					localTaskIds.removeAll(remoteTaskIds);
+					if(!localTaskIds.isEmpty()){
+						try {
+							outputQueue.put(new NetworkTask(tuple,localTaskIds,componentId,localCluster.getTopologyId()));
+							localCluster.outputPending(this.outputQueue);
+						} catch (InterruptedException e) {
+							log.error("failed to emit tuple: "+e.toString());
+						}
 					}
 				}
 			}

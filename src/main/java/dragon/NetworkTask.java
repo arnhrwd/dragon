@@ -10,15 +10,16 @@ public class NetworkTask implements Serializable {
 	 * 
 	 */
 	private static final long serialVersionUID = 6164101511657361631L;
-	private Tuple tuple;
-	private HashSet<Integer> taskIds;
-	private String componentId;
-	private String topologyId;
+	private final Tuple tuple;
+	private final HashSet<Integer> taskIds;
+	private final String componentId;
+	private final String topologyId;
 
 	public NetworkTask(Tuple tuple,HashSet<Integer> taskIds,String componentId, String topologyId) {
 		this.tuple=tuple;
 		this.taskIds=taskIds;
 		this.componentId=componentId;
+		this.topologyId=topologyId;
 	}
 	
 	public Tuple getTuple() {

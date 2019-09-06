@@ -12,6 +12,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.grouping.CustomStreamGrouping;
+import dragon.network.Node;
 import dragon.spout.SpoutOutputCollector;
 import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
@@ -36,8 +37,8 @@ import dragon.utils.CircularBuffer;
 
 public class LocalCluster {
 	private static Log log = LogFactory.getLog(LocalCluster.class);
-	private HashMap<String,HashMap<Integer,Bolt>> iRichBolts;
-	private HashMap<String,HashMap<Integer,Spout>> iRichSpouts;
+	private HashMap<String,HashMap<Integer,Bolt>> bolts;
+	private HashMap<String,HashMap<Integer,Spout>> spouts;
 	private HashMap<String,Config> spoutConfs;
 	private HashMap<String,Config> boltConfs;
 	private ExecutorService componentExecutorService;
@@ -62,8 +63,14 @@ public class LocalCluster {
 	
 	private boolean shouldTerminate=false;
 	
-	public LocalCluster() {
+	private Node node;
+	
+	public LocalCluster(){
 		
+	}
+	
+	public LocalCluster(Node node) {
+		this.node=node;
 	}
 
 
@@ -78,12 +85,12 @@ public class LocalCluster {
 		
 		
 		// allocate spouts and open them
-		iRichSpouts = new HashMap<String,HashMap<Integer,Spout>>();
+		spouts = new HashMap<String,HashMap<Integer,Spout>>();
 		spoutConfs = new HashMap<String,Config>();
 		for(String spoutId : dragonTopology.spoutMap.keySet()) {
 			log.debug("allocating spout ["+spoutId+"]");
-			iRichSpouts.put(spoutId, new HashMap<Integer,Spout>());
-			HashMap<Integer,Spout> hm = iRichSpouts.get(spoutId);
+			spouts.put(spoutId, new HashMap<Integer,Spout>());
+			HashMap<Integer,Spout> hm = spouts.get(spoutId);
 			SpoutDeclarer spoutDeclarer = dragonTopology.spoutMap.get(spoutId);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
 			totalParallelismHint+=spoutDeclarer.getParallelismHint();
@@ -114,12 +121,12 @@ public class LocalCluster {
 		}
 		
 		// allocate bolts and prepare them
-		iRichBolts = new HashMap<String,HashMap<Integer,Bolt>>();
+		bolts = new HashMap<String,HashMap<Integer,Bolt>>();
 		boltConfs = new HashMap<String,Config>();
 		for(String boltId : dragonTopology.boltMap.keySet()) {
 			log.debug("allocating bolt ["+boltId+"]");
-			iRichBolts.put(boltId, new HashMap<Integer,Bolt>());
-			HashMap<Integer,Bolt> hm = iRichBolts.get(boltId);
+			bolts.put(boltId, new HashMap<Integer,Bolt>());
+			HashMap<Integer,Bolt> hm = bolts.get(boltId);
 			BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(boltId);
 			totalParallelismHint+=boltDeclarer.getParallelismHint();
 			Map<String,Object> bc = boltDeclarer.getBolt().getComponentConfiguration();
@@ -208,7 +215,7 @@ public class LocalCluster {
 		
 		
 		boltTickCount = new HashMap<String,Integer>();
-		for(String boltId : iRichBolts.keySet()) {
+		for(String boltId : bolts.keySet()) {
 			if(boltConfs.get(boltId).containsKey(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS)) {
 				boltTickCount.put(boltId, (Integer)boltConfs.get(boltId).get(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS));
 			}
@@ -266,18 +273,9 @@ public class LocalCluster {
 		log.debug("starting a component executor with "+totalParallelismHint+" threads");
 		componentExecutorService = Executors.newFixedThreadPool((Integer)totalParallelismHint);
 		
-//		log.debug("scheduling bolts to run");
-//		for(String componentId : iRichBolts.keySet()) {
-//			HashMap<Integer,IRichBolt> component = iRichBolts.get(componentId);
-//			for(Integer taskId : component.keySet()) {
-//				IRichBolt bolt = component.get(taskId);
-//				componentPending(bolt);
-//			}
-//		}
-		
 		log.debug("scheduling spouts to run");
-		for(String componentId : iRichSpouts.keySet()) {
-			HashMap<Integer,Spout> component = iRichSpouts.get(componentId);
+		for(String componentId : spouts.keySet()) {
+			HashMap<Integer,Spout> component = spouts.get(componentId);
 			for(Integer taskId : component.keySet()) {
 				Spout spout = component.get(taskId);
 				componentPending(spout);
@@ -294,7 +292,7 @@ public class LocalCluster {
 		tuple.setValues(new Values("0"));
 		tuple.setSourceComponent(Constants.SYSTEM_COMPONENT_ID);
 		tuple.setSourceStreamId(Constants.SYSTEM_TICK_STREAM_ID);
-		for(Bolt bolt : iRichBolts.get(boltId).values()) {
+		for(Bolt bolt : bolts.get(boltId).values()) {
 			synchronized(bolt) {
 				bolt.setTickTuple(tuple);
 				componentPending(bolt);
@@ -344,10 +342,10 @@ public class LocalCluster {
 									String name = networkTask.getComponentId();
 									doneTaskIds.clear();
 									for(Integer taskId : networkTask.getTaskIds()) {
-										if(iRichBolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
+										if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
 											//log.debug("removing from queue");
 											doneTaskIds.add(taskId);
-											componentPending(iRichBolts.get(name).get(taskId));
+											componentPending(bolts.get(name).get(taskId));
 										} else {
 											//log.debug("blocked");
 										}
@@ -412,6 +410,14 @@ public class LocalCluster {
 	public void setShouldTerminate(String error) {
 		setShouldTerminate();
 		throw new RuntimeException(error);
+	}
+	
+	public HashMap<String,HashMap<Integer,Bolt>> getBolts(){
+		return bolts;
+	}
+	
+	public Node getNode(){
+		return node;
 	}
 	
 }

@@ -30,7 +30,7 @@ public class ServiceProcessor extends Thread {
 				if(node.getLocalClusters().containsKey(scommand.topologyName)){
 					node.getComms().sendServiceMessage(new TopologyExistsMessage(scommand.topologyName));
 				} else {
-					LocalCluster cluster=new LocalCluster();
+					LocalCluster cluster=new LocalCluster(node);
 					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology);
 					node.getLocalClusters().put(scommand.topologyName, cluster);
 					node.getComms().sendServiceMessage(new TopologySubmittedMessage(scommand.topologyName));
