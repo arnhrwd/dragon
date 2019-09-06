@@ -36,7 +36,7 @@ public interface IComms {
 	
 	
 	/**
-	 * Non-blocking send message.
+	 * Locally-blocking send message.
 	 * @param message to send
 	 */
 	public void sendServiceMessage(ServiceMessage message);

@@ -24,13 +24,11 @@ public class BaseRichBolt extends Bolt implements IRichBolt {
 		
 	}
 
-	@Override
 	public void ack(Object id) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	@Override
 	public void fail(Object id) {
 		// TODO Auto-generated method stub
 		

@@ -1,5 +1,7 @@
 package dragon.network;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -40,9 +42,32 @@ public class Router {
 						try {
 							CircularBuffer<NetworkTask> buffer = outputsPending.take();
 							synchronized(buffer.lock){
-								NetworkTask task = buffer.peek();
+								NetworkTask task = buffer.poll();
 								if(task!=null){
-									//node.getComms().sendNetworkTask(desc, task);
+									HashSet<Integer> taskIds=task.getTaskIds();
+									HashMap<Integer,NodeDescriptor> taskMap = node
+											.getLocalClusters()
+											.get(task.getTopologyId())
+											.getTopology()
+											.embedding
+											.get(task.getComponentId());
+									HashMap<NodeDescriptor,HashSet<Integer>> destinations = 
+											new HashMap<NodeDescriptor,HashSet<Integer>>();
+									for(Integer taskId : taskIds) {
+										NodeDescriptor desc = taskMap.get(taskId);
+										if(!destinations.containsKey(desc)) {
+											destinations.put(desc,new HashSet<Integer>());
+										}
+										HashSet<Integer> tasks = destinations.get(desc);
+										tasks.add(taskId);
+									}
+									for(NodeDescriptor desc : destinations.keySet()) {
+										NetworkTask nt = new NetworkTask(task.getTuple(),
+												destinations.get(desc),
+												task.getComponentId(),
+												task.getTopologyId());
+										node.getComms().sendNetworkTask(desc, nt);
+									}
 								}
 							}
 						} catch (InterruptedException e) {
