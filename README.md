@@ -49,8 +49,8 @@ The available properties and their defaults are listed below:
 - `dragon.router.input.threads = 10` integer providing the size of the thread pool that transfers tuples into the local cluster from the network
 - `dragon.router.output.threads = 10` integer providing the size of the thread pool that transfers tuples out of the local cluster to the network
 - `dragon.router.input.buffer.size = 1024` integer providing the size of the buffers for tuples transferring into the local cluster from the network
- - `dragon.router.output.buffer.size = 1024` integer providing the size of the buffers for tuples transferring out of the local cluster to the network
- - `dragon.network.local.service.port = 4000` integer providing the port number used by the local Dragon node
+- `dragon.router.output.buffer.size = 1024` integer providing the size of the buffers for tuples transferring out of the local cluster to the network
+- `dragon.network.local.service.port = 4000` integer providing the port number used by the local Dragon node
  
 # Cluster mode
 
