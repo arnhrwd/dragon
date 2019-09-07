@@ -5,11 +5,11 @@ import java.io.IOException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import dragon.network.IComms;
 import dragon.network.Node;
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
-import dragon.network.TcpComms;
+import dragon.network.comms.IComms;
+import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.GetNodeContextMessage;
 import dragon.network.messages.service.NodeContextMessage;
 import dragon.network.messages.service.RunTopologyMessage;

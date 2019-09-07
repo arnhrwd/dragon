@@ -14,6 +14,8 @@ import org.apache.commons.logging.LogFactory;
 import dragon.Config;
 import dragon.LocalCluster;
 import dragon.Run;
+import dragon.network.comms.IComms;
+import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.JoinRequestMessage;
 import dragon.network.messages.node.StartTopologyMessage;
 
