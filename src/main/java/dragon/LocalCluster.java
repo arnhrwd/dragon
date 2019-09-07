@@ -65,6 +65,33 @@ public class LocalCluster {
 	
 	private Node node;
 	
+
+	private class BoltPrepare {
+		public Bolt bolt;
+		public TopologyContext context;
+		public OutputCollector collector;
+		public BoltPrepare(Bolt bolt,TopologyContext context,OutputCollector collector) {
+			this.bolt=bolt;
+			this.context=context;
+			this.collector=collector;
+		}
+	}
+	
+	private ArrayList<BoltPrepare> boltPrepareList;
+	
+	private class SpoutOpen {
+		public Spout spout;
+		public TopologyContext context;
+		public SpoutOutputCollector collector;
+		public SpoutOpen(Spout spout,TopologyContext context,SpoutOutputCollector collector) {
+			this.spout=spout;
+			this.context=context;
+			this.collector=collector;
+		}
+	}
+	
+	private ArrayList<SpoutOpen> spoutOpenList;
+	
 	public LocalCluster(){
 		
 	}
@@ -72,9 +99,12 @@ public class LocalCluster {
 	public LocalCluster(Node node) {
 		this.node=node;
 	}
-
-
+	
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
+		submitTopology(topologyName, conf, dragonTopology, true);
+	}
+
+	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) {
 		this.topologyName=topologyName;
 		this.conf=conf;
 		this.dragonTopology=dragonTopology;
@@ -82,18 +112,21 @@ public class LocalCluster {
 		componentsPending = new LinkedBlockingQueue<Component>();
 		networkExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS));
 		
-		
+		if(!start) {
+			spoutOpenList = new ArrayList<SpoutOpen>();
+			boltPrepareList = new ArrayList<BoltPrepare>();
+		}
 		
 		// allocate spouts and open them
 		spouts = new HashMap<String,HashMap<Integer,Spout>>();
 		spoutConfs = new HashMap<String,Config>();
-		for(String spoutId : dragonTopology.spoutMap.keySet()) {
+		for(String spoutId : dragonTopology.getSpoutMap().keySet()) {
+			if(!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId)) continue;
 			log.debug("allocating spout ["+spoutId+"]");
 			spouts.put(spoutId, new HashMap<Integer,Spout>());
 			HashMap<Integer,Spout> hm = spouts.get(spoutId);
-			SpoutDeclarer spoutDeclarer = dragonTopology.spoutMap.get(spoutId);
+			SpoutDeclarer spoutDeclarer = dragonTopology.getSpoutMap().get(spoutId);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
-			totalParallelismHint+=spoutDeclarer.getParallelismHint();
 			Map<String,Object> bc = spoutDeclarer.getSpout().getComponentConfiguration();
 			Config spoutConf = new Config();
 			spoutConf.putAll(bc);
@@ -101,7 +134,10 @@ public class LocalCluster {
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				taskIds.add(i);
 			}
+			int numAllocated=0;
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
+				if(!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId,i)) continue;
+				numAllocated++;
 				try {
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
 					hm.put(i, spout);
@@ -113,22 +149,28 @@ public class LocalCluster {
 					spout.setLocalCluster(this);
 					SpoutOutputCollector collector = new SpoutOutputCollector(this,spout);
 					spout.setOutputCollector(collector);
-					spout.open(conf, context, collector);
+					if(start) {
+						spout.open(conf, context, collector);
+					} else {
+						openLater(spout,context,collector);
+					}
 				} catch (CloneNotSupportedException e) {
-					log.error("could not clone object: "+e.toString());
+					setShouldTerminate("could not clone object: "+e.toString());
 				}
 			}
+			// TODO: make use of parallelism hint from topology to possibly reduce threads
+			totalParallelismHint+=numAllocated;
 		}
 		
 		// allocate bolts and prepare them
 		bolts = new HashMap<String,HashMap<Integer,Bolt>>();
 		boltConfs = new HashMap<String,Config>();
-		for(String boltId : dragonTopology.boltMap.keySet()) {
+		for(String boltId : dragonTopology.getBoltMap().keySet()) {
+			if(!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId)) continue;
 			log.debug("allocating bolt ["+boltId+"]");
 			bolts.put(boltId, new HashMap<Integer,Bolt>());
 			HashMap<Integer,Bolt> hm = bolts.get(boltId);
-			BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(boltId);
-			totalParallelismHint+=boltDeclarer.getParallelismHint();
+			BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(boltId);
 			Map<String,Object> bc = boltDeclarer.getBolt().getComponentConfiguration();
 			Config boltConf = new Config();
 			boltConf.putAll(bc);
@@ -137,7 +179,10 @@ public class LocalCluster {
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 				taskIds.add(i);
 			}
+			int numAllocated=0;
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
+				if(!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId,i)) continue;
+				numAllocated++;
 				try {
 					Bolt bolt=(Bolt) boltDeclarer.getBolt().clone();
 					hm.put(i, bolt);
@@ -151,16 +196,20 @@ public class LocalCluster {
 					bolt.setLocalCluster(this);
 					OutputCollector collector = new OutputCollector(this,bolt);
 					bolt.setOutputCollector(collector);
-					bolt.prepare(conf, context, collector);
-					
+					if(start) {
+						bolt.prepare(conf, context, collector);
+					} else {
+						prepareLater(bolt,context,collector);
+					}
 				} catch (CloneNotSupportedException e) {
 					log.error("could not clone object: "+e.toString());
 				}
 			}
+			totalParallelismHint+=numAllocated;
 		}
 		
 		// prepare groupings
-		for(String fromComponentId : dragonTopology.spoutMap.keySet()) {
+		for(String fromComponentId : dragonTopology.getSpoutMap().keySet()) {
 			log.debug("preparing groupings for spout["+fromComponentId+"]");
 			HashMap<String,StreamMap> 
 				fromComponent = dragonTopology.getDestComponentMap(fromComponentId);
@@ -171,7 +220,7 @@ public class LocalCluster {
 			for(String toComponentId : fromComponent.keySet()) {
 				HashMap<String,GroupingsSet> 
 					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
-				BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(toComponentId);
+				BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(toComponentId);
 				ArrayList<Integer> taskIds=new ArrayList<Integer>();
 				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 					taskIds.add(i);
@@ -186,7 +235,7 @@ public class LocalCluster {
 			
 		}
 		
-		for(String fromComponentId : dragonTopology.boltMap.keySet()) {
+		for(String fromComponentId : dragonTopology.getBoltMap().keySet()) {
 			log.debug("preparing groupings for bolt["+fromComponentId+"]");
 			HashMap<String,StreamMap> 
 				fromComponent = dragonTopology.getDestComponentMap(fromComponentId);
@@ -198,7 +247,7 @@ public class LocalCluster {
 			for(String toComponentId : fromComponent.keySet()) {
 				HashMap<String,GroupingsSet> 
 					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
-				BoltDeclarer boltDeclarer = dragonTopology.boltMap.get(toComponentId);
+				BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(toComponentId);
 				ArrayList<Integer> taskIds=new ArrayList<Integer>();
 				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 					taskIds.add(i);
@@ -212,7 +261,6 @@ public class LocalCluster {
 			}
 			
 		}
-		
 		
 		boltTickCount = new HashMap<String,Integer>();
 		for(String boltId : bolts.keySet()) {
@@ -284,9 +332,25 @@ public class LocalCluster {
 		
 		runComponentThreads();
 		
-		
 	}
 	
+	private void prepareLater(Bolt bolt, TopologyContext context, OutputCollector collector) {
+		boltPrepareList.add(new BoltPrepare(bolt,context,collector));
+	}
+	
+	private void openLater(Spout spout, TopologyContext context, SpoutOutputCollector collector) {
+		spoutOpenList.add(new SpoutOpen(spout,context,collector));
+	}
+	
+	public void openAll() {
+		for(BoltPrepare boltPrepare : boltPrepareList) {
+			boltPrepare.bolt.prepare(conf, boltPrepare.context, boltPrepare.collector);
+		}
+		for(SpoutOpen spoutOpen : spoutOpenList) {
+			spoutOpen.spout.open(conf, spoutOpen.context, spoutOpen.collector);
+		}
+	}
+
 	private void issueTickTuple(String boltId) {
 		Tuple tuple=new Tuple(new Fields("tick"));
 		tuple.setValues(new Values("0"));

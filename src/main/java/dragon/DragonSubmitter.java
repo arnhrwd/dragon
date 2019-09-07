@@ -36,8 +36,7 @@ public class DragonSubmitter {
 			throw new RuntimeException("could not obtain node context");
 		}
 		
-		RoundRobinEmbedding rre = new RoundRobinEmbedding();
-		topology.embedding = rre.generateEmbedding(topology, context);
+		topology.embedTopology(new RoundRobinEmbedding(), context);
 		
 		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
 		message = comms.receiveServiceMessage();

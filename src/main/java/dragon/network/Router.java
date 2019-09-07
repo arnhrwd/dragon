@@ -49,7 +49,7 @@ public class Router {
 											.getLocalClusters()
 											.get(task.getTopologyId())
 											.getTopology()
-											.embedding
+											.getEmbedding()
 											.get(task.getComponentId());
 									HashMap<NodeDescriptor,HashSet<Integer>> destinations = 
 											new HashMap<NodeDescriptor,HashSet<Integer>>();

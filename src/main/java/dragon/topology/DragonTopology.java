@@ -7,6 +7,8 @@ import java.util.HashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import dragon.network.NodeContext;
+
 
 public class DragonTopology implements Serializable {
 	/**
@@ -14,17 +16,17 @@ public class DragonTopology implements Serializable {
 	 */
 	private static final long serialVersionUID = -8549081242975660772L;
 	private static Log log = LogFactory.getLog(DragonTopology.class);
-	public HashMap<String,SpoutDeclarer> spoutMap;
-	public HashMap<String,BoltDeclarer> boltMap;
+	private HashMap<String,SpoutDeclarer> spoutMap;
+	private HashMap<String,BoltDeclarer> boltMap;
 	
-	public SourceComponentMap topology;
-	public ComponentEmbedding embedding;
+	private SourceComponentMap topology;
+	private ComponentEmbedding embedding;
+	private ReverseComponentEmbedding reverseEmbedding;
 	
 	public DragonTopology() {
 		topology=new SourceComponentMap();
 	}
 	
-
 	public void add(String fromComponentId, String toComponentId, StreamMap hashMap) {
 		if(!topology.containsKey(fromComponentId)) {
 			topology.put(fromComponentId,new DestComponentMap());
@@ -44,8 +46,11 @@ public class DragonTopology implements Serializable {
 			groupingsSet.addAll(hashMap.get(streamId));
 			log.debug(groupingsSet);
 		}
-		
-		
+	}
+	
+	public void embedTopology(IEmbeddingAlgo algo, NodeContext context) {
+		embedding = algo.generateEmbedding(this, context);
+		reverseEmbedding = embedding.getReverseComponentEmbedding();
 	}
 	
 	public DestComponentMap getDestComponentMap(String componentId){
@@ -68,5 +73,25 @@ public class DragonTopology implements Serializable {
 
 	public void setBoltMap(HashMap<String, BoltDeclarer> boltMap) {
 		this.boltMap=boltMap;
+	}
+
+	public HashMap<String, SpoutDeclarer> getSpoutMap() {
+		return spoutMap;
+	}
+
+	public HashMap<String, BoltDeclarer> getBoltMap() {
+		return boltMap;
+	}
+
+	public SourceComponentMap getTopology() {
+		return topology;
+	}
+
+	public ComponentEmbedding getEmbedding() {
+		return embedding;
+	}
+
+	public ReverseComponentEmbedding getReverseEmbedding() {
+		return reverseEmbedding;
 	}
 }

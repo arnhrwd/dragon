@@ -68,8 +68,8 @@ public class Collector {
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
 		tuple.setSourceStreamId(streamId);
-		for(String componentId : localCluster.getTopology().topology.get(component.getComponentId()).keySet()) {
-			StreamMap streamMap = localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
+		for(String componentId : localCluster.getTopology().getTopology().get(component.getComponentId()).keySet()) {
+			StreamMap streamMap = localCluster.getTopology().getTopology().get(component.getComponentId()).get(componentId);
 			GroupingsSet groupingsSet = streamMap.get(streamId);
 			if(groupingsSet!=null) {
 				for(CustomStreamGrouping grouping : groupingsSet) {
@@ -128,7 +128,7 @@ public class Collector {
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
 		tuple.setSourceStreamId(streamId);
-		for(String componentId : localCluster.getTopology().topology.get(component.getComponentId()).keySet()) {
+		for(String componentId : localCluster.getTopology().getTopology().get(component.getComponentId()).keySet()) {
 			//StreamMap toComponent = localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
 			List<Integer> taskIds = new ArrayList<Integer>();
 			receivingTaskIds.add(taskId);

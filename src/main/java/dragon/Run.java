@@ -165,7 +165,7 @@ public class Run {
 	    		Method cmain = c.getMethod("main", String[].class);
 	    		cmain.invoke(cmain, (Object) newargs);
             } else {
-            	if(cmd.hasOption("host")){
+            	if(cmd.hasOption("host") || !((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST)).equals("") ){
             		log.info("starting dragon node and joining to "+cmd.getOptionValue("host"));
             		new Node(DragonSubmitter.node,conf);
             	} else {
@@ -175,7 +175,7 @@ public class Run {
             }
         } catch (ParseException e) {
             System.out.println(e.getMessage());
-            formatter.printHelp("dragon [-d] [-h host] [-p port] [-j jarPath -c className [args]]", options);
+            formatter.printHelp("dragon [-d [-h host] [-p port]] [-j jarPath -c className [[-h host] [-p port] args]]", options);
             System.exit(1);
         }
 		
