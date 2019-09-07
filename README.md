@@ -63,17 +63,16 @@ Parameters that affect only remotely submitted topologies:
 - `dragon.router.output.buffer.size = 1024` **Integer** - the size of the buffers for tuples transferring out of the local cluster to the network
 - `dragon.network.remote.host =` **String** - the name of the remote host to connect to, for subsequent Dragon nodes (do not send this value for the initial Dragon node)
 - `dragon.network.remote.service.port = 4000` **Integer** - the port number used by the remote host for receiving service messages
-- `dragon.network.remote.node.port = 4001` **Integer** - the port number used by the remote host for receiving node messages
-- `dragon.network.remote.task.port = 4002` **Integer** - the port number used by the remote host for receiving networking task messages
+- `dragon.network.remote.node.port = 4001` **Integer** - the port number used by the remote host for receiving data messages
+- `dragon.network.local.host = localhost` **String** - the name used to advertise the local Dragon node
 - `dragon.network.local.service.port = 4000` **Integer** - the port number used by the local Dragon node for receiving service messages
 - `dragon.network.local.node.port = 4001` **Integer** - the port number used by the local Dragon node for receiving node messages
-- `dragon.network.local.task.port = 4002` **Integer** - the port number used by the local Dragon node for receiving task messages
 
 # Cluster mode
 
 Running in cluster mode requires starting an initial Dragon node, and then starting further Dragon nodes that connect to the initial Dragon node, or any existing Dragon nodes. The Dragon nodes will connect to form a fully connected network. Therefore they must all be visible to each other on the network.
 
-To start an initial Dragon node, ensure that `dragon.network.remote.host` is **not** set in `dragon.properties` and run:
+To start an initial Dragon node, ensure that `dragon.network.remote.host` is **not** set in `dragon.properties`, and make sure that `dragon.network.local.host` is set to be the IP address or domain name of the Dragon node, and run:
 
     java -jar dragon.jar -d
 
