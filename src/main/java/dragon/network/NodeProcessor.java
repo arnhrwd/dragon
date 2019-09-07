@@ -6,11 +6,18 @@ import java.util.HashSet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import dragon.LocalCluster;
 import dragon.network.Node.NodeState;
 import dragon.network.messages.node.AcceptingJoinMessage;
 import dragon.network.messages.node.ContextUpdateMessage;
 import dragon.network.messages.node.JoinCompleteMessage;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.node.PrepareFailedMessage;
+import dragon.network.messages.node.PrepareTopologyMessage;
+import dragon.network.messages.node.StartTopologyMessage;
+import dragon.network.messages.node.TopologyReadyMessage;
+import dragon.network.messages.service.RunFailedMessage;
+import dragon.network.messages.service.TopologySubmittedMessage;
 
 public class NodeProcessor extends Thread {
 	private static Log log = LogFactory.getLog(NodeProcessor.class);
@@ -77,7 +84,36 @@ public class NodeProcessor extends Thread {
 					}
 				}
 				if(!hit) context.putAll(cu.context);
-				
+				break;
+			case PREPARE_TOPOLOGY:
+				PrepareTopologyMessage pt = (PrepareTopologyMessage) message;
+				if(!node.storeJarFile(pt.topologyName,pt.jarFile)) {
+					node.getComms().sendNodeMessage(pt.getSender(), new PrepareFailedMessage(pt.topologyName,"could not store the topology jar"));
+					continue;
+				}
+				if(!node.loadJarFile(pt.topologyName)) {
+					node.getComms().sendNodeMessage(pt.getSender(), new PrepareFailedMessage(pt.topologyName,"could not load the topology jar"));
+					continue;
+				}
+				LocalCluster cluster=new LocalCluster(node);
+				cluster.submitTopology(pt.topologyName, pt.conf, pt.topology, false);
+				node.getLocalClusters().put(pt.topologyName, cluster);
+				node.getComms().sendNodeMessage(pt.getSender(), new TopologyReadyMessage(pt.topologyName));
+				break;
+			case TOPOLOGY_READY:
+				TopologyReadyMessage tr = (TopologyReadyMessage) message;
+				if(node.checkStartupTopology(tr.getSender(),tr.topologyId)) {
+					node.getComms().sendServiceMessage(new TopologySubmittedMessage(tr.topologyId));
+				}
+				break;
+			case START_TOPOLOGY:
+				StartTopologyMessage st = (StartTopologyMessage) message;
+				node.startTopology(st.topologyId);
+				break;
+			case PREPARE_FAILED:
+				PrepareFailedMessage pf = (PrepareFailedMessage) message;
+				node.removeStartupTopology(pf.topologyId);
+				node.getComms().sendServiceMessage(new RunFailedMessage(pf.topologyId,pf.error));
 			}
 		}
 	}

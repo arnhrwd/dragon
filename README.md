@@ -10,9 +10,10 @@ To install Dragon into your local cache:
 Include the dependency in your project's `pom.xml`: 
 
     <dependency>
-        <groupId>unimelb</groupId>
+        <groupId>au.edu.unimelb</groupId>
         <artifactId>dragon</artifactId>
         <version>0.0.1-SNAPSHOT</version>
+        <scope>provided</scope>
     </dependency>
 
 # Local mode

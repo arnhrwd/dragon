@@ -10,12 +10,18 @@ public class Message implements Serializable {
 	private static final long serialVersionUID = -6123498202112069826L;
 	
 	
-	
+	public String messageId;
 	
 	public Message(){
 		
 	}
 	
+	public void setMessageId(String messageId) {
+		this.messageId=messageId;
+	}
 	
+	String getMessageId() {
+		return messageId;
+	}
 	
 }

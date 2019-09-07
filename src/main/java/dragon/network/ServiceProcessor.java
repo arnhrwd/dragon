@@ -7,7 +7,9 @@ import dragon.LocalCluster;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.TopologyExistsMessage;
-import dragon.network.messages.service.TopologySubmittedMessage;
+import dragon.network.messages.service.RunFailedMessage;
+import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.node.PrepareTopologyMessage;
 import dragon.network.messages.service.NodeContextMessage;
 
 public class ServiceProcessor extends Thread {
@@ -30,10 +32,24 @@ public class ServiceProcessor extends Thread {
 				if(node.getLocalClusters().containsKey(scommand.topologyName)){
 					node.getComms().sendServiceMessage(new TopologyExistsMessage(scommand.topologyName));
 				} else {
+					if(!node.storeJarFile(scommand.topologyName,scommand.topologyJar)) {
+						node.getComms().sendServiceMessage(new RunFailedMessage(scommand.topologyName,"could not store the topology jar"));
+						continue;
+					}
+					if(!node.loadJarFile(scommand.topologyName)) {
+						node.getComms().sendServiceMessage(new RunFailedMessage(scommand.topologyName,"could not load the topology jar"));				
+						continue;
+					}
 					LocalCluster cluster=new LocalCluster(node);
-					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology);
+					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology, false);
 					node.getLocalClusters().put(scommand.topologyName, cluster);
-					node.getComms().sendServiceMessage(new TopologySubmittedMessage(scommand.topologyName));
+					node.createStartupTopology(scommand.topologyName);
+					for(NodeDescriptor desc : scommand.dragonTopology.getReverseEmbedding().keySet()) {
+						if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
+							NodeMessage message = new PrepareTopologyMessage(scommand.topologyName,scommand.conf,scommand.dragonTopology,scommand.topologyJar);
+							node.getComms().sendNodeMessage(desc, message);
+						}
+					}
 				}
 				break;
 			case GET_NODE_CONTEXT:

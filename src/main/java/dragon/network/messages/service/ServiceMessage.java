@@ -14,7 +14,8 @@ public class ServiceMessage extends Message {
 		TOPOLOGY_SUBMITTED,
 		GET_NODE_CONTEXT,
 		NODE_CONTEXT,
-		SERVICE_DONE
+		SERVICE_DONE,
+		RUN_FAILED
 	}
 	
 	private ServiceMessageType type;

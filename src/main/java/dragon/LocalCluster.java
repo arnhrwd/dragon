@@ -321,6 +321,15 @@ public class LocalCluster {
 		log.debug("starting a component executor with "+totalParallelismHint+" threads");
 		componentExecutorService = Executors.newFixedThreadPool((Integer)totalParallelismHint);
 		
+		if(start) {
+			scheduleSpouts();
+		}
+		
+		runComponentThreads();
+		
+	}
+	
+	private void scheduleSpouts() {
 		log.debug("scheduling spouts to run");
 		for(String componentId : spouts.keySet()) {
 			HashMap<Integer,Spout> component = spouts.get(componentId);
@@ -329,9 +338,6 @@ public class LocalCluster {
 				componentPending(spout);
 			}
 		}
-		
-		runComponentThreads();
-		
 	}
 	
 	private void prepareLater(Bolt bolt, TopologyContext context, OutputCollector collector) {
@@ -349,6 +355,7 @@ public class LocalCluster {
 		for(SpoutOpen spoutOpen : spoutOpenList) {
 			spoutOpen.spout.open(conf, spoutOpen.context, spoutOpen.collector);
 		}
+		scheduleSpouts();
 	}
 
 	private void issueTickTuple(String boltId) {

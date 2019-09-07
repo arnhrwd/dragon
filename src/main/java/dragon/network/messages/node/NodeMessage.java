@@ -14,7 +14,11 @@ public class NodeMessage extends Message {
 		JOIN_REQUEST,
 		ACCEPTING_JOIN,
 		JOIN_COMPLETE,
-		CONTEXT_UPDATE
+		CONTEXT_UPDATE,
+		PREPARE_TOPOLOGY,
+		TOPOLOGY_READY,
+		START_TOPOLOGY,
+		PREPARE_FAILED
 	}
 	
 	private NodeMessageType type;

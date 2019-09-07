@@ -69,7 +69,7 @@ public class TcpComms implements IComms {
 	}
 
 	public void close() {
-		// TODO Auto-generated method stub
+		serviceThread.interrupt();
 		
 	}
 	

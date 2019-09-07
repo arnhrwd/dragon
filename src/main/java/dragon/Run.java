@@ -3,12 +3,15 @@ package dragon;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Stack;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
@@ -96,7 +99,7 @@ public class Run {
 	    return classLoader;
 	}
 	
-	private static boolean addClassPath(String filePath) throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, MalformedURLException {
+	public static boolean addClassPath(String filePath) throws NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, MalformedURLException {
 		File f = new File(filePath);
 		ClassLoader cl = ClassLoader.getSystemClassLoader();
 		Method m = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
@@ -104,6 +107,21 @@ public class Run {
         m.invoke(cl, (Object)f.toURI().toURL());
         return true;
 	}
+	
+	public static void removePath(String path) throws Exception {
+        URL url = new File(path).toURI().toURL();
+        URLClassLoader urlClassLoader = (URLClassLoader) 
+            ClassLoader.getSystemClassLoader();
+        Class<?> urlClass = URLClassLoader.class;
+        Field ucpField = urlClass.getDeclaredField("ucp");
+        ucpField.setAccessible(true);
+        URLClassLoader ucp = (URLClassLoader) ucpField.get(urlClassLoader);
+        Class<?> ucpClass = URLClassLoader.class;
+        Field urlsField = ucpClass.getDeclaredField("urls");
+        urlsField.setAccessible(true);
+        Stack urls = (Stack) urlsField.get(ucp);
+        urls.remove(url);
+    }
 	
 	
 	@SuppressWarnings("rawtypes")
@@ -161,7 +179,8 @@ public class Run {
 	    		addClassPath(jarPath);
 	    		Class c = loadJarFileClass(jarPath,topologyClass);
 	    		String[] newargs = cmd.getArgs();
-	    		
+	    		File file = new File(jarPath);
+            	DragonSubmitter.topologyJar = Files.readAllBytes(file.toPath());
 	    		Method cmain = c.getMethod("main", String[].class);
 	    		cmain.invoke(cmain, (Object) newargs);
             } else {

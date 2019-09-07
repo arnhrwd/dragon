@@ -13,6 +13,7 @@ import dragon.network.TcpComms;
 import dragon.network.messages.service.GetNodeContextMessage;
 import dragon.network.messages.service.NodeContextMessage;
 import dragon.network.messages.service.RunTopologyMessage;
+import dragon.network.messages.service.ServiceDoneMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.topology.DragonTopology;
 import dragon.topology.RoundRobinEmbedding;
@@ -20,6 +21,7 @@ import dragon.topology.RoundRobinEmbedding;
 public class DragonSubmitter {
 	private static Log log = LogFactory.getLog(Node.class);
 	public static NodeDescriptor node;
+	public static byte[] topologyJar;
 	public static void submitTopology(String string, Config conf, DragonTopology topology) throws IOException {
 		IComms comms = new TcpComms(conf);
 		comms.open(node);
@@ -38,7 +40,7 @@ public class DragonSubmitter {
 		
 		topology.embedTopology(new RoundRobinEmbedding(), context);
 		
-		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
+		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology,topologyJar));
 		message = comms.receiveServiceMessage();
 		switch(message.getType()){
 		case TOPOLOGY_EXISTS:
@@ -50,6 +52,8 @@ public class DragonSubmitter {
 		default:
 			log.error("unexpected response: "+message.getType().name());
 		}
+		
+		comms.sendServiceMessage(new ServiceDoneMessage());
 	}
 
 }

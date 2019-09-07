@@ -30,6 +30,7 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_OUTPUT_BUFFER_SIZE="dragon.output.buffer.size";
 	public static final String DRAGON_INPUT_BUFFER_SIZE="dragon.input.buffer.size";
 	public static final String DRAGON_BASE_DIR="dragon.base.dir";
+	public static final String DRAGON_JAR_DIR="dragon.jar.dir";
 	public static final String DRAGON_PERSISTANCE_DIR="dragon.persistance.dir";
 	public static final String DRAGON_LOCALCLUSTER_THREADS="dragon.localcluster.threads";
 	public static final String DRAGON_ROUTER_INPUT_THREADS="dragon.router.input.threads";
@@ -110,6 +111,7 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_INPUT_BUFFER_SIZE,1024);
 		put(DRAGON_BASE_DIR,"/tmp/dragon");
 		put(DRAGON_PERSISTANCE_DIR,"persistance");
+		put(DRAGON_JAR_DIR,"jars");
 		put(DRAGON_LOCALCLUSTER_THREADS,10);
 		put(DRAGON_ROUTER_INPUT_THREADS,10);
 		put(DRAGON_ROUTER_OUTPUT_THREADS,10);
@@ -134,5 +136,9 @@ public class Config extends HashMap<String, Object>{
 	
 	public int getMaxTaskParallelism() {
 		return this.maxTaskParallelism;
+	}
+	
+	public String getJarDir() {
+		return get(Config.DRAGON_BASE_DIR)+"/"+get(Config.DRAGON_JAR_DIR);
 	}
 }
