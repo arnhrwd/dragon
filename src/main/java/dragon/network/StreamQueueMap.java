@@ -21,17 +21,17 @@ public class StreamQueueMap extends HashMap<String,CircularBuffer<NetworkTask>>{
 	public void put(NetworkTask task) throws InterruptedException {
 		String streamId = task.getTuple().getSourceStreamId();
 		CircularBuffer<NetworkTask> buffer=get(streamId);
-		if(buffer==null) {
-			buffer=new CircularBuffer<NetworkTask>(bufferSize);
-			put(streamId,buffer);
-		}
 		buffer.put(task);
 	}
 	
 	public CircularBuffer<NetworkTask> getBuffer(NetworkTask task){
-		if(!containsKey(task.getTuple().getSourceStreamId())) {
-			put(task.getTuple().getSourceStreamId(),new CircularBuffer<NetworkTask>(bufferSize));
-		}
 		return get(task.getTuple().getSourceStreamId());
+	}
+
+	public void prepare(String streamId) {
+		if(!containsKey(streamId)) {
+			CircularBuffer<NetworkTask> buffer=new CircularBuffer<NetworkTask>(bufferSize);
+			put(streamId,buffer);
+		}
 	}
 }

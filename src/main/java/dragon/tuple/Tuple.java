@@ -72,5 +72,10 @@ public class Tuple implements Serializable {
 	public Integer getSourceTaskId() {
 		return sourceTaskId;
 	}
+	
+	@Override
+	public String toString() {
+		return "source("+sourceComponent+":"+sourceStreamId+":"+sourceTaskId+")<"+fields.getValues().toString()+">";
+	}
 
 }

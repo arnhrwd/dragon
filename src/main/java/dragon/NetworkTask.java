@@ -38,4 +38,8 @@ public class NetworkTask implements Serializable {
 		return topologyId;
 	}
 
+	@Override
+	public String toString() {
+		return tuple.toString();
+	}
 }

@@ -20,17 +20,21 @@ public class TopologyQueueMap extends HashMap<String,StreamQueueMap> {
 	public void put(NetworkTask task) throws InterruptedException {
 		String topologyId = task.getTopologyId();
 		StreamQueueMap streamQueueMap = get(topologyId);
-		if(streamQueueMap==null){
-			streamQueueMap = new StreamQueueMap(bufferSize);
-			put(topologyId,streamQueueMap);
-		}
 		streamQueueMap.put(task);
 	}
 	
 	public CircularBuffer<NetworkTask> getBuffer(NetworkTask task) {
-		if(!containsKey(task.getTopologyId())) {
-			put(task.getTopologyId(),new StreamQueueMap(bufferSize));
-		}
 		return get(task.getTopologyId()).getBuffer(task);
+	}
+
+	public void prepare(String topologyId, String streamId) {
+		if(!containsKey(topologyId)) {
+			StreamQueueMap streamQueueMap = new StreamQueueMap(bufferSize);
+			streamQueueMap.prepare(streamId);
+			put(topologyId, streamQueueMap);
+		} else {
+			get(topologyId).prepare(streamId);
+		}
+		
 	}
 }

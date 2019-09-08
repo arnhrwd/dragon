@@ -12,7 +12,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.network.NodeDescriptor;
-import dragon.network.NodeProcessor;
 
 public class SocketManager {
 
@@ -29,9 +28,11 @@ public class SocketManager {
 	NodeDescriptor me;
 	Thread thread;
 	HashMap<String,LinkedBlockingQueue<NodeDescriptor>> inputsWaiting;
+	SocketManager socketManager;
 	
 	public SocketManager(int port,NodeDescriptor me) throws IOException {
 		this.me=me;
+		this.socketManager=this;
 		inputStreamMap = new TcpStreamMap<ObjectInputStream>();
 		outputStreamMap = new TcpStreamMap<ObjectOutputStream>();
 		socketMap = new TcpStreamMap<Socket>();
@@ -52,7 +53,7 @@ public class SocketManager {
 						
 						log.debug("socket provided handshake ["+endpoint+","+id+"]");
 						
-						synchronized(this) {
+						synchronized(socketManager) {
 							if(!inputStreamMap.contains(id,endpoint)) {
 								inputStreamMap.put(id,endpoint,in);
 								if(!inputsWaiting.containsKey(id)) {
@@ -99,16 +100,16 @@ public class SocketManager {
 			if(outputStreamMap.contains(id,desc)) {
 				return outputStreamMap.get(id).get(desc);
 			}
-		}
-		log.debug("creating a socket to ["+desc+"]");
-		Socket socket = new Socket(desc.host,desc.port);
-		log.debug("writing handshake information ["+me+","+id+"] to ["+desc+"]");
-		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-		ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-		out.writeObject(me);
-		out.writeObject(id);
-		out.flush();
-		synchronized(this) {
+		
+			log.debug("creating a socket to ["+desc+"]");
+			Socket socket = new Socket(desc.host,desc.port);
+			log.debug("writing handshake information ["+me+","+id+"] to ["+desc+"]");
+			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+			out.writeObject(me);
+			out.writeObject(id);
+			out.flush();
+			
 			if(!inputStreamMap.contains(id,desc)) {
 				inputStreamMap.put(id,desc,in);
 			}

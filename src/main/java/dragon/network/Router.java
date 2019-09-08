@@ -110,12 +110,35 @@ public class Router {
 	}
 	
 	public void put(NetworkTask task) throws InterruptedException {
+		log.debug("putting on queue "+task.getTopologyId()+","+task.getTuple().getSourceStreamId());
 		outputQueues.getBuffer(task).put(task);
 		outputsPending.put(outputQueues.getBuffer(task));
 	}
 
 	public void submitTopology(String topologyName, DragonTopology topology) {
-		
+		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
+			if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
+				for(String componentId : topology.getReverseEmbedding().get(desc).keySet()) {
+					if(!topology.getBoltMap().containsKey(componentId))continue;
+					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
+						for(String streamId : topology.getBoltMap().get(componentId).groupings.get(listened).keySet()) {
+							log.debug("preparing output queue ["+topologyName+","+streamId+"]");
+							outputQueues.prepare(topologyName,streamId);
+						}
+					}
+				}
+			} else {
+				for(String componentId : topology.getReverseEmbedding().get(desc).keySet()) {
+					if(!topology.getBoltMap().containsKey(componentId))continue;
+					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
+						for(String streamId : topology.getBoltMap().get(componentId).groupings.get(listened).keySet()) {
+							log.debug("preparing input queue ["+topologyName+","+streamId+"]");
+							inputQueues.prepare(topologyName,streamId);
+						}
+					}
+				}
+			}
+		}
 		
 	}
 	

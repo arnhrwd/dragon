@@ -43,6 +43,7 @@ public class ServiceProcessor extends Thread {
 					}
 					LocalCluster cluster=new LocalCluster(node);
 					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology, false);
+					node.getRouter().submitTopology(scommand.topologyName, scommand.dragonTopology);
 					node.getLocalClusters().put(scommand.topologyName, cluster);
 					node.createStartupTopology(scommand.topologyName);
 					boolean hit=false;

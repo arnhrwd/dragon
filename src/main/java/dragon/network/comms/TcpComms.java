@@ -271,7 +271,9 @@ public class TcpComms implements IComms {
 
 	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task) {
 		try {
+			log.debug("sending ["+task+"] to ["+desc+"]");
 			socketManager.getOutputStream("task",desc).writeObject(task);
+			socketManager.getOutputStream("task", desc).flush();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
