@@ -19,6 +19,7 @@ public class RunTopologyMessage extends ServiceMessage {
 		this.dragonTopology = dragonTopology;
 		this.conf=conf;
 		this.topologyJar=topologyJar;
+		this.topologyName=topologyName;
 	}
 	
 }

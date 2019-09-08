@@ -26,6 +26,8 @@ public class NodeDescriptor implements Serializable {
 	}
 	
 	public void setHost(String host) throws UnknownHostException {
+		this.hostName=host;
+		this.fullName=toString();
 		this.host=InetAddress.getByName(host);
 	}
 	

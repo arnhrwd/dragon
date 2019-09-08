@@ -29,8 +29,9 @@ public class NodeProcessor extends Thread {
 	public NodeProcessor(Node node) {
 		this.node=node;
 		context=new NodeContext();
-		this.nextNode=node.getComms().getMyNodeDescriptor();
-		context.put(this.nextNode);
+		nextNode=node.getComms().getMyNodeDescriptor();
+		log.debug("next pointer = ["+this.nextNode+"]");
+		context.put(nextNode);
 		pendingJoinRequests = new HashSet<NodeMessage>();
 		log.debug("starting node processor");
 		start();
@@ -40,15 +41,18 @@ public class NodeProcessor extends Thread {
 	public void run() {
 		while(!shouldTerminate) {
 			NodeMessage message = node.getComms().receiveNodeMessage();
+			log.debug("received ["+message.getType().name()+"] from ["+message.getSender());
 			switch(message.getType()) {
 			case JOIN_REQUEST:
 				if(node.getNodeState()!=NodeState.OPERATIONAL) {
+					log.debug("placing joing request from ["+message.getSender()+"] on pending list");
 					pendingJoinRequests.add(message);
 				} else {
 					node.setNodeState(NodeState.ACCEPTING_JOIN);
 					context.put(message.getSender());
 					node.getComms().sendNodeMessage(message.getSender(),new AcceptingJoinMessage(nextNode,context));
 					nextNode=message.getSender();
+					log.debug("next pointer = ["+nextNode+"]");
 				}
 				break;
 			case ACCEPTING_JOIN:
@@ -57,10 +61,13 @@ public class NodeProcessor extends Thread {
 				} else {
 					AcceptingJoinMessage aj = (AcceptingJoinMessage) message;
 					nextNode=aj.nextNode;
+					log.debug("next pointer = ["+nextNode+"]");
 					node.getComms().sendNodeMessage(message.getSender(), new JoinCompleteMessage());
 					context.putAll(aj.context);
 					for(NodeDescriptor descriptor : context.values()) {
-						node.getComms().sendNodeMessage(descriptor, new ContextUpdateMessage(context));
+						if(!descriptor.equals(node.getComms().getMyNodeDescriptor())) {
+							node.getComms().sendNodeMessage(descriptor, new ContextUpdateMessage(context));
+						}
 					}
 					processPendingJoins();
 				}
@@ -97,6 +104,7 @@ public class NodeProcessor extends Thread {
 				}
 				LocalCluster cluster=new LocalCluster(node);
 				cluster.submitTopology(pt.topologyName, pt.conf, pt.topology, false);
+				node.getRouter().submitTopology(pt.topologyName,pt.topology);
 				node.getLocalClusters().put(pt.topologyName, cluster);
 				node.getComms().sendNodeMessage(pt.getSender(), new TopologyReadyMessage(pt.topologyName));
 				break;

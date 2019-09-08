@@ -6,7 +6,6 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -49,6 +48,7 @@ public class TcpComms implements IComms {
 		this.conf=conf;
 		me = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_LOCAL_HOST),
 				(Integer)conf.get(Config.DRAGON_NETWORK_LOCAL_NODE_PORT));
+		log.debug("this node is ["+me+"]");
 		incommingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
 		incommingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
 		incommingTaskQueue = new LinkedBlockingQueue<NetworkTask>();
@@ -57,8 +57,32 @@ public class TcpComms implements IComms {
 	}
 	
 	public void open(NodeDescriptor serviceNode) throws IOException {
+		log.debug("opening a service socket to ["+serviceNode+"]");
 		serviceSocketClient = new Socket(serviceNode.host,serviceNode.port);
 		serviceOutputStream = new ObjectOutputStream(serviceSocketClient.getOutputStream());
+		ObjectInputStream in = new ObjectInputStream(serviceSocketClient.getInputStream());
+		serviceThread = new Thread() {
+			@Override
+			public void run() {
+				ServiceMessage message;
+				try {
+					message = (ServiceMessage) in.readObject();
+					while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
+						incommingServiceQueue.put(message);
+						message = (ServiceMessage) in.readObject();
+					}
+					in.close();
+					serviceSocketClient.close();
+				} catch (ClassNotFoundException | IOException e2) {
+					// TODO Auto-generated catch block
+					e2.printStackTrace();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		};
+		serviceThread.start();
 	}
 
 	
@@ -71,9 +95,10 @@ public class TcpComms implements IComms {
 			public void run() {
 				while(!isInterrupted()) {
 					try {
+						log.debug("accepting service messages");
 						Socket socket = serviceSocketServer.accept();
-						ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 						serviceOutputStream = new ObjectOutputStream(socket.getOutputStream());
+						ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 						ServiceMessage message = (ServiceMessage) in.readObject();
 						while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
 							incommingServiceQueue.put(message);
@@ -83,13 +108,10 @@ public class TcpComms implements IComms {
 						socket.close();
 					} catch (IOException e) {
 						log.error("exception with service socket: "+e.toString());
-						interrupt();
 					} catch (ClassNotFoundException e) {
 						log.error("something other than a ServiceMessage was received: "+e.toString());
-						interrupt();
 					} catch (InterruptedException e) {
-						log.error("interrupted while putting on incomming service queue: "+e.toString());
-						interrupt();
+						log.warn("interrupted while putting on incomming service queue: "+e.toString());
 					}
 				}
 			}
@@ -109,12 +131,17 @@ public class TcpComms implements IComms {
 									try {
 										NodeMessage message = (NodeMessage) socketManager.getInputStream("node", desc).readObject();
 										incommingNodeQueue.put(message);
-									} catch (ClassNotFoundException | IOException e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
+									} catch (IOException e) {
+										log.error("ioexception on node stream from +["+desc+"]: "+e.toString());
+										socketManager.delete("node",desc);
+										break;
+									} catch (ClassNotFoundException e) {
+										log.error("incorrect class transmitted on node stream from +["+desc+"]");
+										socketManager.close("node",desc);
+										break;
 									} catch (InterruptedException e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
+										log.warn("interrupted while reading node stream from +["+desc+"]");
+										socketManager.close("node",desc);
 									}
 								}
 							}
@@ -143,12 +170,17 @@ public class TcpComms implements IComms {
 									try {
 										NetworkTask message = (NetworkTask) socketManager.getInputStream("task", desc).readObject();
 										incommingTaskQueue.put(message);
-									} catch (ClassNotFoundException | IOException e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
+									} catch (IOException e) {
+										log.error("ioexception on task stream from +["+desc+"]: "+e.toString());
+										socketManager.delete("task",desc);
+										break;
+									} catch (ClassNotFoundException e) {
+										log.error("incorrect class transmitted on task stream from +["+desc+"]");
+										socketManager.close("task",desc);
+										break;
 									} catch (InterruptedException e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
+										log.warn("interrupted while reading node stream from +["+desc+"]");
+										socketManager.close("node",desc);
 									}
 								}
 							}
@@ -193,7 +225,9 @@ public class TcpComms implements IComms {
 
 	public void sendServiceMessage(ServiceMessage response) {
 		try {
+			log.debug("sending service message ["+response.getType().name()+"]");
 			serviceOutputStream.writeObject(response);
+			serviceOutputStream.flush();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -205,6 +239,7 @@ public class TcpComms implements IComms {
 		ServiceMessage m=null;
 		try {
 			m=incommingServiceQueue.take();
+			log.debug("received service message ["+m.getType().name()+"]");
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -213,8 +248,11 @@ public class TcpComms implements IComms {
 	}
 
 	public void sendNodeMessage(NodeDescriptor desc, NodeMessage command) {
+		command.setSender(me);
 		try {
+			log.debug("sending ["+command.getType().name()+"] to ["+desc+"]");
 			socketManager.getOutputStream("node",desc).writeObject(command);
+			socketManager.getOutputStream("node",desc).flush();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

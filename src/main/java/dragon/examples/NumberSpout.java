@@ -11,6 +11,10 @@ import dragon.tuple.Values;
 
 public class NumberSpout extends BaseRichSpout {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -5807899269206807053L;
 	SpoutOutputCollector collector;
 	int num=0;
 	

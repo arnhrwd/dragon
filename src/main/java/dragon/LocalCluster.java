@@ -121,7 +121,8 @@ public class LocalCluster {
 		spouts = new HashMap<String,HashMap<Integer,Spout>>();
 		spoutConfs = new HashMap<String,Config>();
 		for(String spoutId : dragonTopology.getSpoutMap().keySet()) {
-			if(!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId)) continue;
+			if(dragonTopology.getReverseEmbedding()!=null &&
+					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId)) continue;
 			log.debug("allocating spout ["+spoutId+"]");
 			spouts.put(spoutId, new HashMap<Integer,Spout>());
 			HashMap<Integer,Spout> hm = spouts.get(spoutId);
@@ -136,7 +137,8 @@ public class LocalCluster {
 			}
 			int numAllocated=0;
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
-				if(!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId,i)) continue;
+				if(dragonTopology.getReverseEmbedding()!=null &&
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId,i)) continue;
 				numAllocated++;
 				try {
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
@@ -166,7 +168,8 @@ public class LocalCluster {
 		bolts = new HashMap<String,HashMap<Integer,Bolt>>();
 		boltConfs = new HashMap<String,Config>();
 		for(String boltId : dragonTopology.getBoltMap().keySet()) {
-			if(!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId)) continue;
+			if(dragonTopology.getReverseEmbedding()!=null &&
+					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId)) continue;
 			log.debug("allocating bolt ["+boltId+"]");
 			bolts.put(boltId, new HashMap<Integer,Bolt>());
 			HashMap<Integer,Bolt> hm = bolts.get(boltId);
@@ -181,7 +184,8 @@ public class LocalCluster {
 			}
 			int numAllocated=0;
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
-				if(!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId,i)) continue;
+				if(dragonTopology.getReverseEmbedding()!=null &&
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId,i)) continue;
 				numAllocated++;
 				try {
 					Bolt bolt=(Bolt) boltDeclarer.getBolt().clone();

@@ -1,11 +1,11 @@
 package dragon;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import dragon.network.Node;
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
 import dragon.network.comms.IComms;
@@ -19,12 +19,24 @@ import dragon.topology.DragonTopology;
 import dragon.topology.RoundRobinEmbedding;
 
 public class DragonSubmitter {
-	private static Log log = LogFactory.getLog(Node.class);
+	private static Log log = LogFactory.getLog(DragonSubmitter.class);
 	public static NodeDescriptor node;
 	public static byte[] topologyJar;
-	public static void submitTopology(String string, Config conf, DragonTopology topology) throws IOException {
-		IComms comms = new TcpComms(conf);
-		comms.open(node);
+	public static void submitTopology(String string, Config conf, DragonTopology topology){
+		IComms comms=null;
+		try {
+			comms = new TcpComms(conf);
+			comms.open(node);
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			System.exit(-1);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			System.exit(-1);
+		}
+		log.debug("requesting context from ["+node+"]");
 		comms.sendServiceMessage(new GetNodeContextMessage());
 		ServiceMessage message = comms.receiveServiceMessage();
 		NodeContext context;
@@ -38,8 +50,11 @@ public class DragonSubmitter {
 			throw new RuntimeException("could not obtain node context");
 		}
 		
+		log.debug("received context  ["+context+"]");
 		topology.embedTopology(new RoundRobinEmbedding(), context);
 		
+		
+		log.debug("submitting topology to ["+node+"]");
 		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology,topologyJar));
 		message = comms.receiveServiceMessage();
 		switch(message.getType()){
@@ -52,7 +67,6 @@ public class DragonSubmitter {
 		default:
 			log.error("unexpected response: "+message.getType().name());
 		}
-		
 		comms.sendServiceMessage(new ServiceDoneMessage());
 	}
 

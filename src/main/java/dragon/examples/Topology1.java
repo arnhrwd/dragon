@@ -1,6 +1,7 @@
 package dragon.examples;
 
 import dragon.Config;
+import dragon.DragonSubmitter;
 import dragon.LocalCluster;
 import dragon.topology.TopologyBuilder;
 
@@ -22,9 +23,15 @@ public class Topology1 {
 			.allGrouping("shuffleBolt","odd")
 			.allGrouping("shuffleTextBolt","uuid");
 		
-		LocalCluster localCluster = new LocalCluster();
-		Config conf = new Config();
-		localCluster.submitTopology("numberTopology", conf, topologyBuilder.createTopology());
+		if(args.length==0) {
+			LocalCluster localCluster = new LocalCluster();
+			Config conf = new Config();
+			localCluster.submitTopology("numberTopology", conf, topologyBuilder.createTopology());
+		} else {
+			Config conf = new Config();
+			System.out.println("topology name "+args[0]);
+			DragonSubmitter.submitTopology(args[0], conf, topologyBuilder.createTopology());
+		}
 	}
 
 }

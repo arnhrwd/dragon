@@ -11,6 +11,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Properties;
 import java.util.Stack;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
@@ -24,6 +25,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 
 import dragon.network.Node;
 import dragon.network.NodeDescriptor;
@@ -138,6 +140,9 @@ public class Run {
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String[] args) throws Exception {
+		final Properties properties = new Properties();
+		properties.load(Run.class.getClassLoader().getResourceAsStream("project.properties"));
+		log.debug("dragon version "+properties.getProperty("project.version"));
 		Config conf = new Config(Constants.DRAGON_PROPERTIES);
 		Options options = new Options();
 		Option jarOption = new Option("j", "jar", true, "path to topology jar file");
@@ -162,15 +167,15 @@ public class Run {
         
         try {
             cmd = parser.parse(options, args);
-            DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
-    				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_SERVICE_PORT));
-			if(cmd.hasOption("host")) {
-				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
-			}
-			if(cmd.hasOption("port")) {
-				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
-			}
             if(!cmd.hasOption("daemon")){
+            	DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
+        				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_SERVICE_PORT));
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("port")) {
+    				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
+    			}
 	            if(!cmd.hasOption("jar") || !cmd.hasOption("class")){
 	            	throw new ParseException("must provide a jar file and class to run");
 	            }
@@ -184,6 +189,14 @@ public class Run {
 	    		Method cmain = c.getMethod("main", String[].class);
 	    		cmain.invoke(cmain, (Object) newargs);
             } else {
+            	DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
+        				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_NODE_PORT));
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("port")) {
+    				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
+    			}
             	if(cmd.hasOption("host") || !((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST)).equals("") ){
             		log.info("starting dragon node and joining to "+cmd.getOptionValue("host"));
             		new Node(DragonSubmitter.node,conf);

@@ -12,6 +12,10 @@ import dragon.topology.OutputFieldsDeclarer;
 import dragon.tuple.Tuple;
 
 public class Bolt extends Component {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 6696004781292813419L;
 	private Log log = LogFactory.getLog(Bolt.class);
 	private Tuple tickTuple=null;
 	

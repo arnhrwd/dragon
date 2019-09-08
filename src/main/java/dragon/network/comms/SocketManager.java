@@ -8,7 +8,11 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import dragon.network.NodeDescriptor;
+import dragon.network.NodeProcessor;
 
 public class SocketManager {
 
@@ -16,6 +20,7 @@ public class SocketManager {
 	 * 
 	 */
 	private static final long serialVersionUID = 1747088785800939467L;
+	private static Log log = LogFactory.getLog(SocketManager.class);
 
 	ServerSocket server;
 	TcpStreamMap<ObjectInputStream> inputStreamMap;
@@ -37,12 +42,15 @@ public class SocketManager {
 			public void run() {
 				while(!isInterrupted()) {
 					try {
+						log.debug("accepting connections on port ["+server.getLocalPort()+"]");
 						Socket socket = server.accept();
-						ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+						log.debug("new socket from inet address ["+socket.getInetAddress()+"]");
 						ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-						
+						ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 						NodeDescriptor endpoint = (NodeDescriptor) in.readObject();
 						String id = (String) in.readObject();
+						
+						log.debug("socket provided handshake ["+endpoint+","+id+"]");
 						
 						synchronized(this) {
 							if(!inputStreamMap.contains(id,endpoint)) {
@@ -92,11 +100,14 @@ public class SocketManager {
 				return outputStreamMap.get(id).get(desc);
 			}
 		}
+		log.debug("creating a socket to ["+desc+"]");
 		Socket socket = new Socket(desc.host,desc.port);
-		ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+		log.debug("writing handshake information ["+me+","+id+"] to ["+desc+"]");
 		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+		ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 		out.writeObject(me);
 		out.writeObject(id);
+		out.flush();
 		synchronized(this) {
 			if(!inputStreamMap.contains(id,desc)) {
 				inputStreamMap.put(id,desc,in);
@@ -107,6 +118,15 @@ public class SocketManager {
 			if(!socketMap.contains(id,desc)) {
 				socketMap.put(id,desc,socket);
 			}
+			if(!inputsWaiting.containsKey(id)) {
+				inputsWaiting.put(id, new LinkedBlockingQueue<NodeDescriptor>());
+			}
+			try {
+				inputsWaiting.get(id).put(desc);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			return outputStreamMap.get(id).get(desc);
 		}
 	}
@@ -115,5 +135,26 @@ public class SocketManager {
 		synchronized(this) {
 			return inputStreamMap.get(id).get(desc);
 		}
+	}
+
+	public void delete(String id, NodeDescriptor desc) {
+		synchronized(this) {
+			inputStreamMap.drop(id,desc);
+			outputStreamMap.drop(id,desc);
+			socketMap.drop(id,desc);
+		}
+	}
+	
+	public void close(String id, NodeDescriptor desc) {
+		synchronized(this) {
+			try {
+				outputStreamMap.get(id).get(desc).close();
+				inputStreamMap.get(id).get(desc).close();
+				socketMap.get(id).get(desc).close();
+			} catch (IOException e) {
+				log.error("ioexception while closing a stream: "+e.toString());
+			}
+		}
+		delete(id,desc);
 	}
 }

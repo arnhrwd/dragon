@@ -8,6 +8,11 @@ import dragon.topology.OutputFieldsDeclarer;
 
 public class Spout extends Component {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -2734635234747476875L;
+
 	@Override
 	public void run() {
 		getOutputCollector().resetEmit();

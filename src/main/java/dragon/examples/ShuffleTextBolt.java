@@ -11,6 +11,10 @@ import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 
 public class ShuffleTextBolt extends BaseRichBolt {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 6564807375331163333L;
 	OutputCollector collector;
 	int myId;
 	int seen=0;

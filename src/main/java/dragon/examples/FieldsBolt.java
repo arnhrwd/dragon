@@ -10,6 +10,10 @@ import java.util.Map;
 
 public class FieldsBolt extends BaseRichBolt {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -7640696004039861046L;
 	private int myId;
 	private int uniqueNumbers;
 	private HashSet<Integer> numbers;

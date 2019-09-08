@@ -5,6 +5,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -46,9 +48,8 @@ public class Node {
 	
 	public Node(NodeDescriptor existingNode, Config conf) throws IOException {
 		this.conf=conf;
-		nodeState=NodeState.JOINING;
+		nodeState=NodeState.JOIN_REQUESTED;
 		init();
-		log.debug("sending join request to "+existingNode.toString());
 		comms.sendNodeMessage(existingNode, new JoinRequestMessage());
 		
 	}
@@ -59,6 +60,7 @@ public class Node {
 	}
 	
 	private void init() throws IOException {
+		localClusters = new HashMap<String,LocalCluster>();
 		startupTopology = new HashMap<String,HashSet<NodeDescriptor>>();
 		comms = new TcpComms(conf);
 		comms.open();
@@ -96,10 +98,10 @@ public class Node {
 	}
 	
 	public boolean storeJarFile(String topologyName, byte[] topologyJar) {
-		String pathname = conf.getJarDir()+"/"+topologyName;
-		File f = new File(pathname);
+		Path pathname = Paths.get(conf.getJarDir()+"/"+comms.getMyNodeDescriptor(),topologyName);
+		File f = new File(pathname.getParent().toString());
 		f.mkdirs();
-		try (FileOutputStream fos = new FileOutputStream(pathname)) {
+		try (FileOutputStream fos = new FileOutputStream(pathname.toString())) {
 		   fos.write(topologyJar);
 		   return true;
 		} catch (IOException e) {
@@ -111,9 +113,9 @@ public class Node {
 	}
 	
 	public boolean loadJarFile(String topologyName) {
-		String pathname = conf.getJarDir()+"/"+topologyName;
+		Path pathname = Paths.get(conf.getJarDir()+"/"+comms.getMyNodeDescriptor(),topologyName);
 		try {
-			Run.addClassPath(pathname);
+			Run.addClassPath(pathname.toString());
 			return true;
 		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
 				| InvocationTargetException | MalformedURLException e) {

@@ -28,6 +28,9 @@ public class TopologyQueueMap extends HashMap<String,StreamQueueMap> {
 	}
 	
 	public CircularBuffer<NetworkTask> getBuffer(NetworkTask task) {
+		if(!containsKey(task.getTopologyId())) {
+			put(task.getTopologyId(),new StreamQueueMap(bufferSize));
+		}
 		return get(task.getTopologyId()).getBuffer(task);
 	}
 }

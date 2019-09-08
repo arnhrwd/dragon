@@ -7,6 +7,10 @@ import dragon.task.WorkerTopologyContext;
 import dragon.tuple.Fields;
 
 public class FieldGrouping  extends AbstractGrouping  {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -7755313939232587197L;
 	private List<Integer> targetTasks;
 	Fields fields;
 

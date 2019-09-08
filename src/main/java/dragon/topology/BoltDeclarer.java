@@ -17,6 +17,10 @@ import dragon.topology.base.Bolt;
 import dragon.tuple.Fields;
 
 public class BoltDeclarer extends Declarer {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 4947955477005135498L;
 	private static Log log = LogFactory.getLog(BoltDeclarer.class);
 	private Bolt bolt;
 	

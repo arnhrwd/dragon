@@ -32,6 +32,7 @@ public class ServiceProcessor extends Thread {
 				if(node.getLocalClusters().containsKey(scommand.topologyName)){
 					node.getComms().sendServiceMessage(new TopologyExistsMessage(scommand.topologyName));
 				} else {
+					log.debug("storing topology ["+scommand.topologyName+"]");
 					if(!node.storeJarFile(scommand.topologyName,scommand.topologyJar)) {
 						node.getComms().sendServiceMessage(new RunFailedMessage(scommand.topologyName,"could not store the topology jar"));
 						continue;
@@ -44,11 +45,16 @@ public class ServiceProcessor extends Thread {
 					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology, false);
 					node.getLocalClusters().put(scommand.topologyName, cluster);
 					node.createStartupTopology(scommand.topologyName);
+					boolean hit=false;
 					for(NodeDescriptor desc : scommand.dragonTopology.getReverseEmbedding().keySet()) {
 						if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
+							hit=true;
 							NodeMessage message = new PrepareTopologyMessage(scommand.topologyName,scommand.conf,scommand.dragonTopology,scommand.topologyJar);
 							node.getComms().sendNodeMessage(desc, message);
 						}
+					}
+					if(!hit) {
+						node.getLocalClusters().get(scommand.topologyName).openAll();
 					}
 				}
 				break;

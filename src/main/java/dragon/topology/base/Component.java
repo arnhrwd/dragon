@@ -1,5 +1,6 @@
 package dragon.topology.base;
 
+import java.io.Serializable;
 import java.util.Map;
 
 import dragon.Config;
@@ -7,7 +8,11 @@ import dragon.LocalCluster;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
-public class Component implements Runnable, Cloneable{
+public class Component implements Runnable, Cloneable, Serializable{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -3296255524018955053L;
 	private TopologyContext context;
 	private LocalCluster localCluster;
 	private OutputFieldsDeclarer outputFieldsDeclarer;

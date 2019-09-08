@@ -25,4 +25,8 @@ public class TcpStreamMap<T> extends HashMap<String,HashMap<NodeDescriptor,T>> {
 		if(!get(id).containsKey(desc)) return false;
 		return true;
 	}
+	
+	public void drop(String id,NodeDescriptor desc) {
+		remove(id);
+	}
 }

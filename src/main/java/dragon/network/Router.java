@@ -11,6 +11,7 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
 import dragon.NetworkTask;
+import dragon.topology.DragonTopology;
 import dragon.utils.CircularBuffer;
 
 public class Router {
@@ -66,6 +67,7 @@ public class Router {
 												destinations.get(desc),
 												task.getComponentId(),
 												task.getTopologyId());
+										log.debug("seding to "+desc+" "+nt);
 										node.getComms().sendNetworkTask(desc, nt);
 									}
 								}
@@ -110,6 +112,11 @@ public class Router {
 	public void put(NetworkTask task) throws InterruptedException {
 		outputQueues.getBuffer(task).put(task);
 		outputsPending.put(outputQueues.getBuffer(task));
+	}
+
+	public void submitTopology(String topologyName, DragonTopology topology) {
+		
+		
 	}
 	
 }

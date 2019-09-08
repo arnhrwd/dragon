@@ -10,6 +10,10 @@ import dragon.tuple.Tuple;
 
 public class NumberBolt extends BaseRichBolt {
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -3957233181035456948L;
 	HashSet<Integer> numbers;
 	public void prepare(@SuppressWarnings("rawtypes") Map conf, TopologyContext context, OutputCollector collector) {
 		numbers=new HashSet<Integer>();

@@ -29,6 +29,9 @@ public class StreamQueueMap extends HashMap<String,CircularBuffer<NetworkTask>>{
 	}
 	
 	public CircularBuffer<NetworkTask> getBuffer(NetworkTask task){
+		if(!containsKey(task.getTuple().getSourceStreamId())) {
+			put(task.getTuple().getSourceStreamId(),new CircularBuffer<NetworkTask>(bufferSize));
+		}
 		return get(task.getTuple().getSourceStreamId());
 	}
 }
