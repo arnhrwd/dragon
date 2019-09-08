@@ -67,7 +67,7 @@ public class Router {
 												destinations.get(desc),
 												task.getComponentId(),
 												task.getTopologyId());
-										log.debug("seding to "+desc+" "+nt);
+										//log.debug("seding to "+desc+" "+nt);
 										node.getComms().sendNetworkTask(desc, nt);
 									}
 								}
@@ -110,7 +110,7 @@ public class Router {
 	}
 	
 	public void put(NetworkTask task) throws InterruptedException {
-		log.debug("putting on queue "+task.getTopologyId()+","+task.getTuple().getSourceStreamId());
+		//log.debug("putting on queue "+task.getTopologyId()+","+task.getTuple().getSourceStreamId());
 		outputQueues.getBuffer(task).put(task);
 		outputsPending.put(outputQueues.getBuffer(task));
 	}

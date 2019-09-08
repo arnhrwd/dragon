@@ -132,7 +132,7 @@ public class TcpComms implements IComms {
 										NodeMessage message = (NodeMessage) socketManager.getInputStream("node", desc).readObject();
 										incommingNodeQueue.put(message);
 									} catch (IOException e) {
-										log.error("ioexception on node stream from +["+desc+"]: "+e.toString());
+										log.error("ioexception on node stream from ["+desc+"]: "+e.toString());
 										socketManager.delete("node",desc);
 										break;
 									} catch (ClassNotFoundException e) {
@@ -140,7 +140,7 @@ public class TcpComms implements IComms {
 										socketManager.close("node",desc);
 										break;
 									} catch (InterruptedException e) {
-										log.warn("interrupted while reading node stream from +["+desc+"]");
+										log.warn("interrupted while reading node stream from ["+desc+"]");
 										socketManager.close("node",desc);
 									}
 								}
@@ -271,9 +271,11 @@ public class TcpComms implements IComms {
 
 	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task) {
 		try {
-			log.debug("sending ["+task+"] to ["+desc+"]");
-			socketManager.getOutputStream("task",desc).writeObject(task);
-			socketManager.getOutputStream("task", desc).flush();
+			//log.debug("sending ["+task+"] to ["+desc+"]");
+			synchronized(socketManager.getOutputStream("task", desc)) {
+				socketManager.getOutputStream("task",desc).writeObject(task);
+				socketManager.getOutputStream("task", desc).flush();
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

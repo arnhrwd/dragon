@@ -28,11 +28,11 @@ public class TextSpout extends BaseRichSpout {
 	public void nextTuple() {
 		UUID uuid = UUID.randomUUID();
         String randomUUIDString = uuid.toString();
-		if(num<10) {
+		if(num<1000000) {
 			//System.out.println("emitting "+num);
 			collector.emit(new Values(randomUUIDString));
 			num++;
-		} else if(num==10) {
+		} else if(num==1000000) {
 			System.out.println("finished emitting");
 			num++;
 		}

@@ -54,18 +54,18 @@ public class SocketManager {
 						log.debug("socket provided handshake ["+endpoint+","+id+"]");
 						
 						synchronized(socketManager) {
-							if(!inputStreamMap.contains(id,endpoint)) {
-								inputStreamMap.put(id,endpoint,in);
-								if(!inputsWaiting.containsKey(id)) {
-									inputsWaiting.put(id, new LinkedBlockingQueue<NodeDescriptor>());
+							if(!inputStreamMap.contains(id+"_in",endpoint)) {
+								inputStreamMap.put(id+"_in",endpoint,in);
+								if(!inputsWaiting.containsKey(id+"_in")) {
+									inputsWaiting.put(id+"_in", new LinkedBlockingQueue<NodeDescriptor>());
 								}
-								inputsWaiting.get(id).put(endpoint);
+								inputsWaiting.get(id+"_in").put(endpoint);
 							}
-							if(!outputStreamMap.contains(id, endpoint)) {
-								outputStreamMap.put(id,endpoint,out);
+							if(!outputStreamMap.contains(id+"_in", endpoint)) {
+								outputStreamMap.put(id+"_in",endpoint,out);
 							}
-							if(!socketMap.contains(id,endpoint)) {
-								socketMap.put(id,endpoint,socket);
+							if(!socketMap.contains(id+"_in",endpoint)) {
+								socketMap.put(id+"_in",endpoint,socket);
 							}
 						}
 						
@@ -88,17 +88,17 @@ public class SocketManager {
 	
 	public NodeDescriptor getWaitingInputs(String id) throws InterruptedException {
 		synchronized(this) {
-			if(!inputsWaiting.containsKey(id)) {
-				inputsWaiting.put(id, new LinkedBlockingQueue<NodeDescriptor>());
+			if(!inputsWaiting.containsKey(id+"_in")) {
+				inputsWaiting.put(id+"_in", new LinkedBlockingQueue<NodeDescriptor>());
 			}
 		}
-		return inputsWaiting.get(id).take();
+		return inputsWaiting.get(id+"_in").take();
 	}
 	
 	public ObjectOutputStream getOutputStream(String id,NodeDescriptor desc) throws IOException {
 		synchronized(this) {
-			if(outputStreamMap.contains(id,desc)) {
-				return outputStreamMap.get(id).get(desc);
+			if(outputStreamMap.contains(id+"_out",desc)) {
+				return outputStreamMap.get(id+"_out").get(desc);
 			}
 		
 			log.debug("creating a socket to ["+desc+"]");
@@ -110,31 +110,31 @@ public class SocketManager {
 			out.writeObject(id);
 			out.flush();
 			
-			if(!inputStreamMap.contains(id,desc)) {
-				inputStreamMap.put(id,desc,in);
+			if(!inputStreamMap.contains(id+"_out",desc)) {
+				inputStreamMap.put(id+"_out",desc,in);
 			}
-			if(!outputStreamMap.contains(id, desc)) {
-				outputStreamMap.put(id,desc,out);
+			if(!outputStreamMap.contains(id+"_out", desc)) {
+				outputStreamMap.put(id+"_out",desc,out);
 			}
-			if(!socketMap.contains(id,desc)) {
-				socketMap.put(id,desc,socket);
+			if(!socketMap.contains(id+"_out",desc)) {
+				socketMap.put(id+"_out",desc,socket);
 			}
-			if(!inputsWaiting.containsKey(id)) {
-				inputsWaiting.put(id, new LinkedBlockingQueue<NodeDescriptor>());
+			if(!inputsWaiting.containsKey(id+"_out")) {
+				inputsWaiting.put(id+"_out", new LinkedBlockingQueue<NodeDescriptor>());
 			}
 			try {
-				inputsWaiting.get(id).put(desc);
+				inputsWaiting.get(id+"_out").put(desc);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			return outputStreamMap.get(id).get(desc);
+			return outputStreamMap.get(id+"_out").get(desc);
 		}
 	}
 	
 	public ObjectInputStream getInputStream(String id,NodeDescriptor desc) {
 		synchronized(this) {
-			return inputStreamMap.get(id).get(desc);
+			return inputStreamMap.get(id+"_in").get(desc);
 		}
 	}
 
