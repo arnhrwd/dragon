@@ -15,7 +15,10 @@ public class ServiceMessage extends Message {
 		GET_NODE_CONTEXT,
 		NODE_CONTEXT,
 		SERVICE_DONE,
-		RUN_FAILED
+		RUN_FAILED,
+		GET_METRICS,
+		METRICS,
+		METRICS_ERROR
 	}
 	
 	private ServiceMessageType type;

@@ -30,4 +30,15 @@ public class Sample {
 		emitted = spout.getEmitted();
 		transferred = spout.getTransferred();
 	}
+	
+	public String toString(){
+		String out = "";
+		out+="timestamp="+timestamp+"\n";
+		out+="inputQueueSize="+inputQueueSize+"\n";
+		out+="outputQueueSize="+outputQueueSize+"\n";
+		out+="processed="+processed+"\n";
+		out+="emitted="+emitted+"\n";
+		out+="transferred="+transferred+"\n";
+		return out;
+	}
 }

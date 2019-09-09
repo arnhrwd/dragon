@@ -43,8 +43,9 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_NETWORK_LOCAL_SERVICE_PORT="dragon.network.local.service.port";
 	public static final String DRAGON_NETWORK_REMOTE_NODE_PORT="dragon.network.remote.node.port";
 	public static final String DRAGON_NETWORK_LOCAL_NODE_PORT="dragon.network.local.node.port";
-	public static final String DRAGON_METRICS_SAMPLE_PERIOD_MS="dragon.metrics.sample.period_ms";
+	public static final String DRAGON_METRICS_SAMPLE_PERIOD_MS="dragon.metrics.sample.period.ms";
 	public static final String DRAGON_METRICS_ENABLED="dragon.metrics.enabled";
+	public static final String DRAGON_METRICS_SAMPLE_HISTORY="dragon.metrics.sample.history";
 	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
@@ -131,7 +132,8 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_NETWORK_REMOTE_NODE_PORT,4001);
 		put(DRAGON_NETWORK_LOCAL_NODE_PORT,4001);
 		put(DRAGON_METRICS_ENABLED,true);
-		put(DRAGON_METRICS_SAMPLE_PERIOD_MS,1000);
+		put(DRAGON_METRICS_SAMPLE_PERIOD_MS,60*1000);
+		put(DRAGON_METRICS_SAMPLE_HISTORY,1);
 	}
 
 	public void setNumWorkers(int numWorkers) {

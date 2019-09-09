@@ -3,13 +3,18 @@ package dragon.network;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import dragon.Config;
 import dragon.LocalCluster;
+import dragon.metrics.ComponentMetricMap;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.TopologyExistsMessage;
 import dragon.network.messages.service.RunFailedMessage;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.PrepareTopologyMessage;
+import dragon.network.messages.service.GetMetricsMessage;
+import dragon.network.messages.service.MetricsErrorMessage;
+import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
 
 public class ServiceProcessor extends Thread {
@@ -62,6 +67,18 @@ public class ServiceProcessor extends Thread {
 			case GET_NODE_CONTEXT:
 				node.getComms().sendServiceMessage(new NodeContextMessage(node.getNodeProcessor().getContext()));
 				break;
+			case GET_METRICS:
+				GetMetricsMessage gm = (GetMetricsMessage) command;
+				if((Boolean)node.getConf().get(Config.DRAGON_METRICS_ENABLED)){
+					ComponentMetricMap cm = node.getMetrics(gm.topologyId);
+					if(cm!=null){
+						node.getComms().sendServiceMessage(new MetricsMessage(cm));
+					} else {
+						node.getComms().sendServiceMessage(new MetricsErrorMessage());
+					}
+				} else {
+					node.getComms().sendServiceMessage(new MetricsErrorMessage());
+				}
 			default:
 			}
 		}

@@ -13,9 +13,15 @@ public class Metrics extends Thread {
 	private TopologyMetricMap samples;
 	
 	public Metrics(Node node){
-		samples=new TopologyMetricMap();
+		samples=new TopologyMetricMap((int)node.getConf().get("DRAGON_METRICS_SAMPLE_HISTORY"));
 		this.node = node;
 		start();
+	}
+	
+	public ComponentMetricMap getMetrics(String topologyId){
+		synchronized(samples){
+			return samples.get(topologyId);
+		}
 	}
 	
 	@Override
@@ -26,18 +32,20 @@ public class Metrics extends Thread {
 			} catch (InterruptedException e) {
 				log.info("shutting down");
 			}
-			for(String topologyId : node.getLocalClusters().keySet()){
-				LocalCluster localCluster = node.getLocalClusters().get(topologyId);
-				for(String componentId : localCluster.getSpouts().keySet()){
-					for(Integer taskId : localCluster.getSpouts().get(componentId).keySet()){
-						Sample sample = new Sample(localCluster.getSpouts().get(componentId).get(taskId));
-						samples.put(topologyId, componentId, taskId, sample);
+			synchronized(samples){
+				for(String topologyId : node.getLocalClusters().keySet()){
+					LocalCluster localCluster = node.getLocalClusters().get(topologyId);
+					for(String componentId : localCluster.getSpouts().keySet()){
+						for(Integer taskId : localCluster.getSpouts().get(componentId).keySet()){
+							Sample sample = new Sample(localCluster.getSpouts().get(componentId).get(taskId));
+							samples.put(topologyId, componentId, taskId, sample);
+						}
 					}
-				}
-				for(String componentId : localCluster.getBolts().keySet()){
-					for(Integer taskId : localCluster.getBolts().get(componentId).keySet()){
-						Sample sample = new Sample(localCluster.getBolts().get(componentId).get(taskId));
-						samples.put(topologyId, componentId, taskId, sample);
+					for(String componentId : localCluster.getBolts().keySet()){
+						for(Integer taskId : localCluster.getBolts().get(componentId).keySet()){
+							Sample sample = new Sample(localCluster.getBolts().get(componentId).get(taskId));
+							samples.put(topologyId, componentId, taskId, sample);
+						}
 					}
 				}
 			}
