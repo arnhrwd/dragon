@@ -491,6 +491,10 @@ public class LocalCluster {
 		return bolts;
 	}
 	
+	public HashMap<String,HashMap<Integer,Spout>> getSpouts(){
+		return spouts;
+	}
+	
 	public Node getNode(){
 		return node;
 	}

@@ -43,6 +43,8 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_NETWORK_LOCAL_SERVICE_PORT="dragon.network.local.service.port";
 	public static final String DRAGON_NETWORK_REMOTE_NODE_PORT="dragon.network.remote.node.port";
 	public static final String DRAGON_NETWORK_LOCAL_NODE_PORT="dragon.network.local.node.port";
+	public static final String DRAGON_METRICS_SAMPLE_PERIOD_MS="dragon.metrics.sample.period_ms";
+	public static final String DRAGON_METRICS_ENABLED="dragon.metrics.enabled";
 	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
@@ -102,6 +104,8 @@ public class Config extends HashMap<String, Object>{
         			put(propName,props.getProperty(propName));
         		} else if(get(propName) instanceof Integer) {
         			put(propName,Integer.parseInt(props.getProperty(propName)));
+        		} else if(get(propName) instanceof Boolean) {
+        			put(propName,Boolean.parseBoolean(props.getProperty(propName)));
         		}
         	} else {
         		log.error(propName+" is unknown, ignoring");
@@ -126,6 +130,8 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_NETWORK_LOCAL_SERVICE_PORT,4000);
 		put(DRAGON_NETWORK_REMOTE_NODE_PORT,4001);
 		put(DRAGON_NETWORK_LOCAL_NODE_PORT,4001);
+		put(DRAGON_METRICS_ENABLED,true);
+		put(DRAGON_METRICS_SAMPLE_PERIOD_MS,1000);
 	}
 
 	public void setNumWorkers(int numWorkers) {

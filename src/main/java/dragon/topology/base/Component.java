@@ -17,40 +17,42 @@ public class Component implements Runnable, Cloneable, Serializable{
 	private LocalCluster localCluster;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	private Collector collector;
+	private long emitted=0;
+	private long transferred=0;
 	
-	public void setOutputCollector(Collector collector) {
+	public final void setOutputCollector(Collector collector) {
 		this.collector=collector;
 	}
 	
-	public Collector getOutputCollector() {
+	public final Collector getOutputCollector() {
 		return collector;
 	}
 	
-	public void setLocalCluster(LocalCluster localCluster) {
+	public final void setLocalCluster(LocalCluster localCluster) {
 		this.localCluster=localCluster;
 	}  
 	
-	public LocalCluster getLocalCluster() {
+	public final LocalCluster getLocalCluster() {
 		return localCluster;
 	}
 	
-	public void setTopologyContext(TopologyContext context) {
+	public final void setTopologyContext(TopologyContext context) {
 		this.context=context;
 	}
 	
-	public String getComponentId() {
+	public final String getComponentId() {
 		return context.getThisComponentId();
 	}
 	
-	public int getTaskId() {
+	public final int getTaskId() {
 		return context.getThisTaskIndex();
 	}
 	
-	public void setOutputFieldsDeclarer(OutputFieldsDeclarer declarer) {
+	public final void setOutputFieldsDeclarer(OutputFieldsDeclarer declarer) {
 		this.outputFieldsDeclarer=declarer;
 	}
 	
-	public OutputFieldsDeclarer getOutputFieldsDeclarer() {
+	public final OutputFieldsDeclarer getOutputFieldsDeclarer() {
 		return outputFieldsDeclarer;
 	}
 
@@ -67,4 +69,20 @@ public class Component implements Runnable, Cloneable, Serializable{
 	public Object clone()throws CloneNotSupportedException{  
 		return super.clone();  
 	}  
+	
+	public final void incEmitted(long inc){
+		emitted+=inc;
+	}
+	
+	public final void incTransferred(long inc){
+		transferred+=inc;
+	}
+	
+	public final long getEmitted(){
+		return emitted;
+	}
+	
+	public final long getTransferred(){
+		return transferred;
+	}
 }
