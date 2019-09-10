@@ -57,13 +57,14 @@ public class TcpComms implements IComms {
 		incommingTaskQueue = new LinkedBlockingQueue<NetworkTask>();
 		nodeInputsThreads = new HashSet<Thread>();
 		taskInputsThreads = new HashSet<Thread>();
+		
 	}
 	
 	public void open(NodeDescriptor serviceNode) throws IOException {
 		log.debug("opening a service socket to ["+serviceNode+"]");
 		serviceSocketClient = new Socket(serviceNode.host,serviceNode.port);
 		serviceOutputStream = new ObjectOutputStream(serviceSocketClient.getOutputStream());
-		serviceOutputStreams = new HashMap<String,ObjectOutputStream>();
+		
 		ObjectInputStream in = new ObjectInputStream(serviceSocketClient.getInputStream());
 		serviceThread = new Thread() {
 			@Override
@@ -97,7 +98,7 @@ public class TcpComms implements IComms {
 	public void open() throws IOException {
 		serviceSocketServer = new ServerSocket((Integer)conf.get(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT));
 		socketManager = new SocketManager((Integer)conf.get(Config.DRAGON_NETWORK_LOCAL_NODE_PORT),me);
-		
+		serviceOutputStreams = new HashMap<String,ObjectOutputStream>();
 		serviceThread = new Thread() {
 			@Override
 			public void run() {

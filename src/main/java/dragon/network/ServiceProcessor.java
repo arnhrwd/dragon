@@ -9,6 +9,7 @@ import dragon.metrics.ComponentMetricMap;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.TopologyExistsMessage;
+import dragon.network.messages.service.TopologySubmittedMessage;
 import dragon.network.messages.service.RunFailedMessage;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.PrepareTopologyMessage;
@@ -62,11 +63,15 @@ public class ServiceProcessor extends Thread {
 						if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
 							hit=true;
 							NodeMessage message = new PrepareTopologyMessage(scommand.topologyName,scommand.conf,scommand.dragonTopology,scommand.topologyJar);
+							message.setMessageId(command.getMessageId());
 							node.getComms().sendNodeMessage(desc, message);
 						}
 					}
 					if(!hit) {
 						node.getLocalClusters().get(scommand.topologyName).openAll();
+						TopologySubmittedMessage r = new TopologySubmittedMessage(scommand.topologyName);
+						r.setMessageId(scommand.getMessageId());
+						node.getComms().sendServiceMessage(r);
 					}
 				}
 				break;
@@ -86,12 +91,14 @@ public class ServiceProcessor extends Thread {
 						r.setMessageId(command.getMessageId());
 						node.getComms().sendServiceMessage(r);
 					} else {
-						MetricsErrorMessage r = new MetricsErrorMessage();
+						log.debug("cm is null");
+						MetricsErrorMessage r = new MetricsErrorMessage("unknown topology or there are no samples available yet");
 						r.setMessageId(command.getMessageId());
 						node.getComms().sendServiceMessage(r);
 					}
 				} else {
-					MetricsErrorMessage r = new MetricsErrorMessage();
+					log.debug("metrics are not enabled");
+					MetricsErrorMessage r = new MetricsErrorMessage("metrics are not enabled in dragon.properties for this node");
 					r.setMessageId(command.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				}

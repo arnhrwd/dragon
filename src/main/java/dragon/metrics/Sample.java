@@ -1,10 +1,16 @@
 package dragon.metrics;
 
+import java.io.Serializable;
+
 import dragon.topology.base.Bolt;
 import dragon.topology.base.Spout;
 import dragon.utils.Time;
 
-public class Sample {
+public class Sample implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 8919792917425064566L;
 	public long timestamp;
 	public int inputQueueSize;
 	public int outputQueueSize;

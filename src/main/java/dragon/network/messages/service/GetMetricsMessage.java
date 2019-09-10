@@ -9,6 +9,7 @@ public class GetMetricsMessage extends ServiceMessage {
 	public String topologyId;
 	public GetMetricsMessage(String topologyId) {
 		super(ServiceMessage.ServiceMessageType.GET_METRICS);
+		this.topologyId=topologyId;
 	}
 
 }

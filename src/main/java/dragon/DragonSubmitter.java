@@ -12,6 +12,7 @@ import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.GetMetricsMessage;
 import dragon.network.messages.service.GetNodeContextMessage;
+import dragon.network.messages.service.MetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
 import dragon.network.messages.service.RunTopologyMessage;
@@ -75,6 +76,7 @@ public class DragonSubmitter {
 			log.error("unexpected response: "+message.getType().name());
 		}
 		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.close();
 	}
 	
 	public static void getMetrics(Config conf,String topologyId){
@@ -84,12 +86,15 @@ public class DragonSubmitter {
 		switch(message.getType()){
 		case METRICS:
 			MetricsMessage m = (MetricsMessage) message;
-			log.info(m.toString());
+			log.info(m.samples.toString());
 			break;
 		case METRICS_ERROR:
-			log.error("metrics are not available");
+			MetricsErrorMessage e = (MetricsErrorMessage) message;
+			log.error(e.error);
 			break;
 		}
+		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.close();
 	}
 
 }
