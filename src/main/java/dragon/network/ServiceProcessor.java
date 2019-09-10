@@ -35,15 +35,21 @@ public class ServiceProcessor extends Thread {
 			case RUN_TOPOLOGY:
 				RunTopologyMessage scommand = (RunTopologyMessage) command;
 				if(node.getLocalClusters().containsKey(scommand.topologyName)){
-					node.getComms().sendServiceMessage(new TopologyExistsMessage(scommand.topologyName));
+					TopologyExistsMessage r = new TopologyExistsMessage(scommand.topologyName);
+					r.setMessageId(scommand.getMessageId());
+					node.getComms().sendServiceMessage(r);
 				} else {
 					log.debug("storing topology ["+scommand.topologyName+"]");
 					if(!node.storeJarFile(scommand.topologyName,scommand.topologyJar)) {
-						node.getComms().sendServiceMessage(new RunFailedMessage(scommand.topologyName,"could not store the topology jar"));
+						RunFailedMessage r = new RunFailedMessage(scommand.topologyName,"could not store the topology jar");
+						r.setMessageId(scommand.getMessageId());
+						node.getComms().sendServiceMessage(r);
 						continue;
 					}
 					if(!node.loadJarFile(scommand.topologyName)) {
-						node.getComms().sendServiceMessage(new RunFailedMessage(scommand.topologyName,"could not load the topology jar"));				
+						RunFailedMessage r = new RunFailedMessage(scommand.topologyName,"could not load the topology jar");
+						r.setMessageId(scommand.getMessageId());
+						node.getComms().sendServiceMessage(r);				
 						continue;
 					}
 					LocalCluster cluster=new LocalCluster(node);
@@ -65,19 +71,29 @@ public class ServiceProcessor extends Thread {
 				}
 				break;
 			case GET_NODE_CONTEXT:
-				node.getComms().sendServiceMessage(new NodeContextMessage(node.getNodeProcessor().getContext()));
+				{
+				NodeContextMessage r = new NodeContextMessage(node.getNodeProcessor().getContext());
+				r.setMessageId(command.getMessageId());
+				node.getComms().sendServiceMessage(r);
+				}
 				break;
 			case GET_METRICS:
 				GetMetricsMessage gm = (GetMetricsMessage) command;
 				if((Boolean)node.getConf().get(Config.DRAGON_METRICS_ENABLED)){
 					ComponentMetricMap cm = node.getMetrics(gm.topologyId);
 					if(cm!=null){
-						node.getComms().sendServiceMessage(new MetricsMessage(cm));
+						MetricsMessage r = new MetricsMessage(cm);
+						r.setMessageId(command.getMessageId());
+						node.getComms().sendServiceMessage(r);
 					} else {
-						node.getComms().sendServiceMessage(new MetricsErrorMessage());
+						MetricsErrorMessage r = new MetricsErrorMessage();
+						r.setMessageId(command.getMessageId());
+						node.getComms().sendServiceMessage(r);
 					}
 				} else {
-					node.getComms().sendServiceMessage(new MetricsErrorMessage());
+					MetricsErrorMessage r = new MetricsErrorMessage();
+					r.setMessageId(command.getMessageId());
+					node.getComms().sendServiceMessage(r);
 				}
 			default:
 			}

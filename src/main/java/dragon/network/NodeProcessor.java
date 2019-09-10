@@ -111,7 +111,9 @@ public class NodeProcessor extends Thread {
 			case TOPOLOGY_READY:
 				TopologyReadyMessage tr = (TopologyReadyMessage) message;
 				if(node.checkStartupTopology(tr.getSender(),tr.topologyId)) {
-					node.getComms().sendServiceMessage(new TopologySubmittedMessage(tr.topologyId));
+					TopologySubmittedMessage r = new TopologySubmittedMessage(tr.topologyId);
+					r.setMessageId(tr.getMessageId());
+					node.getComms().sendServiceMessage(r);
 				}
 				break;
 			case START_TOPOLOGY:
@@ -121,7 +123,9 @@ public class NodeProcessor extends Thread {
 			case PREPARE_FAILED:
 				PrepareFailedMessage pf = (PrepareFailedMessage) message;
 				node.removeStartupTopology(pf.topologyId);
-				node.getComms().sendServiceMessage(new RunFailedMessage(pf.topologyId,pf.error));
+				RunFailedMessage r = new RunFailedMessage(pf.topologyId,pf.error);
+				r.setMessageId(pf.getMessageId());
+				node.getComms().sendServiceMessage(r);
 			}
 		}
 	}

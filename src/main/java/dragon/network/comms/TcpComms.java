@@ -6,6 +6,7 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -16,33 +17,35 @@ import dragon.Config;
 import dragon.NetworkTask;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.service.ServiceDoneMessage;
 import dragon.network.messages.service.ServiceMessage;
 
 
 public class TcpComms implements IComms {
 	private static Log log = LogFactory.getLog(TcpComms.class);
 	
-	Socket serviceSocketClient;
-	ServerSocket serviceSocketServer;
-	ObjectOutputStream serviceOutputStream;
-	Config conf;
+	private Socket serviceSocketClient;
+	private ServerSocket serviceSocketServer;
+	private HashMap<String,ObjectOutputStream> serviceOutputStreams;
+	private ObjectOutputStream serviceOutputStream;
+	private Config conf;
 
-	LinkedBlockingQueue<ServiceMessage> incommingServiceQueue;
+	private LinkedBlockingQueue<ServiceMessage> incommingServiceQueue;
 	//LinkedBlockingQueue<ServiceMessage> outgoingServiceQueue;
-	LinkedBlockingQueue<NodeMessage> incommingNodeQueue;
-	LinkedBlockingQueue<NetworkTask> incommingTaskQueue;
-	SocketManager socketManager;
+	private LinkedBlockingQueue<NodeMessage> incommingNodeQueue;
+	private LinkedBlockingQueue<NetworkTask> incommingTaskQueue;
+	private SocketManager socketManager;
 	
+	private Long id=0L;
 	
+	private HashSet<Thread> nodeInputsThreads;
+	private HashSet<Thread> taskInputsThreads;
 	
-	HashSet<Thread> nodeInputsThreads;
-	HashSet<Thread> taskInputsThreads;
+	private Thread serviceThread;
+	private Thread nodeThread;
+	private Thread taskThread;
 	
-	Thread serviceThread;
-	Thread nodeThread;
-	Thread taskThread;
-	
-	NodeDescriptor me;
+	private NodeDescriptor me;
 	
 	public TcpComms(Config conf) throws UnknownHostException {
 		this.conf=conf;
@@ -60,6 +63,7 @@ public class TcpComms implements IComms {
 		log.debug("opening a service socket to ["+serviceNode+"]");
 		serviceSocketClient = new Socket(serviceNode.host,serviceNode.port);
 		serviceOutputStream = new ObjectOutputStream(serviceSocketClient.getOutputStream());
+		serviceOutputStreams = new HashMap<String,ObjectOutputStream>();
 		ObjectInputStream in = new ObjectInputStream(serviceSocketClient.getInputStream());
 		serviceThread = new Thread() {
 			@Override
@@ -72,19 +76,23 @@ public class TcpComms implements IComms {
 						message = (ServiceMessage) in.readObject();
 					}
 					in.close();
+					serviceOutputStream.close();
 					serviceSocketClient.close();
 				} catch (ClassNotFoundException | IOException e2) {
-					// TODO Auto-generated catch block
-					e2.printStackTrace();
+					log.debug("class not found or ioexception: "+e2.toString());
 				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					log.debug("interrupted");
 				}
+				log.debug("service done");
 			}
 		};
 		serviceThread.start();
 	}
 
+	private Long nextId(){
+		id++;
+		return id;
+	}
 	
 	public void open() throws IOException {
 		serviceSocketServer = new ServerSocket((Integer)conf.get(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT));
@@ -93,26 +101,50 @@ public class TcpComms implements IComms {
 		serviceThread = new Thread() {
 			@Override
 			public void run() {
+				
 				while(!isInterrupted()) {
 					try {
 						log.debug("accepting service messages");
 						Socket socket = serviceSocketServer.accept();
-						serviceOutputStream = new ObjectOutputStream(socket.getOutputStream());
-						ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-						ServiceMessage message = (ServiceMessage) in.readObject();
-						while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
-							incommingServiceQueue.put(message);
-							message = (ServiceMessage) in.readObject();
-						}
-						in.close();
-						socket.close();
+						id=id+1;
+						Thread servlet = new Thread(){
+							Long myid = nextId();
+							@Override
+							public void run(){
+								try  {
+									synchronized(serviceOutputStreams){
+										serviceOutputStreams.put(myid.toString(), new ObjectOutputStream(socket.getOutputStream()));
+									}
+									ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+									ServiceMessage message = (ServiceMessage) in.readObject();
+									while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
+										message.setMessageId(myid.toString());
+										incommingServiceQueue.put(message);
+										message = (ServiceMessage) in.readObject();
+									}
+									ServiceDoneMessage r = new ServiceDoneMessage();
+									r.setMessageId(myid.toString());
+									sendServiceMessage(r);
+									synchronized(serviceOutputStreams){
+										serviceOutputStreams.get(myid.toString()).close();
+										serviceOutputStreams.remove(myid.toString());
+									}
+									in.close();
+									socket.close();
+								} catch (IOException e){
+									log.error("exception with service socket: "+e.toString());
+								} catch (ClassNotFoundException e) {
+									log.error("something other than a ServiceMessage was received: "+e.toString());
+								} catch (InterruptedException e) {
+									log.warn("interrupted while putting on incomming service queue: "+e.toString());
+								}
+							}
+						};
+						servlet.start();
+						
 					} catch (IOException e) {
 						log.error("exception with service socket: "+e.toString());
-					} catch (ClassNotFoundException e) {
-						log.error("something other than a ServiceMessage was received: "+e.toString());
-					} catch (InterruptedException e) {
-						log.warn("interrupted while putting on incomming service queue: "+e.toString());
-					}
+					} 
 				}
 			}
 		};
@@ -201,12 +233,7 @@ public class TcpComms implements IComms {
 
 	public void close() {
 		serviceThread.interrupt();
-		try {
-			serviceOutputStream.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		
 		if(serviceSocketServer!=null) {
 			try {
 				serviceSocketServer.close();
@@ -226,8 +253,15 @@ public class TcpComms implements IComms {
 	public void sendServiceMessage(ServiceMessage response) {
 		try {
 			log.debug("sending service message ["+response.getType().name()+"]");
-			serviceOutputStream.writeObject(response);
-			serviceOutputStream.flush();
+			if(response.getMessageId().equals("")){
+				serviceOutputStream.writeObject(response);
+				serviceOutputStream.flush();
+			} else {
+				synchronized(serviceOutputStreams){
+					serviceOutputStreams.get(response.getMessageId()).writeObject(response);
+					serviceOutputStreams.get(response.getMessageId()).flush();
+				}
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
