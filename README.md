@@ -68,6 +68,12 @@ Parameters that affect only remotely submitted topologies:
 - `dragon.network.local.service.port = 4000` **Integer** - the port number used by the local Dragon node for receiving service messages
 - `dragon.network.local.node.port = 4001` **Integer** - the port number used by the local Dragon node for receiving node messages
 
+Parameters concerning metrics:
+
+- `dragon.metrics.enable = true` **Boolean** - whether the node should record metrics
+- `dragon.metrics.sample.history = 1` **Integer** - how much sample history to record
+- `dragon.metrics.sample.period.ms = 60000` **Integer** - the sample period in milliseconds
+
 # Cluster mode
 
 Running in cluster mode requires starting an initial Dragon node, and then starting further Dragon nodes that connect to the initial Dragon node, or any existing Dragon nodes. The Dragon nodes will connect to form a fully connected network. Therefore they must all be visible to each other on the network.
