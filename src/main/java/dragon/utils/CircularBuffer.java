@@ -12,6 +12,8 @@ public class CircularBuffer<T> {
 	protected Integer prev_head;
 	protected Integer size=1024;
 	public Object lock = new Object();
+	public Object putLock = new Object();
+	public Object takeLock = new Object();
 	
 	public CircularBuffer(){
 		init();
@@ -40,51 +42,63 @@ public class CircularBuffer<T> {
 	}
 	
 	public void put(T element) throws InterruptedException {
-		while(!offer(element)) {
-			synchronized(this) {
-				wait();
+		synchronized(putLock) {
+			while(!offer(element)) {
+				putLock.wait();
 			}
 		}
 	}
 	
 	public boolean offer(T element){
-		synchronized(elements){
-			if((tail+1)%size==head){
-				return false;
+		synchronized(takeLock) {
+			synchronized(elements){
+				if((tail+1)%size==head){
+					return false;
+				}
+				elements.set(tail,element);
+				prev_tail=tail;
+				tail=(tail+1)%size;
+				takeLock.notify();
+				return true;
 			}
-			
-			elements.set(tail,element);
-			prev_tail=tail;
-			tail=(tail+1)%size;
-			return true;
 		}
 	}
 	
 	public T poll(){
-		synchronized(elements){
-			if(head!=tail){
-				
-				T element=elements.get(head);
-				elements.set(head, null);
-				prev_head=head;
-				head=(head+1)%size;
-				synchronized(this) {
-					notify();
+		synchronized(putLock) {
+			synchronized(elements){
+				if(head!=tail){	
+					T element=elements.get(head);
+					elements.set(head, null);
+					prev_head=head;
+					head=(head+1)%size;
+					putLock.notify();
+					return element;
 				}
-				return element;
+				return null;
 			}
-			return null;
 		}
 	}
 	
 	public T peek(){
 		synchronized(elements){
 			if(head!=tail){
-				
 				T element=elements.get(head);
 				return element;
 			}
 			return null;
 		}
+	}
+	
+	public T take() throws InterruptedException {
+		T element;
+		synchronized(takeLock) {
+			element = poll();
+			while(element==null) {
+				takeLock.wait();
+				element = poll();
+			}
+		}
+		return element;
 	}
 }
