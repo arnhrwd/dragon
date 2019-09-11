@@ -16,6 +16,8 @@ import org.apache.commons.logging.LogFactory;
 import dragon.Config;
 import dragon.LocalCluster;
 import dragon.Run;
+import dragon.metrics.ComponentMetricMap;
+import dragon.metrics.Metrics;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.JoinRequestMessage;
@@ -32,6 +34,7 @@ public class Node {
 	private NodeProcessor nodeThread;
 	private boolean shouldTerminate=false;
 	private Config conf;
+	private Metrics metrics;
 	
 	private Router router;
 	
@@ -67,6 +70,10 @@ public class Node {
 		router = new Router(this,conf);
 		serviceThread=new ServiceProcessor(this);
 		nodeThread=new NodeProcessor(this);
+		if((Boolean)conf.get(Config.DRAGON_METRICS_ENABLED)){
+			metrics = new Metrics(this);
+			metrics.start();
+		}
 	}
 	
 	public IComms getComms() {
@@ -151,6 +158,12 @@ public class Node {
 	
 	public void removeStartupTopology(String topologyId) {
 		startupTopology.remove(topologyId);
+	}
+	
+	public ComponentMetricMap getMetrics(String topologyId){
+		if(metrics!=null){
+			return metrics.getMetrics(topologyId);
+		} else return null;
 	}
 	
 }

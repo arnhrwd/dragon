@@ -35,7 +35,7 @@ public class CircularBuffer<T> {
 	
 	public int getNumElements() {
 		synchronized(elements) {
-			if(tail==head) return 0;
+			if(tail.equals(head)) return 0;
 			if(tail>head) return tail-head;
 			return size-(head-tail);
 		}

@@ -18,13 +18,15 @@ public class Bolt extends Component {
 	private static final long serialVersionUID = 6696004781292813419L;
 	private Log log = LogFactory.getLog(Bolt.class);
 	private Tuple tickTuple=null;
+	private long processed=0;
+	private InputCollector inputCollector;
 	
-	public void setTickTuple(Tuple tuple) {
+	public final void setTickTuple(Tuple tuple) {
 		tickTuple=tuple;
 	}
 	
 	@Override
-	public void run() {
+	public final void run() {
 		Tuple tuple;
 		if(tickTuple!=null) {
 			tuple=tickTuple;
@@ -35,6 +37,7 @@ public class Bolt extends Component {
 		if(tuple!=null){
 			getOutputCollector().resetEmit();
 			execute(tuple);
+			processed++;
 
 		} else {
 			log.error("nothing on the queue!");
@@ -57,18 +60,17 @@ public class Bolt extends Component {
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		
 	}
-	
-	
-	private InputCollector inputCollector;
-	
-	public void setInputCollector(InputCollector inputCollector) {
+
+	public final void setInputCollector(InputCollector inputCollector) {
 		this.inputCollector = inputCollector;
 	}
 	
-	public InputCollector getInputCollector() {
+	public final InputCollector getInputCollector() {
 		return inputCollector;
 	}
 	
-	
+	public final long getProcessed(){
+		return processed;
+	}
 	
 }

@@ -68,6 +68,7 @@ public class Collector {
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
 		tuple.setSourceStreamId(streamId);
+		component.incEmitted(1); // for metrics
 		for(String componentId : localCluster.getTopology().getTopology().get(component.getComponentId()).keySet()) {
 			StreamMap streamMap = localCluster.getTopology().getTopology().get(component.getComponentId()).get(componentId);
 			GroupingsSet groupingsSet = streamMap.get(streamId);
@@ -75,6 +76,7 @@ public class Collector {
 				for(CustomStreamGrouping grouping : groupingsSet) {
 					List<Integer> taskIds = grouping.chooseTasks(0, values);
 					receivingTaskIds.addAll(taskIds);
+					component.incTransferred(receivingTaskIds.size()); // for metrics
 					HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
 					for(Integer taskId : taskIds){
 						if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){
@@ -111,6 +113,7 @@ public class Collector {
 		emitDirect(taskId,Constants.DEFAULT_STREAM,values);
 	}
 	
+	// TODO: update this method for network operation - following above example
 	public synchronized void emitDirect(int taskId, String streamId, Values values){
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
 		Fields fields = component.getOutputFieldsDeclarer().getFieldsDirect(streamId);

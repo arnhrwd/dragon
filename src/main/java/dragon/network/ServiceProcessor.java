@@ -3,13 +3,19 @@ package dragon.network;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import dragon.Config;
 import dragon.LocalCluster;
+import dragon.metrics.ComponentMetricMap;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.TopologyExistsMessage;
+import dragon.network.messages.service.TopologySubmittedMessage;
 import dragon.network.messages.service.RunFailedMessage;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.PrepareTopologyMessage;
+import dragon.network.messages.service.GetMetricsMessage;
+import dragon.network.messages.service.MetricsErrorMessage;
+import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
 
 public class ServiceProcessor extends Thread {
@@ -30,15 +36,21 @@ public class ServiceProcessor extends Thread {
 			case RUN_TOPOLOGY:
 				RunTopologyMessage scommand = (RunTopologyMessage) command;
 				if(node.getLocalClusters().containsKey(scommand.topologyName)){
-					node.getComms().sendServiceMessage(new TopologyExistsMessage(scommand.topologyName));
+					TopologyExistsMessage r = new TopologyExistsMessage(scommand.topologyName);
+					r.setMessageId(scommand.getMessageId());
+					node.getComms().sendServiceMessage(r);
 				} else {
 					log.debug("storing topology ["+scommand.topologyName+"]");
 					if(!node.storeJarFile(scommand.topologyName,scommand.topologyJar)) {
-						node.getComms().sendServiceMessage(new RunFailedMessage(scommand.topologyName,"could not store the topology jar"));
+						RunFailedMessage r = new RunFailedMessage(scommand.topologyName,"could not store the topology jar");
+						r.setMessageId(scommand.getMessageId());
+						node.getComms().sendServiceMessage(r);
 						continue;
 					}
 					if(!node.loadJarFile(scommand.topologyName)) {
-						node.getComms().sendServiceMessage(new RunFailedMessage(scommand.topologyName,"could not load the topology jar"));				
+						RunFailedMessage r = new RunFailedMessage(scommand.topologyName,"could not load the topology jar");
+						r.setMessageId(scommand.getMessageId());
+						node.getComms().sendServiceMessage(r);				
 						continue;
 					}
 					LocalCluster cluster=new LocalCluster(node);
@@ -51,17 +63,45 @@ public class ServiceProcessor extends Thread {
 						if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
 							hit=true;
 							NodeMessage message = new PrepareTopologyMessage(scommand.topologyName,scommand.conf,scommand.dragonTopology,scommand.topologyJar);
+							message.setMessageId(command.getMessageId());
 							node.getComms().sendNodeMessage(desc, message);
 						}
 					}
 					if(!hit) {
 						node.getLocalClusters().get(scommand.topologyName).openAll();
+						TopologySubmittedMessage r = new TopologySubmittedMessage(scommand.topologyName);
+						r.setMessageId(scommand.getMessageId());
+						node.getComms().sendServiceMessage(r);
 					}
 				}
 				break;
 			case GET_NODE_CONTEXT:
-				node.getComms().sendServiceMessage(new NodeContextMessage(node.getNodeProcessor().getContext()));
+				{
+				NodeContextMessage r = new NodeContextMessage(node.getNodeProcessor().getContext());
+				r.setMessageId(command.getMessageId());
+				node.getComms().sendServiceMessage(r);
+				}
 				break;
+			case GET_METRICS:
+				GetMetricsMessage gm = (GetMetricsMessage) command;
+				if((Boolean)node.getConf().get(Config.DRAGON_METRICS_ENABLED)){
+					ComponentMetricMap cm = node.getMetrics(gm.topologyId);
+					if(cm!=null){
+						MetricsMessage r = new MetricsMessage(cm);
+						r.setMessageId(command.getMessageId());
+						node.getComms().sendServiceMessage(r);
+					} else {
+						log.debug("cm is null");
+						MetricsErrorMessage r = new MetricsErrorMessage("unknown topology or there are no samples available yet");
+						r.setMessageId(command.getMessageId());
+						node.getComms().sendServiceMessage(r);
+					}
+				} else {
+					log.debug("metrics are not enabled");
+					MetricsErrorMessage r = new MetricsErrorMessage("metrics are not enabled in dragon.properties for this node");
+					r.setMessageId(command.getMessageId());
+					node.getComms().sendServiceMessage(r);
+				}
 			default:
 			}
 		}

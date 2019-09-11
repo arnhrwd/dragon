@@ -160,6 +160,12 @@ public class Run {
 		Option portOption = new Option("p","port",true,"port number of existing node");
 		portOption.setRequired(false);
 		options.addOption(portOption);
+		Option metricsOption = new Option("m","metrics",false,"obtain metrics from existing node");
+		metricsOption.setRequired(false);
+		options.addOption(metricsOption);
+		Option topologyOption = new Option("t","topology",true,"name of the topology");
+		topologyOption.setRequired(false);
+		options.addOption(topologyOption);
 		
 		CommandLineParser parser = new DefaultParser();
         HelpFormatter formatter = new HelpFormatter();
@@ -167,7 +173,20 @@ public class Run {
         
         try {
             cmd = parser.parse(options, args);
-            if(!cmd.hasOption("daemon")){
+            if(cmd.hasOption("metrics")){
+            	DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
+        				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_SERVICE_PORT));
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("port")) {
+    				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
+    			}
+    			if(!cmd.hasOption("topology")){
+    				throw new ParseException("must provide a topology name with -t option");
+    			}
+    			DragonSubmitter.getMetrics(conf,cmd.getOptionValue("topology"));
+            } else if(!cmd.hasOption("daemon")){
             	DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
         				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_SERVICE_PORT));
     			if(cmd.hasOption("host")) {

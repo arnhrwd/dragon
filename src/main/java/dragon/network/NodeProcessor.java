@@ -95,23 +95,31 @@ public class NodeProcessor extends Thread {
 			case PREPARE_TOPOLOGY:
 				PrepareTopologyMessage pt = (PrepareTopologyMessage) message;
 				if(!node.storeJarFile(pt.topologyName,pt.jarFile)) {
-					node.getComms().sendNodeMessage(pt.getSender(), new PrepareFailedMessage(pt.topologyName,"could not store the topology jar"));
+					PrepareFailedMessage r = new PrepareFailedMessage(pt.topologyName,"could not store the topology jar");
+					r.setMessageId(message.getMessageId());
+					node.getComms().sendNodeMessage(pt.getSender(), r);
 					continue;
-				}
-				if(!node.loadJarFile(pt.topologyName)) {
-					node.getComms().sendNodeMessage(pt.getSender(), new PrepareFailedMessage(pt.topologyName,"could not load the topology jar"));
+				} else if(!node.loadJarFile(pt.topologyName)) {
+					PrepareFailedMessage r = new PrepareFailedMessage(pt.topologyName,"could not load the topology jar");
+					r.setMessageId(message.getMessageId());
+					node.getComms().sendNodeMessage(pt.getSender(), r);
 					continue;
+				} else {
+					LocalCluster cluster=new LocalCluster(node);
+					cluster.submitTopology(pt.topologyName, pt.conf, pt.topology, false);
+					node.getRouter().submitTopology(pt.topologyName,pt.topology);
+					node.getLocalClusters().put(pt.topologyName, cluster);
+					TopologyReadyMessage r = new TopologyReadyMessage(pt.topologyName);
+					r.setMessageId(message.getMessageId());
+					node.getComms().sendNodeMessage(pt.getSender(), r);
 				}
-				LocalCluster cluster=new LocalCluster(node);
-				cluster.submitTopology(pt.topologyName, pt.conf, pt.topology, false);
-				node.getRouter().submitTopology(pt.topologyName,pt.topology);
-				node.getLocalClusters().put(pt.topologyName, cluster);
-				node.getComms().sendNodeMessage(pt.getSender(), new TopologyReadyMessage(pt.topologyName));
 				break;
 			case TOPOLOGY_READY:
 				TopologyReadyMessage tr = (TopologyReadyMessage) message;
 				if(node.checkStartupTopology(tr.getSender(),tr.topologyId)) {
-					node.getComms().sendServiceMessage(new TopologySubmittedMessage(tr.topologyId));
+					TopologySubmittedMessage r = new TopologySubmittedMessage(tr.topologyId);
+					r.setMessageId(tr.getMessageId());
+					node.getComms().sendServiceMessage(r);
 				}
 				break;
 			case START_TOPOLOGY:
@@ -121,7 +129,9 @@ public class NodeProcessor extends Thread {
 			case PREPARE_FAILED:
 				PrepareFailedMessage pf = (PrepareFailedMessage) message;
 				node.removeStartupTopology(pf.topologyId);
-				node.getComms().sendServiceMessage(new RunFailedMessage(pf.topologyId,pf.error));
+				RunFailedMessage r = new RunFailedMessage(pf.topologyId,pf.error);
+				r.setMessageId(pf.getMessageId());
+				node.getComms().sendServiceMessage(r);
 			}
 		}
 	}
