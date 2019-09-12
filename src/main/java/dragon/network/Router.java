@@ -12,7 +12,7 @@ import org.apache.commons.logging.LogFactory;
 import dragon.Config;
 import dragon.NetworkTask;
 import dragon.topology.DragonTopology;
-import dragon.utils.CircularBuffer;
+import dragon.utils.NetworkTaskBuffer;
 
 public class Router {
 	private static Log log = LogFactory.getLog(Router.class);
@@ -23,7 +23,7 @@ public class Router {
 	private TopologyQueueMap outputQueues;
 	private boolean shouldTerminate=false;
 	private Config conf;
-	private LinkedBlockingQueue<CircularBuffer<NetworkTask>> outputsPending;
+	private LinkedBlockingQueue<NetworkTaskBuffer> outputsPending;
 	public Router(Node node, Config conf) {
 		this.node=node;
 		this.conf=conf;
@@ -31,7 +31,7 @@ public class Router {
 		outputQueues = new TopologyQueueMap((Integer)conf.get(Config.DRAGON_ROUTER_OUTPUT_BUFFER_SIZE));
 		outgoingExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_ROUTER_OUTPUT_THREADS));
 		incommingExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_ROUTER_INPUT_THREADS));
-		outputsPending=new LinkedBlockingQueue<CircularBuffer<NetworkTask>>();
+		outputsPending=new LinkedBlockingQueue<NetworkTaskBuffer>();
 		runExecutors();
 	}
 	
@@ -41,7 +41,7 @@ public class Router {
 				public void run() {
 					while(!shouldTerminate) {
 						try {
-							CircularBuffer<NetworkTask> buffer = outputsPending.take();
+							NetworkTaskBuffer buffer = outputsPending.take();
 							synchronized(buffer.lock){
 								NetworkTask task = buffer.poll();
 								if(task!=null){

@@ -32,7 +32,7 @@ import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
-import dragon.utils.CircularBuffer;
+import dragon.utils.NetworkTaskBuffer;
 
 
 public class LocalCluster {
@@ -49,7 +49,7 @@ public class LocalCluster {
 	private Config conf;
 	private DragonTopology dragonTopology;
 	
-	private LinkedBlockingQueue<CircularBuffer<NetworkTask>> outputsPending;
+	private LinkedBlockingQueue<NetworkTaskBuffer> outputsPending;
 	private LinkedBlockingQueue<Component> componentsPending;
 
 	private Thread tickThread;
@@ -108,7 +108,7 @@ public class LocalCluster {
 		this.topologyName=topologyName;
 		this.conf=conf;
 		this.dragonTopology=dragonTopology;
-		outputsPending = new LinkedBlockingQueue<CircularBuffer<NetworkTask>>();
+		outputsPending = new LinkedBlockingQueue<NetworkTaskBuffer>();
 		componentsPending = new LinkedBlockingQueue<Component>();
 		networkExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS));
 		
@@ -406,7 +406,7 @@ public class LocalCluster {
 					HashSet<Integer> doneTaskIds=new HashSet<Integer>();
 					while(!shouldTerminate) {
 						try {
-							CircularBuffer<NetworkTask> queue = outputsPending.take();
+							NetworkTaskBuffer queue = outputsPending.take();
 							//log.debug("network task pending "+outputsPending.size());
 							synchronized(queue.lock) {
 								//log.debug("peeking on queue");
@@ -453,7 +453,7 @@ public class LocalCluster {
 		}
 	}
 	
-	public void outputPending(final CircularBuffer<NetworkTask> queue) {
+	public void outputPending(final NetworkTaskBuffer queue) {
 		try {
 			outputsPending.put(queue);
 			//log.debug("outputPending pending "+outputsPending.size());

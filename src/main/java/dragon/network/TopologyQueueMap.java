@@ -3,7 +3,8 @@ package dragon.network;
 import java.util.HashMap;
 
 import dragon.NetworkTask;
-import dragon.utils.CircularBuffer;
+import dragon.utils.NetworkTaskBuffer;
+
 
 public class TopologyQueueMap extends HashMap<String,StreamQueueMap> {
 
@@ -23,7 +24,7 @@ public class TopologyQueueMap extends HashMap<String,StreamQueueMap> {
 		streamQueueMap.put(task);
 	}
 	
-	public CircularBuffer<NetworkTask> getBuffer(NetworkTask task) {
+	public NetworkTaskBuffer getBuffer(NetworkTask task) {
 		return get(task.getTopologyId()).getBuffer(task);
 	}
 

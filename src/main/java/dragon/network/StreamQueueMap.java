@@ -3,9 +3,9 @@ package dragon.network;
 import java.util.HashMap;
 
 import dragon.NetworkTask;
-import dragon.utils.CircularBuffer;
+import dragon.utils.NetworkTaskBuffer;
 
-public class StreamQueueMap extends HashMap<String,CircularBuffer<NetworkTask>>{
+public class StreamQueueMap extends HashMap<String,NetworkTaskBuffer>{
 
 	/**
 	 * 
@@ -20,17 +20,17 @@ public class StreamQueueMap extends HashMap<String,CircularBuffer<NetworkTask>>{
 	
 	public void put(NetworkTask task) throws InterruptedException {
 		String streamId = task.getTuple().getSourceStreamId();
-		CircularBuffer<NetworkTask> buffer=get(streamId);
+		NetworkTaskBuffer buffer=get(streamId);
 		buffer.put(task);
 	}
 	
-	public CircularBuffer<NetworkTask> getBuffer(NetworkTask task){
+	public NetworkTaskBuffer getBuffer(NetworkTask task){
 		return get(task.getTuple().getSourceStreamId());
 	}
 
 	public void prepare(String streamId) {
 		if(!containsKey(streamId)) {
-			CircularBuffer<NetworkTask> buffer=new CircularBuffer<NetworkTask>(bufferSize);
+			NetworkTaskBuffer buffer=new NetworkTaskBuffer(bufferSize);
 			put(streamId,buffer);
 		}
 	}

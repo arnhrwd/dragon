@@ -17,11 +17,12 @@ import dragon.tuple.Fields;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 import dragon.utils.CircularBuffer;
+import dragon.utils.NetworkTaskBuffer;
 
 
 public class Collector {
 	private Log log = LogFactory.getLog(Collector.class);
-	private CircularBuffer<NetworkTask> outputQueue;
+	private NetworkTaskBuffer outputQueue;
 	private LocalCluster localCluster;
 	private Component component;
 	
@@ -30,7 +31,7 @@ public class Collector {
 	public Collector(Component component,LocalCluster localCluster,int bufSize) {
 		this.component = component;
 		this.localCluster=localCluster;
-		outputQueue=new CircularBuffer<NetworkTask>(bufSize);
+		outputQueue=new NetworkTaskBuffer(bufSize);
 	}
 	
 	public CircularBuffer<NetworkTask> getQueue(){
