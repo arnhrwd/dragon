@@ -99,3 +99,10 @@ Either:
 or set `dragon.network.remote.host = REMOTE_HOST` and run:
 
     java -jar dragon.jar -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
+    
+# Porting from a Apache Storm Project
+
+The Dragon API is loosely based on Version 0.10 of Apache Storm. E.g. package names starting with `backtype.storm` can be replaced with `dragon`. There are some changes:
+
+- `implements CustomStreamGrouping` becomes `extends AbstractGrouping`
+

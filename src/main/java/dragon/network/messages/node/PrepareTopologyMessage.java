@@ -11,13 +11,13 @@ public class PrepareTopologyMessage extends NodeMessage {
 	public DragonTopology topology;
 	public String topologyName;
 	public Config conf;
-	public byte[] jarFile;
-	public PrepareTopologyMessage(String topologyName, Config conf, DragonTopology dragonTopology, byte[] topologyJar) {
+
+	public PrepareTopologyMessage(String topologyName, Config conf, DragonTopology dragonTopology) {
 		super(NodeMessage.NodeMessageType.PREPARE_TOPOLOGY);
 		this.topologyName=topologyName;
 		this.topology=dragonTopology;
 		this.conf=conf;
-		this.jarFile=topologyJar;
+		
 	}
 
 }

@@ -11,7 +11,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import dragon.grouping.CustomStreamGrouping;
+import dragon.grouping.AbstractGrouping;
 import dragon.network.Node;
 import dragon.spout.SpoutOutputCollector;
 import dragon.task.InputCollector;
@@ -230,8 +230,8 @@ public class LocalCluster {
 					taskIds.add(i);
 				}
 				for(String streamId : streams.keySet()) {
-					HashSet<CustomStreamGrouping> groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
-					for(CustomStreamGrouping grouping : groupings) {
+					GroupingsSet groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
+					for(AbstractGrouping grouping : groupings) {
 						grouping.prepare(null, null, taskIds);
 					}
 				}
@@ -258,7 +258,7 @@ public class LocalCluster {
 				}
 				for(String streamId : streams.keySet()) {
 					GroupingsSet groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
-					for(CustomStreamGrouping grouping : groupings) {
+					for(AbstractGrouping grouping : groupings) {
 						grouping.prepare(null, null, taskIds);
 					}
 				}

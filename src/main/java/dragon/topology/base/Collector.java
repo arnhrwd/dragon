@@ -10,19 +10,22 @@ import org.apache.commons.logging.LogFactory;
 import dragon.Constants;
 import dragon.LocalCluster;
 import dragon.NetworkTask;
-import dragon.grouping.CustomStreamGrouping;
+import dragon.grouping.AbstractGrouping;
+import dragon.topology.DestComponentMap;
 import dragon.topology.GroupingsSet;
 import dragon.topology.StreamMap;
 import dragon.tuple.Fields;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
-import dragon.utils.CircularBuffer;
+import dragon.utils.ComponentTaskBuffer;
 import dragon.utils.NetworkTaskBuffer;
+
 
 
 public class Collector {
 	private Log log = LogFactory.getLog(Collector.class);
-	private NetworkTaskBuffer outputQueue;
+	//private NetworkTaskBuffer outputQueue;
+	private ComponentTaskBuffer outputQueues;
 	private LocalCluster localCluster;
 	private Component component;
 	
@@ -31,11 +34,23 @@ public class Collector {
 	public Collector(Component component,LocalCluster localCluster,int bufSize) {
 		this.component = component;
 		this.localCluster=localCluster;
-		outputQueue=new NetworkTaskBuffer(bufSize);
+		outputQueues=new ComponentTaskBuffer(bufSize);
+		DestComponentMap destComponentMap = localCluster.getTopology().getDestComponentMap(component.getComponentId());
+		if(destComponentMap!=null) {
+			for(String destId : destComponentMap.keySet()) {
+				for(String streamId : destComponentMap.get(destId).keySet() ) {
+					outputQueues.create(destId, streamId);
+				}
+			}
+		}
 	}
 	
-	public CircularBuffer<NetworkTask> getQueue(){
-		return outputQueue;
+	public NetworkTaskBuffer getQueue(String componentId, String streamId){
+		return outputQueues.get(componentId).get(streamId);
+	}
+	
+	public ComponentTaskBuffer getComponentTaskBuffer() {
+		return outputQueues;
 	}
 	
 	@Deprecated
@@ -74,7 +89,7 @@ public class Collector {
 			StreamMap streamMap = localCluster.getTopology().getTopology().get(component.getComponentId()).get(componentId);
 			GroupingsSet groupingsSet = streamMap.get(streamId);
 			if(groupingsSet!=null) {
-				for(CustomStreamGrouping grouping : groupingsSet) {
+				for(AbstractGrouping grouping : groupingsSet) {
 					List<Integer> taskIds = grouping.chooseTasks(0, values);
 					receivingTaskIds.addAll(taskIds);
 					component.incTransferred(receivingTaskIds.size()); // for metrics
@@ -96,8 +111,8 @@ public class Collector {
 					localTaskIds.removeAll(remoteTaskIds);
 					if(!localTaskIds.isEmpty()){
 						try {
-							outputQueue.put(new NetworkTask(tuple,localTaskIds,componentId,localCluster.getTopologyId()));
-							localCluster.outputPending(this.outputQueue);
+							getQueue(componentId,streamId).put(new NetworkTask(tuple,localTaskIds,componentId,localCluster.getTopologyId()));
+							localCluster.outputPending(getQueue(componentId,streamId));
 						} catch (InterruptedException e) {
 							log.error("failed to emit tuple: "+e.toString());
 						}
@@ -137,8 +152,8 @@ public class Collector {
 			List<Integer> taskIds = new ArrayList<Integer>();
 			receivingTaskIds.add(taskId);
 			try {
-				outputQueue.put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId,localCluster.getTopologyId()));
-				localCluster.outputPending(this.outputQueue);
+				getQueue(componentId,streamId).put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId,localCluster.getTopologyId()));
+				localCluster.outputPending(getQueue(componentId,streamId));
 			} catch (InterruptedException e) {
 				log.error("failed to emit tuple: "+e.toString());
 			}

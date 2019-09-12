@@ -14,7 +14,7 @@ public class DragonTopology implements Serializable {
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = -8549081242975660772L;
+	private static final long serialVersionUID = 5759609228559061827L;
 	private static Log log = LogFactory.getLog(DragonTopology.class);
 	private HashMap<String,SpoutDeclarer> spoutMap;
 	private HashMap<String,BoltDeclarer> boltMap;

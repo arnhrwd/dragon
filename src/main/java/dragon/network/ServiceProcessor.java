@@ -12,8 +12,11 @@ import dragon.network.messages.service.TopologyExistsMessage;
 import dragon.network.messages.service.TopologySubmittedMessage;
 import dragon.network.messages.service.RunFailedMessage;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.node.PrepareJarFileMessage;
 import dragon.network.messages.node.PrepareTopologyMessage;
 import dragon.network.messages.service.GetMetricsMessage;
+import dragon.network.messages.service.JarFileMessage;
+import dragon.network.messages.service.JarFileStoredMessage;
 import dragon.network.messages.service.MetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
@@ -33,6 +36,32 @@ public class ServiceProcessor extends Thread {
 		while(!shouldTerminate){
 			ServiceMessage command = node.getComms().receiveServiceMessage();
 			switch(command.getType()){
+			case JARFILE:
+				JarFileMessage jf = (JarFileMessage) command;
+				if(node.getLocalClusters().containsKey(jf.topologyName)){
+					TopologyExistsMessage r = new TopologyExistsMessage(jf.topologyName);
+					r.setMessageId(jf.getMessageId());
+					node.getComms().sendServiceMessage(r);
+				} else {
+					log.debug("storing topology ["+jf.topologyName+"]");
+					if(!node.storeJarFile(jf.topologyName,jf.topologyJar)) {
+						RunFailedMessage r = new RunFailedMessage(jf.topologyName,"could not store the topology jar");
+						r.setMessageId(jf.getMessageId());
+						node.getComms().sendServiceMessage(r);
+						continue;
+					}
+					if(!node.loadJarFile(jf.topologyName)) {
+						RunFailedMessage r = new RunFailedMessage(jf.topologyName,"could not load the topology jar");
+						r.setMessageId(jf.getMessageId());
+						node.getComms().sendServiceMessage(r);				
+						continue;
+					}
+					
+					JarFileStoredMessage r = new JarFileStoredMessage(jf.topologyName);
+					r.setMessageId(jf.getMessageId());
+					node.getComms().sendServiceMessage(r);
+				}
+				break;
 			case RUN_TOPOLOGY:
 				RunTopologyMessage scommand = (RunTopologyMessage) command;
 				if(node.getLocalClusters().containsKey(scommand.topologyName)){
@@ -40,19 +69,7 @@ public class ServiceProcessor extends Thread {
 					r.setMessageId(scommand.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				} else {
-					log.debug("storing topology ["+scommand.topologyName+"]");
-					if(!node.storeJarFile(scommand.topologyName,scommand.topologyJar)) {
-						RunFailedMessage r = new RunFailedMessage(scommand.topologyName,"could not store the topology jar");
-						r.setMessageId(scommand.getMessageId());
-						node.getComms().sendServiceMessage(r);
-						continue;
-					}
-					if(!node.loadJarFile(scommand.topologyName)) {
-						RunFailedMessage r = new RunFailedMessage(scommand.topologyName,"could not load the topology jar");
-						r.setMessageId(scommand.getMessageId());
-						node.getComms().sendServiceMessage(r);				
-						continue;
-					}
+					
 					LocalCluster cluster=new LocalCluster(node);
 					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology, false);
 					node.getRouter().submitTopology(scommand.topologyName, scommand.dragonTopology);
@@ -62,7 +79,9 @@ public class ServiceProcessor extends Thread {
 					for(NodeDescriptor desc : scommand.dragonTopology.getReverseEmbedding().keySet()) {
 						if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
 							hit=true;
-							NodeMessage message = new PrepareTopologyMessage(scommand.topologyName,scommand.conf,scommand.dragonTopology,scommand.topologyJar);
+							NodeMessage preparejarfile = new PrepareJarFileMessage(scommand.topologyName,node.readJarFile(scommand.topologyName));
+							node.getComms().sendNodeMessage(desc, preparejarfile);
+							NodeMessage message = new PrepareTopologyMessage(scommand.topologyName,scommand.conf,scommand.dragonTopology);
 							message.setMessageId(command.getMessageId());
 							node.getComms().sendNodeMessage(desc, message);
 						}

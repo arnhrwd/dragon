@@ -9,7 +9,7 @@ public class Fields implements Serializable, Cloneable {
 	 * 
 	 */
 	private static final long serialVersionUID = -134149710944581963L;
-	private Object[] values;
+	private transient Object[] values;
 	private HashMap<String,Integer> fieldMap;
 	private String[] fieldNames;
 	

@@ -12,13 +12,11 @@ public class RunTopologyMessage extends ServiceMessage {
 	public DragonTopology dragonTopology;
 	public String topologyName;
 	public Config conf;
-	public byte[] topologyJar;
 	
-	public RunTopologyMessage(String topologyName, Config conf, DragonTopology dragonTopology, byte[] topologyJar) {
+	public RunTopologyMessage(String topologyName, Config conf, DragonTopology dragonTopology) {
 		super(ServiceMessage.ServiceMessageType.RUN_TOPOLOGY);
 		this.dragonTopology = dragonTopology;
 		this.conf=conf;
-		this.topologyJar=topologyJar;
 		this.topologyName=topologyName;
 	}
 	

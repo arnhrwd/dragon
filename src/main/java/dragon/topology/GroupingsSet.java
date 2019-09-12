@@ -2,9 +2,9 @@ package dragon.topology;
 
 import java.util.HashSet;
 
-import dragon.grouping.CustomStreamGrouping;
+import dragon.grouping.AbstractGrouping;
 
-public class GroupingsSet extends HashSet<CustomStreamGrouping>{
+public class GroupingsSet extends HashSet<AbstractGrouping>{
 
 	/**
 	 * 

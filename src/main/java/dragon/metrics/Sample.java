@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 import dragon.topology.base.Bolt;
 import dragon.topology.base.Spout;
+import dragon.utils.ComponentTaskBuffer;
 import dragon.utils.Time;
 
 public class Sample implements Serializable {
@@ -21,7 +22,13 @@ public class Sample implements Serializable {
 	public Sample(Bolt bolt){
 		timestamp = Time.currentTimeMillis();
 		inputQueueSize = bolt.getInputCollector().getQueue().getNumElements();
-		outputQueueSize = bolt.getOutputCollector().getQueue().getNumElements();
+		ComponentTaskBuffer ctb = bolt.getOutputCollector().getComponentTaskBuffer();
+		outputQueueSize=0;
+		for(String componentId:ctb.keySet()) {
+			for(String streamId:ctb.get(componentId).keySet()) {
+				outputQueueSize += ctb.get(componentId).get(streamId).getNumElements();
+			}
+		}
 		processed = bolt.getProcessed();
 		emitted = bolt.getEmitted();
 		transferred = bolt.getTransferred();
@@ -31,7 +38,13 @@ public class Sample implements Serializable {
 	public Sample(Spout spout){
 		timestamp = Time.currentTimeMillis();
 		inputQueueSize=0;
-		outputQueueSize = spout.getOutputCollector().getQueue().getNumElements();
+		ComponentTaskBuffer ctb = spout.getOutputCollector().getComponentTaskBuffer();
+		outputQueueSize=0;
+		for(String componentId:ctb.keySet()) {
+			for(String streamId:ctb.get(componentId).keySet()) {
+				outputQueueSize += ctb.get(componentId).get(streamId).getNumElements();
+			}
+		}
 		processed = 0;
 		emitted = spout.getEmitted();
 		transferred = spout.getTransferred();

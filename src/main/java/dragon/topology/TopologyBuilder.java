@@ -6,6 +6,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.topology.base.Bolt;
+import dragon.topology.base.IRichBolt;
+import dragon.topology.base.IRichSpout;
 import dragon.topology.base.Spout;
 
 public class TopologyBuilder {
@@ -17,12 +19,20 @@ public class TopologyBuilder {
 		spoutMap=new HashMap<String,SpoutDeclarer>();
 		boltMap=new HashMap<String,BoltDeclarer>();
 	}
+	
+//	public SpoutDeclarer setSpout(String spoutName, IRichSpout spout, int parallelismHint) {
+//		return setSpout(spoutName,(Spout)spout,parallelismHint);
+//	}
 
 	public SpoutDeclarer setSpout(String spoutName, Spout spout, int parallelismHint) {
 		SpoutDeclarer spoutDeclarer = new SpoutDeclarer(spoutName,spout,parallelismHint);
 		spoutMap.put(spoutName,spoutDeclarer);
 		return spoutDeclarer;
 	}
+	
+//	public BoltDeclarer setBolt(String boltName, IRichBolt bolt, int parallelismHint) {
+//		return setBolt(boltName,(Bolt)bolt,parallelismHint);
+//	}
 	
 	public BoltDeclarer setBolt(String boltName, Bolt bolt, int parallelismHint) {
 		BoltDeclarer boltDeclarer = new BoltDeclarer(boltName,bolt,parallelismHint);

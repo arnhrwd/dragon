@@ -3,6 +3,8 @@ package dragon.examples;
 import dragon.Config;
 import dragon.LocalCluster;
 import dragon.topology.TopologyBuilder;
+import dragon.topology.base.Bolt;
+import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
 
 
@@ -12,14 +14,14 @@ public class TopologyFieldsGroupingTest {
 		
 		TopologyBuilder topologyBuilder = new TopologyBuilder();
 		
-		topologyBuilder.setSpout("numberSpout", new NumberSpout(), 1).setNumTasks(1);
+		topologyBuilder.setSpout("numberSpout", (Spout)new NumberSpout(), 1).setNumTasks(1);
 		int uniqueNumberCount = 100;
-		topologyBuilder.setBolt("updateBolt", new UpdateBolt(uniqueNumberCount), 100)
+		topologyBuilder.setBolt("updateBolt", (Bolt)new UpdateBolt(uniqueNumberCount), 100)
 			.shuffleGrouping("numberSpout");
 		//fieldBoltParallelism should be a factor of uniqueNumberCount
 		int fieldBoltParallelism = 10;
 		int numbersPerTask = uniqueNumberCount/fieldBoltParallelism;
-		topologyBuilder.setBolt("fieldBolt", new FieldsBolt(numbersPerTask), fieldBoltParallelism)
+		topologyBuilder.setBolt("fieldBolt", (Bolt)new FieldsBolt(numbersPerTask), fieldBoltParallelism)
 				.fieldsGrouping("updateBolt","numbers", new Fields("number"));
 
 

@@ -13,6 +13,7 @@ import dragon.network.messages.node.ContextUpdateMessage;
 import dragon.network.messages.node.JoinCompleteMessage;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.PrepareFailedMessage;
+import dragon.network.messages.node.PrepareJarFileMessage;
 import dragon.network.messages.node.PrepareTopologyMessage;
 import dragon.network.messages.node.StartTopologyMessage;
 import dragon.network.messages.node.TopologyReadyMessage;
@@ -92,19 +93,22 @@ public class NodeProcessor extends Thread {
 				}
 				if(!hit) context.putAll(cu.context);
 				break;
+			case PREPARE_JARFILE:
+				PrepareJarFileMessage pjf = (PrepareJarFileMessage) message;
+				if(!node.storeJarFile(pjf.topologyName,pjf.topologyJar)) {
+//					PrepareFailedMessage r = new PrepareFailedMessage(pjf.topologyName,"could not store the topology jar");
+//					r.setMessageId(message.getMessageId());
+//					node.getComms().sendNodeMessage(pjf.getSender(), r);
+					continue;
+				} else if(!node.loadJarFile(pjf.topologyName)) {
+//					PrepareFailedMessage r = new PrepareFailedMessage(pjf.topologyName,"could not load the topology jar");
+//					r.setMessageId(message.getMessageId());
+//					node.getComms().sendNodeMessage(pjf.getSender(), r);
+					continue;
+				}
 			case PREPARE_TOPOLOGY:
 				PrepareTopologyMessage pt = (PrepareTopologyMessage) message;
-				if(!node.storeJarFile(pt.topologyName,pt.jarFile)) {
-					PrepareFailedMessage r = new PrepareFailedMessage(pt.topologyName,"could not store the topology jar");
-					r.setMessageId(message.getMessageId());
-					node.getComms().sendNodeMessage(pt.getSender(), r);
-					continue;
-				} else if(!node.loadJarFile(pt.topologyName)) {
-					PrepareFailedMessage r = new PrepareFailedMessage(pt.topologyName,"could not load the topology jar");
-					r.setMessageId(message.getMessageId());
-					node.getComms().sendNodeMessage(pt.getSender(), r);
-					continue;
-				} else {
+				{
 					LocalCluster cluster=new LocalCluster(node);
 					cluster.submitTopology(pt.topologyName, pt.conf, pt.topology, false);
 					node.getRouter().submitTopology(pt.topologyName,pt.topology);

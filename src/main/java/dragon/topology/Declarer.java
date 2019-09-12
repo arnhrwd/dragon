@@ -3,6 +3,7 @@ package dragon.topology;
 import java.io.Serializable;
 
 public class Declarer implements Serializable {
+	
 	/**
 	 * 
 	 */

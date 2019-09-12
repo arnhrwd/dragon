@@ -7,6 +7,7 @@ import org.apache.commons.logging.LogFactory;
 import dragon.topology.base.Spout;
 
 public class SpoutDeclarer extends Declarer {
+	
 	/**
 	 * 
 	 */

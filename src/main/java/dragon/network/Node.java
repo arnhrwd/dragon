@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -14,6 +15,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
+import dragon.DragonSubmitter;
 import dragon.LocalCluster;
 import dragon.Run;
 import dragon.metrics.ComponentMetricMap;
@@ -134,6 +136,19 @@ public class Node {
 		return false;
 	}
 	
+	public byte[] readJarFile(String topologyName) {
+		Path pathname = Paths.get(conf.getJarDir()+"/"+comms.getMyNodeDescriptor(),topologyName);
+		
+		File file = new File(pathname.toString());
+		try {
+			return Files.readAllBytes(file.toPath());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+		
+	}
 	public void createStartupTopology(String topologyId) {
 		startupTopology.put(topologyId,new HashSet<NodeDescriptor>());
 		startupTopology.get(topologyId).add(comms.getMyNodeDescriptor());

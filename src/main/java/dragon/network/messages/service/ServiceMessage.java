@@ -18,7 +18,9 @@ public class ServiceMessage extends Message {
 		RUN_FAILED,
 		GET_METRICS,
 		METRICS,
-		METRICS_ERROR
+		METRICS_ERROR,
+		JARFILE,
+		JARFILE_STORED
 	}
 	
 	private ServiceMessageType type;

@@ -12,6 +12,7 @@ import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.GetMetricsMessage;
 import dragon.network.messages.service.GetNodeContextMessage;
+import dragon.network.messages.service.JarFileMessage;
 import dragon.network.messages.service.MetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
@@ -62,8 +63,20 @@ public class DragonSubmitter {
 		topology.embedTopology(new RoundRobinEmbedding(), context);
 		
 		
+		log.debug("sending jar file to ["+node+"]");
+		comms.sendServiceMessage(new JarFileMessage(string,topologyJar));
+		message = comms.receiveServiceMessage();
+		switch(message.getType()) {
+		case TOPOLOGY_EXISTS:
+			log.error("topology ["+string+"] already exists");
+			break;
+		case RUN_FAILED:
+			log.error("run failed");
+			break;
+		}
+		
 		log.debug("submitting topology to ["+node+"]");
-		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology,topologyJar));
+		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
 		message = comms.receiveServiceMessage();
 		switch(message.getType()){
 		case TOPOLOGY_EXISTS:

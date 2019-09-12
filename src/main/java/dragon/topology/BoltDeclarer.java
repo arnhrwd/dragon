@@ -7,8 +7,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.Constants;
+import dragon.grouping.AbstractGrouping;
 import dragon.grouping.AllGrouping;
-import dragon.grouping.CustomStreamGrouping;
 import dragon.grouping.DirectGrouping;
 import dragon.grouping.FieldGrouping;
 import dragon.grouping.ShuffleGrouping;
@@ -17,6 +17,7 @@ import dragon.topology.base.Bolt;
 import dragon.tuple.Fields;
 
 public class BoltDeclarer extends Declarer {
+	
 	/**
 	 * 
 	 */
@@ -48,11 +49,11 @@ public class BoltDeclarer extends Declarer {
 		this.bolt=bolt;
 	}
 	
-	private void put(String componentId,CustomStreamGrouping grouping) {
+	private void put(String componentId,AbstractGrouping grouping) {
 		put(componentId,Constants.DEFAULT_STREAM,grouping);
 	}
 	
-	private void put(String componentId,String streamId,CustomStreamGrouping grouping) {
+	private void put(String componentId,String streamId,AbstractGrouping grouping) {
 		if(!groupings.containsKey(componentId)) {
 			groupings.put(componentId, new StreamMap());
 		}
@@ -60,7 +61,7 @@ public class BoltDeclarer extends Declarer {
 		if(!map.containsKey(streamId)) {
 			map.put(streamId, new GroupingsSet());
 		}
-		HashSet<CustomStreamGrouping> hs = map.get(streamId);
+		GroupingsSet hs = map.get(streamId);
 		hs.add(grouping);
 	}
 	
@@ -94,12 +95,12 @@ public class BoltDeclarer extends Declarer {
 		return this;
 	}
 	
-	public BoltDeclarer customGrouping(String componentId, CustomStreamGrouping customStreamGrouping) {
+	public BoltDeclarer customGrouping(String componentId, AbstractGrouping customStreamGrouping) {
 		put(componentId,customStreamGrouping);
 		return this;
 	}
 	
-	public BoltDeclarer customGrouping(String componentId, String streamId, CustomStreamGrouping customStreamGrouping) {
+	public BoltDeclarer customGrouping(String componentId, String streamId, AbstractGrouping customStreamGrouping) {
 		put(componentId,streamId,customStreamGrouping);
 		return this;
 	}
