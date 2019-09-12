@@ -106,6 +106,7 @@ public class NodeProcessor extends Thread {
 //					node.getComms().sendNodeMessage(pjf.getSender(), r);
 					continue;
 				}
+				break;
 			case PREPARE_TOPOLOGY:
 				PrepareTopologyMessage pt = (PrepareTopologyMessage) message;
 				{
