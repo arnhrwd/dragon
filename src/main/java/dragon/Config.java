@@ -4,12 +4,15 @@ package dragon;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import dragon.network.NodeDescriptor;
 
 public class Config extends HashMap<String, Object>{
 	/**
@@ -46,6 +49,7 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_METRICS_SAMPLE_PERIOD_MS="dragon.metrics.sample.period.ms";
 	public static final String DRAGON_METRICS_ENABLED="dragon.metrics.enabled";
 	public static final String DRAGON_METRICS_SAMPLE_HISTORY="dragon.metrics.sample.history";
+	public static final String DRAGON_NETWORK_REMOTE_HOSTS="dragon.network.remote.hosts";
 	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
@@ -134,6 +138,7 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_METRICS_ENABLED,true);
 		put(DRAGON_METRICS_SAMPLE_PERIOD_MS,60*1000);
 		put(DRAGON_METRICS_SAMPLE_HISTORY,1);
+		put(DRAGON_NETWORK_REMOTE_HOSTS,"");
 	}
 
 	public void setNumWorkers(int numWorkers) {
@@ -154,5 +159,51 @@ public class Config extends HashMap<String, Object>{
 	
 	public String getJarDir() {
 		return get(Config.DRAGON_BASE_DIR)+"/"+get(Config.DRAGON_JAR_DIR);
+	}
+	
+	public ArrayList<NodeDescriptor> getServiceHosts(){
+		ArrayList<NodeDescriptor> nodes = new ArrayList<NodeDescriptor>();
+		String[] hosts = ((String)get(DRAGON_NETWORK_REMOTE_HOSTS)).split(",");
+		for(int i=0;i<hosts.length;i++) {
+			String[] parts = hosts[i].split(":");
+			if(parts.length==1) {
+				try {
+					nodes.add(new NodeDescriptor(parts[0],(int)get(DRAGON_NETWORK_REMOTE_SERVICE_PORT)));
+				} catch (UnknownHostException e) {
+					log.error(parts[0] + " is not found");
+				}
+			} else if(parts.length>=2) {
+				try {
+					nodes.add(new NodeDescriptor(parts[0],Integer.parseInt(parts[1])));
+				} catch (UnknownHostException e) {
+					log.error(parts[0] + " is not found");
+				}
+			}
+			
+		}
+		return nodes;
+	}
+	
+	public ArrayList<NodeDescriptor> getNodeHosts(){
+		ArrayList<NodeDescriptor> nodes = new ArrayList<NodeDescriptor>();
+		String[] hosts = ((String)get(DRAGON_NETWORK_REMOTE_HOSTS)).split(",");
+		for(int i=0;i<hosts.length;i++) {
+			String[] parts = hosts[i].split(":");
+			if(parts.length==1 || parts.length==2) {
+				try {
+					nodes.add(new NodeDescriptor(parts[0],(int)get(DRAGON_NETWORK_REMOTE_NODE_PORT)));
+				} catch (UnknownHostException e) {
+					log.error(parts[0] + " is not found");
+				}
+			} else if(parts.length==3) {
+				try {
+					nodes.add(new NodeDescriptor(parts[0],Integer.parseInt(parts[2])));
+				} catch (UnknownHostException e) {
+					log.error(parts[0] + " is not found");
+				}
+			}
+			
+		}
+		return nodes;
 	}
 }

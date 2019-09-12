@@ -37,6 +37,10 @@ public class Sample implements Serializable {
 		transferred = spout.getTransferred();
 	}
 	
+	public Sample() {
+		// TODO Auto-generated constructor stub
+	}
+
 	public String toString(){
 		String out = "";
 		out+="timestamp="+timestamp+"\n";
@@ -47,4 +51,6 @@ public class Sample implements Serializable {
 		out+="transferred="+transferred+"\n";
 		return out;
 	}
+	
+	
 }
