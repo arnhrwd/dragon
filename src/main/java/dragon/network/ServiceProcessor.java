@@ -8,7 +8,8 @@ import dragon.LocalCluster;
 import dragon.metrics.ComponentMetricMap;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.TopologyExistsMessage;
+import dragon.network.messages.service.TerminateTopologyMessage;
+import dragon.network.messages.service.TopologyErrorMessage;
 import dragon.network.messages.service.TopologySubmittedMessage;
 import dragon.network.messages.service.RunFailedMessage;
 import dragon.network.messages.node.NodeMessage;
@@ -39,7 +40,7 @@ public class ServiceProcessor extends Thread {
 			case JARFILE:
 				JarFileMessage jf = (JarFileMessage) command;
 				if(node.getLocalClusters().containsKey(jf.topologyName)){
-					TopologyExistsMessage r = new TopologyExistsMessage(jf.topologyName);
+					TopologyErrorMessage r = new TopologyErrorMessage(jf.topologyName,"topology exists");
 					r.setMessageId(jf.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				} else {
@@ -65,7 +66,7 @@ public class ServiceProcessor extends Thread {
 			case RUN_TOPOLOGY:
 				RunTopologyMessage scommand = (RunTopologyMessage) command;
 				if(node.getLocalClusters().containsKey(scommand.topologyName)){
-					TopologyExistsMessage r = new TopologyExistsMessage(scommand.topologyName);
+					TopologyErrorMessage r = new TopologyErrorMessage(scommand.topologyName,"topology exists");
 					r.setMessageId(scommand.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				} else {
@@ -81,9 +82,6 @@ public class ServiceProcessor extends Thread {
 							hit=true;
 							NodeMessage preparejarfile = new PrepareJarFileMessage(scommand.topologyName,node.readJarFile(scommand.topologyName));
 							node.getComms().sendNodeMessage(desc, preparejarfile);
-							NodeMessage message = new PrepareTopologyMessage(scommand.topologyName,scommand.conf,scommand.dragonTopology);
-							message.setMessageId(command.getMessageId());
-							node.getComms().sendNodeMessage(desc, message);
 						}
 					}
 					if(!hit) {
@@ -93,7 +91,7 @@ public class ServiceProcessor extends Thread {
 						node.getComms().sendServiceMessage(r);
 					}
 				}
-				break;
+				break;	
 			case GET_NODE_CONTEXT:
 				{
 				NodeContextMessage r = new NodeContextMessage(node.getNodeProcessor().getContext());
@@ -121,6 +119,13 @@ public class ServiceProcessor extends Thread {
 					r.setMessageId(command.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				}
+				break;
+			case TERMINATE_TOPOLOGY:
+			{
+				TerminateTopologyMessage tt = (TerminateTopologyMessage) command;
+				
+			}
+			break;
 			default:
 			}
 		}

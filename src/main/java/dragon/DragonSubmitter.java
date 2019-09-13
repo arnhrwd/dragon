@@ -19,6 +19,7 @@ import dragon.network.messages.service.NodeContextMessage;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceDoneMessage;
 import dragon.network.messages.service.ServiceMessage;
+import dragon.network.messages.service.TopologyErrorMessage;
 import dragon.topology.DragonTopology;
 import dragon.topology.RoundRobinEmbedding;
 
@@ -67,8 +68,9 @@ public class DragonSubmitter {
 		comms.sendServiceMessage(new JarFileMessage(string,topologyJar));
 		message = comms.receiveServiceMessage();
 		switch(message.getType()) {
-		case TOPOLOGY_EXISTS:
-			log.error("topology ["+string+"] already exists");
+		case TOPOLOGY_ERROR:
+			TopologyErrorMessage te = (TopologyErrorMessage) message;
+			log.error("topology error ["+string+"]: "+te.error);
 			break;
 		case RUN_FAILED:
 			log.error("run failed");
@@ -79,8 +81,9 @@ public class DragonSubmitter {
 		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
 		message = comms.receiveServiceMessage();
 		switch(message.getType()){
-		case TOPOLOGY_EXISTS:
-			log.error("topology ["+string+"] already exists");
+		case TOPOLOGY_ERROR:
+			TopologyErrorMessage te = (TopologyErrorMessage) message;
+			log.error("topology error ["+string+"]: "+te.error);
 			break;
 		case TOPOLOGY_SUBMITTED:
 			log.info("topology ["+string+"] submitted");

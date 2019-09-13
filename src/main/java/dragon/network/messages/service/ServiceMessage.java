@@ -10,7 +10,7 @@ public class ServiceMessage extends Message {
 	
 	public static enum ServiceMessageType {
 		RUN_TOPOLOGY,
-		TOPOLOGY_EXISTS,
+		TOPOLOGY_ERROR,
 		TOPOLOGY_SUBMITTED,
 		GET_NODE_CONTEXT,
 		NODE_CONTEXT,
@@ -20,7 +20,8 @@ public class ServiceMessage extends Message {
 		METRICS,
 		METRICS_ERROR,
 		JARFILE,
-		JARFILE_STORED
+		JARFILE_STORED,
+		TERMINATE_TOPOLOGY
 	}
 	
 	private ServiceMessageType type;

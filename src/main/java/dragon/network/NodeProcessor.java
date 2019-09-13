@@ -10,6 +10,7 @@ import dragon.LocalCluster;
 import dragon.network.Node.NodeState;
 import dragon.network.messages.node.AcceptingJoinMessage;
 import dragon.network.messages.node.ContextUpdateMessage;
+import dragon.network.messages.node.JarReadyMessage;
 import dragon.network.messages.node.JoinCompleteMessage;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.PrepareFailedMessage;
@@ -106,7 +107,18 @@ public class NodeProcessor extends Thread {
 //					node.getComms().sendNodeMessage(pjf.getSender(), r);
 					continue;
 				}
+				node.getComms().sendNodeMessage(message.getSender(), new JarReadyMessage(pjf.topologyName));
 				break;
+			case JAR_READY:
+			{
+				JarReadyMessage jrm = (JarReadyMessage) message;
+				NodeMessage response = new PrepareTopologyMessage(jrm.topologyId,
+						node.getLocalClusters().get(jrm.topologyId).getConf(),
+						node.getLocalClusters().get(jrm.topologyId).getTopology());
+				response.setMessageId(message.getMessageId());
+				node.getComms().sendNodeMessage(message.getSender(), response);
+			}
+			break;
 			case PREPARE_TOPOLOGY:
 				PrepareTopologyMessage pt = (PrepareTopologyMessage) message;
 				{
