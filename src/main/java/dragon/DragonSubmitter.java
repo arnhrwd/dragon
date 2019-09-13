@@ -67,9 +67,10 @@ public class DragonSubmitter {
 		log.debug("sending jar file to ["+node+"]");
 		comms.sendServiceMessage(new JarFileMessage(string,topologyJar));
 		message = comms.receiveServiceMessage();
+		TopologyErrorMessage te;
 		switch(message.getType()) {
 		case TOPOLOGY_ERROR:
-			TopologyErrorMessage te = (TopologyErrorMessage) message;
+			te = (TopologyErrorMessage) message;
 			log.error("topology error ["+string+"]: "+te.error);
 			break;
 		case RUN_FAILED:
@@ -82,7 +83,7 @@ public class DragonSubmitter {
 		message = comms.receiveServiceMessage();
 		switch(message.getType()){
 		case TOPOLOGY_ERROR:
-			TopologyErrorMessage te = (TopologyErrorMessage) message;
+			te = (TopologyErrorMessage) message;
 			log.error("topology error ["+string+"]: "+te.error);
 			break;
 		case TOPOLOGY_SUBMITTED:
