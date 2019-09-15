@@ -78,7 +78,7 @@ public class MetricsMonitor {
 					}
 					
 					break;
-				case METRICS_ERROR:
+				case GET_METRICS_ERROR:
 					break;
 				}
 				comms.sendServiceMessage(new ServiceDoneMessage());

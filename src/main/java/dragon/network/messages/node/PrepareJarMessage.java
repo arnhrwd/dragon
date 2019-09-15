@@ -1,6 +1,6 @@
 package dragon.network.messages.node;
 
-public class PrepareJarFileMessage extends NodeMessage {
+public class PrepareJarMessage extends NodeMessage {
 
 	/**
 	 * 
@@ -9,8 +9,8 @@ public class PrepareJarFileMessage extends NodeMessage {
 	public String topologyName;
 	public byte[] topologyJar;
 	
-	public PrepareJarFileMessage(String topologyName, byte[] topologyJar) {
-		super(NodeMessage.NodeMessageType.PREPARE_JARFILE);
+	public PrepareJarMessage(String topologyName, byte[] topologyJar) {
+		super(NodeMessage.NodeMessageType.PREPARE_JAR);
 		this.topologyName=topologyName;
 		this.topologyJar=topologyJar;
 	}

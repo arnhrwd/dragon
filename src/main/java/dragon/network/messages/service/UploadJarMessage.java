@@ -1,7 +1,7 @@
 package dragon.network.messages.service;
 
 
-public class JarFileMessage extends ServiceMessage {
+public class UploadJarMessage extends ServiceMessage {
 
 	/**
 	 * 
@@ -11,8 +11,8 @@ public class JarFileMessage extends ServiceMessage {
 	public String topologyName;
 	public byte[] topologyJar;
 	
-	public JarFileMessage(String topologyName, byte[] topologyJar) {
-		super(ServiceMessage.ServiceMessageType.JARFILE);
+	public UploadJarMessage(String topologyName, byte[] topologyJar) {
+		super(ServiceMessage.ServiceMessageType.UPLOAD_JAR);
 		this.topologyName=topologyName;
 		this.topologyJar=topologyJar;
 	}

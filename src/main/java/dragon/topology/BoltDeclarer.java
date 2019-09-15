@@ -1,7 +1,6 @@
 package dragon.topology;
 
 import java.util.HashMap;
-import java.util.HashSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

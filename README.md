@@ -67,6 +67,7 @@ Parameters that affect only remotely submitted topologies:
 - `dragon.network.local.host = localhost` **String** - the name used to advertise the local Dragon node
 - `dragon.network.local.service.port = 4000` **Integer** - the port number used by the local Dragon node for receiving service messages
 - `dragon.network.local.node.port = 4001` **Integer** - the port number used by the local Dragon node for receiving node messages
+- `dragon.network.remote.hosts =` **String** - comma separate list of all Dragon nodes in the network, providing port numbers for both service and node ports, in the form: `host:port:port,host:port:port,...`
 
 Parameters concerning metrics:
 
@@ -99,10 +100,19 @@ Either:
 or set `dragon.network.remote.host = REMOTE_HOST` and run:
 
     java -jar dragon.jar -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
-    
-# Porting from a Apache Storm Project
 
-The Dragon API is loosely based on Version 0.10 of Apache Storm. E.g. package names starting with `backtype.storm` can be replaced with `dragon`. There are some changes:
+## Metrics Monitor
+
+Metrics is available only in Cluster mode. A simple text based metrics monitor can be run:
+
+    java -cp dragon.jar dragon.MetricsMonitor -t TOPOLOGY_NAME
+
+Note that the Metrics Monitor needs the `dragon.network.remote.hosts` parameter to be set, that lists all Dragon hosts in the system.
+
+# Porting from an Apache Storm Project
+
+The Dragon API is loosely based on Version 0.10 of Apache Storm. E.g. package names starting with `backtype.storm` can be replaced with `dragon`. There are some changes and stipulations:
 
 - `implements CustomStreamGrouping` becomes `extends AbstractGrouping`
+- all topology objects **must** be serializable, as the entire topology is serialized when submitting it
 

@@ -12,14 +12,17 @@ import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.GetMetricsMessage;
 import dragon.network.messages.service.GetNodeContextMessage;
-import dragon.network.messages.service.JarFileMessage;
-import dragon.network.messages.service.MetricsErrorMessage;
+import dragon.network.messages.service.UploadJarMessage;
+import dragon.network.messages.service.UploadJarSuccessMessage;
+import dragon.network.messages.service.GetMetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
+import dragon.network.messages.service.RunTopologyErrorMessage;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceDoneMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.TopologyErrorMessage;
+import dragon.network.messages.service.UploadJarFailedMessage;
 import dragon.topology.DragonTopology;
 import dragon.topology.RoundRobinEmbedding;
 
@@ -57,6 +60,7 @@ public class DragonSubmitter {
 			break;
 		default:
 			log.error("unexpected response: "+message.getType().name());
+			comms.close();
 			throw new RuntimeException("could not obtain node context");
 		}
 		
@@ -64,33 +68,39 @@ public class DragonSubmitter {
 		topology.embedTopology(new RoundRobinEmbedding(), context);
 		
 		
-		log.debug("sending jar file to ["+node+"]");
-		comms.sendServiceMessage(new JarFileMessage(string,topologyJar));
+		log.debug("uploading jar file to ["+node+"]");
+		comms.sendServiceMessage(new UploadJarMessage(string,topologyJar));
 		message = comms.receiveServiceMessage();
-		TopologyErrorMessage te;
+		UploadJarFailedMessage te;
 		switch(message.getType()) {
-		case TOPOLOGY_ERROR:
-			te = (TopologyErrorMessage) message;
-			log.error("topology error ["+string+"]: "+te.error);
-			break;
-		case RUN_FAILED:
-			log.error("run failed");
-			break;
-		}
-		
-		log.debug("submitting topology to ["+node+"]");
-		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
-		message = comms.receiveServiceMessage();
-		switch(message.getType()){
-		case TOPOLOGY_ERROR:
-			te = (TopologyErrorMessage) message;
-			log.error("topology error ["+string+"]: "+te.error);
-			break;
-		case TOPOLOGY_SUBMITTED:
-			log.info("topology ["+string+"] submitted");
+		case UPLOAD_JAR_FAILED:
+			te = (UploadJarFailedMessage) message;
+			comms.close();
+			throw new RuntimeException("uploading jar failed for ["+string+"]: "+te.error);
+		case UPLOAD_JAR_SUCCESS:
 			break;
 		default:
 			log.error("unexpected response: "+message.getType().name());
+			comms.close();
+			throw new RuntimeException("could not upload jar file");
+		}
+		
+		log.debug("running topology on ["+node+"]");
+		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
+		message = comms.receiveServiceMessage();
+		RunTopologyErrorMessage rtem;
+		switch(message.getType()){
+		case RUN_TOPOLOGY_ERROR:
+			rtem = (RunTopologyErrorMessage) message;
+			log.error("run topology error for ["+string+"]: "+rtem.error);
+			break;
+		case TOPOLOGY_RUNNING:
+			log.info("topology ["+string+"] running");
+			break;
+		default:
+			log.error("unexpected response: "+message.getType().name());
+			comms.close();
+			throw new RuntimeException("could not run the topology");
 		}
 		comms.sendServiceMessage(new ServiceDoneMessage());
 		comms.close();
@@ -105,10 +115,14 @@ public class DragonSubmitter {
 			MetricsMessage m = (MetricsMessage) message;
 			log.info(m.samples.toString());
 			break;
-		case METRICS_ERROR:
-			MetricsErrorMessage e = (MetricsErrorMessage) message;
+		case GET_METRICS_ERROR:
+			GetMetricsErrorMessage e = (GetMetricsErrorMessage) message;
 			log.error(e.error);
 			break;
+		default:
+			log.error("unexpected response: "+message.getType().name());
+			comms.close();
+			throw new RuntimeException("could not get metrics");
 		}
 		comms.sendServiceMessage(new ServiceDoneMessage());
 		comms.close();

@@ -9,16 +9,15 @@ import dragon.metrics.ComponentMetricMap;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.TerminateTopologyMessage;
-import dragon.network.messages.service.TopologyErrorMessage;
-import dragon.network.messages.service.TopologySubmittedMessage;
-import dragon.network.messages.service.RunFailedMessage;
+import dragon.network.messages.service.TopologyRunningMessage;
+import dragon.network.messages.service.UploadJarFailedMessage;
+import dragon.network.messages.service.RunTopologyErrorMessage;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.PrepareJarFileMessage;
-import dragon.network.messages.node.PrepareTopologyMessage;
+import dragon.network.messages.node.PrepareJarMessage;
 import dragon.network.messages.service.GetMetricsMessage;
-import dragon.network.messages.service.JarFileMessage;
-import dragon.network.messages.service.JarFileStoredMessage;
-import dragon.network.messages.service.MetricsErrorMessage;
+import dragon.network.messages.service.UploadJarMessage;
+import dragon.network.messages.service.UploadJarSuccessMessage;
+import dragon.network.messages.service.GetMetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
 
@@ -37,28 +36,28 @@ public class ServiceProcessor extends Thread {
 		while(!shouldTerminate){
 			ServiceMessage command = node.getComms().receiveServiceMessage();
 			switch(command.getType()){
-			case JARFILE:
-				JarFileMessage jf = (JarFileMessage) command;
+			case UPLOAD_JAR:
+				UploadJarMessage jf = (UploadJarMessage) command;
 				if(node.getLocalClusters().containsKey(jf.topologyName)){
-					TopologyErrorMessage r = new TopologyErrorMessage(jf.topologyName,"topology exists");
+					UploadJarFailedMessage r = new UploadJarFailedMessage(jf.topologyName,"topology exists");
 					r.setMessageId(jf.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				} else {
 					log.debug("storing topology ["+jf.topologyName+"]");
 					if(!node.storeJarFile(jf.topologyName,jf.topologyJar)) {
-						RunFailedMessage r = new RunFailedMessage(jf.topologyName,"could not store the topology jar");
+						UploadJarFailedMessage r = new UploadJarFailedMessage(jf.topologyName,"could not store the topology jar");
 						r.setMessageId(jf.getMessageId());
 						node.getComms().sendServiceMessage(r);
 						continue;
 					}
 					if(!node.loadJarFile(jf.topologyName)) {
-						RunFailedMessage r = new RunFailedMessage(jf.topologyName,"could not load the topology jar");
+						UploadJarFailedMessage r = new UploadJarFailedMessage(jf.topologyName,"could not load the topology jar");
 						r.setMessageId(jf.getMessageId());
 						node.getComms().sendServiceMessage(r);				
 						continue;
 					}
 					
-					JarFileStoredMessage r = new JarFileStoredMessage(jf.topologyName);
+					UploadJarSuccessMessage r = new UploadJarSuccessMessage(jf.topologyName);
 					r.setMessageId(jf.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				}
@@ -66,11 +65,10 @@ public class ServiceProcessor extends Thread {
 			case RUN_TOPOLOGY:
 				RunTopologyMessage scommand = (RunTopologyMessage) command;
 				if(node.getLocalClusters().containsKey(scommand.topologyName)){
-					TopologyErrorMessage r = new TopologyErrorMessage(scommand.topologyName,"topology exists");
+					RunTopologyErrorMessage r = new RunTopologyErrorMessage(scommand.topologyName,"topology exists");
 					r.setMessageId(scommand.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				} else {
-					
 					LocalCluster cluster=new LocalCluster(node);
 					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology, false);
 					node.getRouter().submitTopology(scommand.topologyName, scommand.dragonTopology);
@@ -80,13 +78,13 @@ public class ServiceProcessor extends Thread {
 					for(NodeDescriptor desc : scommand.dragonTopology.getReverseEmbedding().keySet()) {
 						if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
 							hit=true;
-							NodeMessage preparejarfile = new PrepareJarFileMessage(scommand.topologyName,node.readJarFile(scommand.topologyName));
+							NodeMessage preparejarfile = new PrepareJarMessage(scommand.topologyName,node.readJarFile(scommand.topologyName));
 							node.getComms().sendNodeMessage(desc, preparejarfile);
 						}
 					}
 					if(!hit) {
 						node.getLocalClusters().get(scommand.topologyName).openAll();
-						TopologySubmittedMessage r = new TopologySubmittedMessage(scommand.topologyName);
+						TopologyRunningMessage r = new TopologyRunningMessage(scommand.topologyName);
 						r.setMessageId(scommand.getMessageId());
 						node.getComms().sendServiceMessage(r);
 					}
@@ -109,13 +107,13 @@ public class ServiceProcessor extends Thread {
 						node.getComms().sendServiceMessage(r);
 					} else {
 						log.debug("cm is null");
-						MetricsErrorMessage r = new MetricsErrorMessage("unknown topology or there are no samples available yet");
+						GetMetricsErrorMessage r = new GetMetricsErrorMessage("unknown topology or there are no samples available yet");
 						r.setMessageId(command.getMessageId());
 						node.getComms().sendServiceMessage(r);
 					}
 				} else {
 					log.debug("metrics are not enabled");
-					MetricsErrorMessage r = new MetricsErrorMessage("metrics are not enabled in dragon.properties for this node");
+					GetMetricsErrorMessage r = new GetMetricsErrorMessage("metrics are not enabled in dragon.properties for this node");
 					r.setMessageId(command.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				}

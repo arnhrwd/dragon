@@ -1,14 +1,14 @@
 package dragon.network.messages.service;
 
-public class MetricsErrorMessage extends ServiceMessage {
+public class GetMetricsErrorMessage extends ServiceMessage {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 779753438805275630L;
 	public String error;
-	public MetricsErrorMessage(String error) {
-		super(ServiceMessage.ServiceMessageType.METRICS_ERROR);
+	public GetMetricsErrorMessage(String error) {
+		super(ServiceMessage.ServiceMessageType.GET_METRICS_ERROR);
 		this.error=error;
 	}
 	

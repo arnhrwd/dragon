@@ -13,13 +13,13 @@ import dragon.network.messages.node.ContextUpdateMessage;
 import dragon.network.messages.node.JarReadyMessage;
 import dragon.network.messages.node.JoinCompleteMessage;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.PrepareFailedMessage;
-import dragon.network.messages.node.PrepareJarFileMessage;
+import dragon.network.messages.node.PrepareJarErrorMessage;
+import dragon.network.messages.node.PrepareJarMessage;
 import dragon.network.messages.node.PrepareTopologyMessage;
 import dragon.network.messages.node.StartTopologyMessage;
 import dragon.network.messages.node.TopologyReadyMessage;
-import dragon.network.messages.service.RunFailedMessage;
-import dragon.network.messages.service.TopologySubmittedMessage;
+import dragon.network.messages.service.RunTopologyErrorMessage;
+import dragon.network.messages.service.TopologyRunningMessage;
 
 public class NodeProcessor extends Thread {
 	private static Log log = LogFactory.getLog(NodeProcessor.class);
@@ -94,31 +94,31 @@ public class NodeProcessor extends Thread {
 				}
 				if(!hit) context.putAll(cu.context);
 				break;
-			case PREPARE_JARFILE:
-				PrepareJarFileMessage pjf = (PrepareJarFileMessage) message;
+			case PREPARE_JAR:
+				PrepareJarMessage pjf = (PrepareJarMessage) message;
 				if(!node.storeJarFile(pjf.topologyName,pjf.topologyJar)) {
-//					PrepareFailedMessage r = new PrepareFailedMessage(pjf.topologyName,"could not store the topology jar");
-//					r.setMessageId(message.getMessageId());
-//					node.getComms().sendNodeMessage(pjf.getSender(), r);
+					PrepareJarErrorMessage r = new PrepareJarErrorMessage(pjf.topologyName,"could not store the topology jar");
+					r.setMessageId(message.getMessageId());
+					node.getComms().sendNodeMessage(pjf.getSender(), r);
 					continue;
 				} else if(!node.loadJarFile(pjf.topologyName)) {
-//					PrepareFailedMessage r = new PrepareFailedMessage(pjf.topologyName,"could not load the topology jar");
-//					r.setMessageId(message.getMessageId());
-//					node.getComms().sendNodeMessage(pjf.getSender(), r);
+					PrepareJarErrorMessage r = new PrepareJarErrorMessage(pjf.topologyName,"could not load the topology jar");
+					r.setMessageId(message.getMessageId());
+					node.getComms().sendNodeMessage(pjf.getSender(), r);
 					continue;
 				}
 				node.getComms().sendNodeMessage(message.getSender(), new JarReadyMessage(pjf.topologyName));
 				break;
 			case JAR_READY:
-			{
-				JarReadyMessage jrm = (JarReadyMessage) message;
-				NodeMessage response = new PrepareTopologyMessage(jrm.topologyId,
-						node.getLocalClusters().get(jrm.topologyId).getConf(),
-						node.getLocalClusters().get(jrm.topologyId).getTopology());
-				response.setMessageId(message.getMessageId());
-				node.getComms().sendNodeMessage(message.getSender(), response);
-			}
-			break;
+				{
+					JarReadyMessage jrm = (JarReadyMessage) message;
+					NodeMessage response = new PrepareTopologyMessage(jrm.topologyId,
+							node.getLocalClusters().get(jrm.topologyId).getConf(),
+							node.getLocalClusters().get(jrm.topologyId).getTopology());
+					response.setMessageId(message.getMessageId());
+					node.getComms().sendNodeMessage(message.getSender(), response);
+				}
+				break;
 			case PREPARE_TOPOLOGY:
 				PrepareTopologyMessage pt = (PrepareTopologyMessage) message;
 				{
@@ -134,7 +134,7 @@ public class NodeProcessor extends Thread {
 			case TOPOLOGY_READY:
 				TopologyReadyMessage tr = (TopologyReadyMessage) message;
 				if(node.checkStartupTopology(tr.getSender(),tr.topologyId)) {
-					TopologySubmittedMessage r = new TopologySubmittedMessage(tr.topologyId);
+					TopologyRunningMessage r = new TopologyRunningMessage(tr.topologyId);
 					r.setMessageId(tr.getMessageId());
 					node.getComms().sendServiceMessage(r);
 				}
@@ -143,12 +143,17 @@ public class NodeProcessor extends Thread {
 				StartTopologyMessage st = (StartTopologyMessage) message;
 				node.startTopology(st.topologyId);
 				break;
-			case PREPARE_FAILED:
-				PrepareFailedMessage pf = (PrepareFailedMessage) message;
+			case PREPARE_JAR_ERROR:
+				PrepareJarErrorMessage pf = (PrepareJarErrorMessage) message;
 				node.removeStartupTopology(pf.topologyId);
-				RunFailedMessage r = new RunFailedMessage(pf.topologyId,pf.error);
+				RunTopologyErrorMessage r = new RunTopologyErrorMessage(pf.topologyId,pf.error);
 				r.setMessageId(pf.getMessageId());
 				node.getComms().sendServiceMessage(r);
+				break;
+			case STOP_TOPOLOGY:
+				break;
+			default:
+				break;
 			}
 		}
 	}
