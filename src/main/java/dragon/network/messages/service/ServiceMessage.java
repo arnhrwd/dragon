@@ -22,7 +22,9 @@ public class ServiceMessage extends Message {
 		UPLOAD_JAR,
 		UPLOAD_JAR_SUCCESS,
 		TERMINATE_TOPOLOGY,
-		UPLOAD_JAR_FAILED
+		UPLOAD_JAR_FAILED,
+		TERMINATE_TOPOLOGY_ERROR,
+		TOPOLOGY_TERMINATED
 	}
 	
 	private ServiceMessageType type;

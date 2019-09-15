@@ -8,6 +8,7 @@ import dragon.LocalCluster;
 import dragon.metrics.ComponentMetricMap;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
+import dragon.network.messages.service.TerminateTopologyErrorMessage;
 import dragon.network.messages.service.TerminateTopologyMessage;
 import dragon.network.messages.service.TopologyRunningMessage;
 import dragon.network.messages.service.UploadJarFailedMessage;
@@ -121,7 +122,15 @@ public class ServiceProcessor extends Thread {
 			case TERMINATE_TOPOLOGY:
 			{
 				TerminateTopologyMessage tt = (TerminateTopologyMessage) command;
-				
+				if(!node.getLocalClusters().containsKey(tt.topologyId)){
+					TerminateTopologyErrorMessage r = new TerminateTopologyErrorMessage(tt.topologyId,"topology does not exist");
+					r.setMessageId(tt.getMessageId());
+					node.getComms().sendServiceMessage(r);
+				} else {
+					LocalCluster localCluster = node.getLocalClusters().get(tt.topologyId);
+					localCluster.setTerminateMessageId(tt.getMessageId());
+					localCluster.setShouldTerminate();
+				}
 			}
 			break;
 			default:

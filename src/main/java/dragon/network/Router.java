@@ -85,10 +85,14 @@ public class Router {
 					while(!shouldTerminate) {
 						NetworkTask task = node.getComms().receiveNetworkTask();
 						try {
-							inputQueues.put(task);
-							node.getLocalClusters().get(task.getTopologyId()).outputPending(inputQueues.getBuffer(task));
+							if(node.getLocalClusters().containsKey(task.getTopologyId())) {
+								inputQueues.put(task);
+								node.getLocalClusters().get(task.getTopologyId()).outputPending(inputQueues.getBuffer(task));
+							} else {
+								log.error("received a network task for a non-existant topology ["+task.getTopologyId()+"]");
+							}
 						} catch (InterruptedException e) {
-							log.error("interrupted");
+							log.info("interrupted");
 							break;
 						}
 					}
@@ -140,6 +144,32 @@ public class Router {
 			}
 		}
 		
+	}
+	
+	public void terminateTopology(String topologyName, DragonTopology topology) {
+		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
+			if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
+				for(String componentId : topology.getReverseEmbedding().get(desc).keySet()) {
+					if(!topology.getBoltMap().containsKey(componentId))continue;
+					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
+						for(String streamId : topology.getBoltMap().get(componentId).groupings.get(listened).keySet()) {
+							log.debug("dropping output queue ["+topologyName+","+streamId+"]");
+							outputQueues.drop(topologyName,streamId);
+						}
+					}
+				}
+			} else {
+				for(String componentId : topology.getReverseEmbedding().get(desc).keySet()) {
+					if(!topology.getBoltMap().containsKey(componentId))continue;
+					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
+						for(String streamId : topology.getBoltMap().get(componentId).groupings.get(listened).keySet()) {
+							log.debug("dropping input queue ["+topologyName+","+streamId+"]");
+							inputQueues.drop(topologyName,streamId);
+						}
+					}
+				}
+			}
+		}
 	}
 	
 }

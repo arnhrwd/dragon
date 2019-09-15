@@ -13,7 +13,6 @@ import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.GetMetricsMessage;
 import dragon.network.messages.service.GetNodeContextMessage;
 import dragon.network.messages.service.UploadJarMessage;
-import dragon.network.messages.service.UploadJarSuccessMessage;
 import dragon.network.messages.service.GetMetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
@@ -21,7 +20,8 @@ import dragon.network.messages.service.RunTopologyErrorMessage;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceDoneMessage;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.TopologyErrorMessage;
+import dragon.network.messages.service.TerminateTopologyErrorMessage;
+import dragon.network.messages.service.TerminateTopologyMessage;
 import dragon.network.messages.service.UploadJarFailedMessage;
 import dragon.topology.DragonTopology;
 import dragon.topology.RoundRobinEmbedding;
@@ -123,6 +123,27 @@ public class DragonSubmitter {
 			log.error("unexpected response: "+message.getType().name());
 			comms.close();
 			throw new RuntimeException("could not get metrics");
+		}
+		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.close();
+	}
+	
+	public static void terminateTopology(Config conf, String topologyId) {
+		initComms(conf);
+		comms.sendServiceMessage(new TerminateTopologyMessage(topologyId));
+		ServiceMessage message = comms.receiveServiceMessage();
+		TerminateTopologyErrorMessage tte;
+		switch(message.getType()) {
+		case TERMINATE_TOPOLOGY_ERROR:
+			tte = (TerminateTopologyErrorMessage) message;
+			log.error("terminate topology error ["+topologyId+"] "+tte.error);
+		case TOPOLOGY_TERMINATED:
+			log.info("topology terminated ["+topologyId+"]");
+			break;
+		default:
+			log.error("unexpected response: "+message.getType().name());
+			comms.close();
+			throw new RuntimeException("could not terminate topology");
 		}
 		comms.sendServiceMessage(new ServiceDoneMessage());
 		comms.close();

@@ -2,10 +2,14 @@ package dragon.network;
 
 import java.util.HashMap;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import dragon.NetworkTask;
 import dragon.utils.NetworkTaskBuffer;
 
 public class StreamQueueMap extends HashMap<String,NetworkTaskBuffer>{
+	private static Log log = LogFactory.getLog(StreamQueueMap.class);
 
 	/**
 	 * 
@@ -33,5 +37,12 @@ public class StreamQueueMap extends HashMap<String,NetworkTaskBuffer>{
 			NetworkTaskBuffer buffer=new NetworkTaskBuffer(bufferSize);
 			put(streamId,buffer);
 		}
+	}
+
+	public void drop(String streamId) {
+		if(get(streamId).getNumElements()!=0) {
+			log.error("dropping stream ["+streamId+"] of size ["+get(streamId).getNumElements()+"]");
+		}
+		remove(streamId);
 	}
 }

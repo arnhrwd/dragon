@@ -24,6 +24,7 @@ import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.JoinRequestMessage;
 import dragon.network.messages.node.StartTopologyMessage;
+import dragon.network.messages.service.TopologyTerminatedMessage;
 
 
 
@@ -179,6 +180,15 @@ public class Node {
 		if(metrics!=null){
 			return metrics.getMetrics(topologyId);
 		} else return null;
+	}
+	
+	public void localClusterTerminated(String topologyId, String messageId) {
+		localClusters.remove(topologyId);
+		if(messageId!=null) {
+			TopologyTerminatedMessage ttm = new TopologyTerminatedMessage(topologyId);
+			ttm.setMessageId(messageId);
+			comms.sendServiceMessage(ttm);
+		}
 	}
 	
 }

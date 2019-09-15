@@ -69,6 +69,10 @@ public class Collector {
 	
 	public synchronized List<Integer> emit(String streamId,Values values){
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
+		if(component.isClosed()) {
+			log.error("spontaneous tuple emission after close, topology may not terminate properly");
+			return receivingTaskIds;
+		}
 		Fields fields = component.getOutputFieldsDeclarer().getFields(streamId);
 		if(fields==null) {
 			localCluster.setShouldTerminate("no fields have been declared for ["+

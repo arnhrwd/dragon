@@ -19,6 +19,24 @@ public class Component implements Runnable, Cloneable, Serializable{
 	private Collector collector;
 	private long emitted=0;
 	private long transferred=0;
+	private boolean closing=false;
+	private boolean closed=false;
+	
+	public final void setClosing() {
+		closing=true;
+	}
+	
+	public final boolean isClosing() {
+		return closing;
+	}
+	
+	public final void setClosed() {
+		closed=true;
+	}
+	
+	public final boolean isClosed() {
+		return closed;
+	}
 	
 	public final void setOutputCollector(Collector collector) {
 		this.collector=collector;

@@ -28,6 +28,11 @@ public class Bolt extends Component {
 	@Override
 	public final void run() {
 		Tuple tuple;
+		if(isClosing()) {
+			close();
+			setClosed();
+			return;
+		}
 		if(tickTuple!=null) {
 			tuple=tickTuple;
 			tickTuple=null;
