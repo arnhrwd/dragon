@@ -101,6 +101,18 @@ or set `dragon.network.remote.host = REMOTE_HOST` and run:
 
     java -jar dragon.jar -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
 
+## Terminating a topology
+
+Either:
+
+    java -jar dragon.jar -h REMOTE_HOST -p REMOTE_SERVICE_PORT -x -t TOPOLOGY_NAME
+    
+or set `dragon.network.remote.host = REMOTE_HOST` and run:
+
+    java -jar dragon.jar -x -t TOPOLOGY_NAME
+    
+For a large topology over a number of nodes you may need to wait some time for it to terminate.
+
 ## Metrics Monitor
 
 Metrics is available only in Cluster mode. A simple text based metrics monitor can be run:
