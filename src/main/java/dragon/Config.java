@@ -142,7 +142,7 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_METRICS_SAMPLE_HISTORY,1);
 		put(DRAGON_NETWORK_REMOTE_HOSTS,"");
 		put(DRAGON_EMBEDDING_ALGORITHM, "dragon.topology.RoundRobinEmbedding");
-		put(DRAGON_EMBEDDING_CUSTOM_FILE, "");
+		put(DRAGON_EMBEDDING_CUSTOM_FILE, "embedding.yaml");
 	}
 
 	public void setNumWorkers(int numWorkers) {
