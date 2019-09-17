@@ -50,6 +50,8 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_METRICS_ENABLED="dragon.metrics.enabled";
 	public static final String DRAGON_METRICS_SAMPLE_HISTORY="dragon.metrics.sample.history";
 	public static final String DRAGON_NETWORK_REMOTE_HOSTS="dragon.network.remote.hosts";
+	public static final String DRAGON_EMBEDDING_ALGORITHM="dragon.embedding.algorithm";
+	public static final String DRAGON_EMBEDDING_CUSTOM_FILE="dragon.embedding.custom.file";
 	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
@@ -139,6 +141,8 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_METRICS_SAMPLE_PERIOD_MS,60*1000);
 		put(DRAGON_METRICS_SAMPLE_HISTORY,1);
 		put(DRAGON_NETWORK_REMOTE_HOSTS,"");
+		put(DRAGON_EMBEDDING_ALGORITHM, "dragon.topology.RoundRobinEmbedding");
+		put(DRAGON_EMBEDDING_CUSTOM_FILE, "");
 	}
 
 	public void setNumWorkers(int numWorkers) {
