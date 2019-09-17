@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.HashMap;
 
 
+import dragon.Config;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -48,8 +49,9 @@ public class DragonTopology implements Serializable {
 		}
 	}
 	
-	public void embedTopology(IEmbeddingAlgo algo, NodeContext context) {
-		embedding = algo.generateEmbedding(this, context);
+	public void embedTopology(IEmbeddingAlgo algo, NodeContext context, Config config) {
+		log.debug("Using the embedding algorithm " + algo.getClass().getCanonicalName());
+		embedding = algo.generateEmbedding(this, context, config);
 		reverseEmbedding = embedding.getReverseComponentEmbedding();
 	}
 	

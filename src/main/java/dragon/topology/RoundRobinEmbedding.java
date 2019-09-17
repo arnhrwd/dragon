@@ -2,11 +2,12 @@ package dragon.topology;
 
 import java.util.ArrayList;
 
+import dragon.Config;
 import dragon.network.NodeContext;
 
 public class RoundRobinEmbedding  implements IEmbeddingAlgo {
 
-	public ComponentEmbedding generateEmbedding(DragonTopology topology, NodeContext context) {
+	public ComponentEmbedding generateEmbedding(DragonTopology topology, NodeContext context, Config config) {
 		ComponentEmbedding componentEmbedding = new ComponentEmbedding();
 		ArrayList<String> nodes = new ArrayList<String>(context.keySet());
 		int node=0;

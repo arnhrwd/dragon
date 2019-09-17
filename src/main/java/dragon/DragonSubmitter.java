@@ -3,6 +3,8 @@ package dragon;
 import java.io.IOException;
 import java.net.UnknownHostException;
 
+import dragon.topology.IEmbeddingAlgo;
+import dragon.utils.ReflectionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -24,7 +26,6 @@ import dragon.network.messages.service.TerminateTopologyErrorMessage;
 import dragon.network.messages.service.TerminateTopologyMessage;
 import dragon.network.messages.service.UploadJarFailedMessage;
 import dragon.topology.DragonTopology;
-import dragon.topology.RoundRobinEmbedding;
 
 public class DragonSubmitter {
 	private static Log log = LogFactory.getLog(DragonSubmitter.class);
@@ -65,7 +66,9 @@ public class DragonSubmitter {
 		}
 		
 		log.debug("received context  ["+context+"]");
-		topology.embedTopology(new RoundRobinEmbedding(), context);
+
+		IEmbeddingAlgo embedding = ReflectionUtils.newInstance((String)conf.get(Config.DRAGON_EMBEDDING_ALGORITHM));
+		topology.embedTopology(embedding, context, conf);
 		
 		
 		log.debug("uploading jar file to ["+node+"]");
