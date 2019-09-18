@@ -183,6 +183,7 @@ public class Node {
 	}
 	
 	public void localClusterTerminated(String topologyId, String messageId) {
+		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
 		if(messageId!=null) {
 			TopologyTerminatedMessage ttm = new TopologyTerminatedMessage(topologyId);

@@ -75,8 +75,10 @@ public class DragonSubmitter {
 		switch(message.getType()) {
 		case UPLOAD_JAR_FAILED:
 			te = (UploadJarFailedMessage) message;
+			comms.sendServiceMessage(new ServiceDoneMessage());
 			comms.close();
-			throw new RuntimeException("uploading jar failed for ["+string+"]: "+te.error);
+			log.error("uploading jar failed for ["+string+"]: "+te.error);
+			System.exit(-1);
 		case UPLOAD_JAR_SUCCESS:
 			break;
 		default:

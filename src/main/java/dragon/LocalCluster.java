@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -398,7 +399,23 @@ public class LocalCluster {
 					}
 					// shutdown the executors and other threads
 					componentExecutorService.shutdown();
+					for(int i=0;i<(Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS);i++) {
+						networkExecutorThreads.get(i).cancel(true);
+					}
 					networkExecutorService.shutdown();
+					try {
+						while (!componentExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
+							  log.info("Awaiting completion of component executor threads.");
+							}
+						while (!networkExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
+							  log.info("Awaiting completion of network executor threads.");
+							}
+					} catch (InterruptedException e) {
+						log.warn("threads may not have terminated");
+					}
+					componentExecutorService.purge();
+					networkExecutorService.purge();
+					
 					tickThread.interrupt();
 					tickCounterThread.interrupt();
 					
@@ -464,18 +481,14 @@ public class LocalCluster {
 								break;
 							}
 							queue = outputsPending.take();
-							//log.debug("network task pending "+outputsPending.size());
 							synchronized(queue.lock) {
-								//log.debug("peeking on queue");
 								NetworkTask networkTask = (NetworkTask) queue.peek();
 								if(networkTask!=null) {
-									//log.debug("processing network task");
 									Tuple tuple = networkTask.getTuple();
 									String name = networkTask.getComponentId();
 									doneTaskIds.clear();
 									for(Integer taskId : networkTask.getTaskIds()) {
 										if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
-											//log.debug("removing from queue");
 											doneTaskIds.add(taskId);
 											componentPending(bolts.get(name).get(taskId));
 										} else {
@@ -501,7 +514,7 @@ public class LocalCluster {
 						}
 					}
 					// the first thread that exits will cause all the others to exit
-					for(int i=0;i<totalParallelismHint;i++) {
+					for(int i=0;i<(Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS);i++) {
 						networkExecutorThreads.get(i).cancel(true);
 					}
 				}
