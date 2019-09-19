@@ -54,6 +54,7 @@ Parameters that affect both local and remotely submitted topologies:
 - `dragon.base.dir = /tmp/dragon` **String** - the base directory where Dragon can store files such as submitted jar files and check point data
 - `dragon.jar.dir = jars` **String** - the sub-directory to store jars files within
 - `dragon.localcluster.threads = 10` **Integer** - the size of the thread pool that transfers tuples within a local cluster
+- `dragon.embedding.algorithm = dragon.topology.RoundRobinEmbedding` **String** - the embedding algorithm that maps a task in the topology to a host node
 
 Parameters that affect only remotely submitted topologies:
 
@@ -112,6 +113,47 @@ or set `dragon.network.remote.host = REMOTE_HOST` and run:
     java -jar dragon.jar -x -t TOPOLOGY_NAME
     
 For a large topology over a number of nodes you may need to wait some time for it to terminate.
+
+## Configuring the embedding algorithm for a topology
+
+There are two embedding algorithms available with dragon:
+1. `dragon.topology.RoundRobinEmbedding` - embeds each task to connected nodes in a round robin manner (default algorithm)
+2. `dragon.topology.FileBasedCustomEmbedding` - embed each task to a connected node as defined via an external configuration file
+
+The preferred algorithm can be configured via the `dragon.embedding.algorithm` configuration either programatically in the topology:
+
+    Config conf = new Config();
+    conf.put(Config.DRAGON_EMBEDDING_ALGORITHM, "dragon.topology.FileBasedCustomEmbedding");
+
+or in the `dragon.properties` file:
+
+    dragon.embedding.algorithm=dragon.topology.FileBasedCustomEmbedding
+
+Further embedding algorithms can developed by implementing the `dragon.topology.IEmbeddingAlgo` interface.
+
+### File based custom embedding algorithm
+
+After enabling as mentioned above, `dragon.topology.FileBasedCustomEmbedding` requires an external YAML configuration file that maps a task into one or more host nodes in a valid YAML file with the following format:
+
+    "spout name or bolt name": ["node 1 host name:node 1 port", "node 2 host name:node 2 port",...]
+eg:
+
+    "numberSpout": ["localhost:4001"]
+    "textSpout": ["localhost:4001","localhost:4101"]
+    "shuffleBolt": ["localhost:4101"]
+    "shuffleTextBolt": ["localhost:4101"]
+    "numberBolt": ["localhost:9999","localhost:4101","localhost:4001"]
+
+The file name can be configured programmatically in the topology:
+
+    conf.put(Config.DRAGON_EMBEDDING_CUSTOM_FILE, "embedding.yaml");
+    
+or in the `dragon.properties` file:
+
+    dragon.embedding.custom.file=embedding.yaml
+    
+`dragon.topology.FileBasedCustomEmbedding` will look for the configured file name, first in the current directory and then in the class path of the topology jar file.
+The default embedding file name is `embedding.yaml`.
 
 ## Metrics Monitor
 
