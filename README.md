@@ -118,7 +118,7 @@ For a large topology over a number of nodes you may need to wait some time for i
 
 There are two embedding algorithms available with dragon:
 1. `dragon.topology.RoundRobinEmbedding` - embeds each task to connected nodes in a round robin manner (default algorithm)
-2. `dragon.topology.FileBasedCustomEmbedding` - embed each task to a connected node as defined via an external configuration file
+2. `dragon.topology.FileBasedCustomEmbedding` - embeds each task to a connected node as defined via an external configuration file
 
 The preferred algorithm can be configured via the `dragon.embedding.algorithm` configuration either programatically in the topology:
 
