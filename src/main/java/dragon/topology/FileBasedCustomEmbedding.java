@@ -17,21 +17,22 @@ import java.util.stream.Collectors;
  *
  * The format of the file should be in standard YAML syntax,
  *
- * "spout name or bolt name": ["node 1 host name:node 2 port", "node 2 host name:node 2 port",...]
+ * "spout name or bolt name": ["node 1 host name:node 1 port", "node 2 host name:node 2 port",...]
  *
  * eg:
- * "So1": ["localhost:4101"]
- * "So2": ["localhost:4101","localhost:4101"]
+ * "So1": ["localhost:4001"]
+ * "So2": ["localhost:4001","localhost:4101"]
  * "Op1": ["localhost:4101"]
  * "Op2": ["localhost:4101"]
- * "Op3": ["localhost:41201","localhost:4101","localhost:4101"]
+ * "Op3": ["localhost:41201","localhost:4101","localhost:4001"]
  *
  * The host names of the nodes should be as same as used in the dragon.properties file of each node.
  *
  * The embedding algorithm can be configured via the Config.DRAGON_EMBEDDING_ALGORITHM property which
- * can be defined in the topology. The name of the custom embedding plan file can be configured via the
+ * can be defined in the topology or via the dragon.properties file.
+ * Similarly, the name of the custom embedding plan file can be configured via the
  * Config.DRAGON_EMBEDDING_CUSTOM_FILE property and the {@link FileBasedCustomEmbedding} will try to
- * firs load the file from the current directory and then from the classpath of the topology jar file.
+ * first load the file from the current directory and then from the classpath of the topology jar file.
  * Default embedding file name is "embedding.yaml".
  *
  */
