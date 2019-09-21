@@ -41,11 +41,11 @@ Dragon looks for `dragon.yaml` in several places, in this order:
 - `/etc/dragon/dragon.yaml`
 - `${HOME}/.dragon/dragon.yaml`
 
-The first file found will be used to load the properties.
+The first file found will be used to load the parameters.
 
-## Properties
+## Parameters
 
-The available properties and their defaults are listed below.
+The available parameters and their defaults are listed below.
 
 Parameters that affect both local and remotely submitted topologies:
 
@@ -88,7 +88,7 @@ Parameters concerning metrics:
 
 Running in cluster mode requires starting an initial Dragon node, and then starting further Dragon nodes that connect to the initial Dragon node, or any existing Dragon nodes. The Dragon nodes will connect to form a fully connected network. Therefore they must all be visible to each other on the network.
 
-To start an initial Dragon node, ensure that `dragon.network.remote.host` is **not** set in `dragon.properties` (or is set to `""`), and make sure that `dragon.network.local.host` is set to be the IP address or domain name of the Dragon node, and run:
+To start an initial Dragon node, ensure that `dragon.network.remote.host` is **not** set in `dragon.yaml` (or is set to `""`), and make sure that `dragon.network.local.host` is set to be the IP address or domain name of the Dragon node, and run:
 
     java -jar dragon.jar -d
 
@@ -133,7 +133,7 @@ The preferred algorithm can be configured via the `dragon.embedding.algorithm` c
     Config conf = new Config();
     conf.put(Config.DRAGON_EMBEDDING_ALGORITHM, "dragon.topology.FileBasedCustomEmbedding");
 
-or in the `dragon.properties` file:
+or in the `dragon.yaml` file:
 
     dragon.embedding.algorithm: dragon.topology.FileBasedCustomEmbedding
 
@@ -156,7 +156,7 @@ The file name can be configured programmatically in the topology:
 
     conf.put(Config.DRAGON_EMBEDDING_CUSTOM_FILE, "embedding.yaml");
     
-or in the `dragon.properties` file:
+or in the `dragon.yaml` file:
 
     dragon.embedding.custom.file: embedding.yaml
     
