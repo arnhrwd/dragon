@@ -1,6 +1,5 @@
 package dragon.task;
 
-import dragon.Config;
 import dragon.LocalCluster;
 import dragon.topology.base.Bolt;
 import dragon.tuple.Tuple;
@@ -12,7 +11,7 @@ public class InputCollector {
 	private Bolt bolt;
 	
 	public InputCollector(LocalCluster localCluster,Bolt bolt){
-		inputQueue=new CircularBuffer<Tuple>((Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE));
+		inputQueue=new CircularBuffer<Tuple>((Integer)localCluster.getConf().getDragonOutputBufferSize());
 		this.localCluster = localCluster;
 		this.bolt=bolt;
 		

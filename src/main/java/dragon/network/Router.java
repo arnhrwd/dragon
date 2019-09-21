@@ -27,16 +27,16 @@ public class Router {
 	public Router(Node node, Config conf) {
 		this.node=node;
 		this.conf=conf;
-		inputQueues = new TopologyQueueMap((Integer)conf.get(Config.DRAGON_ROUTER_INPUT_BUFFER_SIZE));
-		outputQueues = new TopologyQueueMap((Integer)conf.get(Config.DRAGON_ROUTER_OUTPUT_BUFFER_SIZE));
-		outgoingExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_ROUTER_OUTPUT_THREADS));
-		incommingExecutorService = Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_ROUTER_INPUT_THREADS));
+		inputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterInputBufferSize());
+		outputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterOutputBufferSize());
+		outgoingExecutorService = Executors.newFixedThreadPool((Integer)conf.getDragonRouterOutputThreads());
+		incommingExecutorService = Executors.newFixedThreadPool((Integer)conf.getDragonRouterInputThreads());
 		outputsPending=new LinkedBlockingQueue<NetworkTaskBuffer>();
 		runExecutors();
 	}
 	
 	private void runExecutors() {
-		for(int i=0;i<(Integer)conf.get(Config.DRAGON_ROUTER_OUTPUT_THREADS);i++) {
+		for(int i=0;i<(Integer)conf.getDragonRouterOutputThreads();i++) {
 			outgoingExecutorService.execute(new Runnable() {
 				public void run() {
 					while(!shouldTerminate) {
@@ -79,7 +79,7 @@ public class Router {
 				}
 			});
 		}
-		for(int i=0;i<(Integer)conf.get(Config.DRAGON_ROUTER_INPUT_THREADS);i++) {
+		for(int i=0;i<(Integer)conf.getDragonRouterInputThreads();i++) {
 			incommingExecutorService.execute(new Runnable() {
 				public void run() {
 					while(!shouldTerminate) {

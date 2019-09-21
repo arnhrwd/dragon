@@ -34,12 +34,12 @@ Running in local mode, Dragon creates a *local cluster* in a single JVM that con
 
 # Configuration
 
-Dragon looks for `dragon.properties` in several places, in this order:
+Dragon looks for `dragon.yaml` in several places, in this order:
 
-- `./dragon.properties`
-- `../conf/dragon.properties`
-- `/etc/dragon/dragon.properties`
-- `${HOME}/.dragon/dragon.properties`
+- `./dragon.yaml`
+- `../conf/dragon.yaml`
+- `/etc/dragon/dragon.yaml`
+- `${HOME}/.dragon/dragon.yaml`
 
 The first file found will be used to load the properties.
 
@@ -49,38 +49,46 @@ The available properties and their defaults are listed below.
 
 Parameters that affect both local and remotely submitted topologies:
 
-- `dragon.output.buffer.size = 1024` **Integer** - the size of the buffers on Spout and Bolt outputs
-- `dragon.input.buffer.size = 1024` **Integer** - the size of the buffers on Spout and Bolt inputs
-- `dragon.base.dir = /tmp/dragon` **String** - the base directory where Dragon can store files such as submitted jar files and check point data
-- `dragon.jar.dir = jars` **String** - the sub-directory to store jars files within
-- `dragon.localcluster.threads = 10` **Integer** - the size of the thread pool that transfers tuples within a local cluster
-- `dragon.embedding.algorithm = dragon.topology.RoundRobinEmbedding` **String** - the embedding algorithm that maps a task in the topology to a host node
+- `dragon.output.buffer.size: 1024` **Integer** - the size of the buffers on Spout and Bolt outputs
+- `dragon.input.buffer.size: 1024` **Integer** - the size of the buffers on Spout and Bolt inputs
+- `dragon.base.dir: /tmp/dragon` **String** - the base directory where Dragon can store files such as submitted jar files and check point data
+- `dragon.jar.dir: jars` **String** - the sub-directory to store jars files within
+- `dragon.localcluster.threads: 10` **Integer** - the size of the thread pool that transfers tuples within a local cluster
+- `dragon.embedding.algorithm: dragon.topology.RoundRobinEmbedding` **String** - the embedding algorithm that maps a task in the topology to a host node
 
 Parameters that affect only remotely submitted topologies:
 
-- `dragon.router.input.threads = 10` **Integer** - the size of the thread pool that transfers tuples into the local cluster from the network
-- `dragon.router.output.threads = 10` **Integer** - the size of the thread pool that transfers tuples out of the local cluster to the network
-- `dragon.router.input.buffer.size = 1024` **Integer** - the size of the buffers for tuples transferring into the local cluster from the network
-- `dragon.router.output.buffer.size = 1024` **Integer** - the size of the buffers for tuples transferring out of the local cluster to the network
-- `dragon.network.remote.host =` **String** - the name of the remote host to connect to, for subsequent Dragon nodes (do not send this value for the initial Dragon node)
-- `dragon.network.remote.service.port = 4000` **Integer** - the port number used by the remote host for receiving service messages
-- `dragon.network.remote.node.port = 4001` **Integer** - the port number used by the remote host for receiving data messages
-- `dragon.network.local.host = localhost` **String** - the name used to advertise the local Dragon node
-- `dragon.network.local.service.port = 4000` **Integer** - the port number used by the local Dragon node for receiving service messages
-- `dragon.network.local.node.port = 4001` **Integer** - the port number used by the local Dragon node for receiving node messages
-- `dragon.network.remote.hosts =` **String** - comma separate list of all Dragon nodes in the network, providing port numbers for both service and node ports, in the form: `host:port:port,host:port:port,...`
+- `dragon.router.input.threads: 10` **Integer** - the size of the thread pool that transfers tuples into the local cluster from the network
+- `dragon.router.output.threads: 10` **Integer** - the size of the thread pool that transfers tuples out of the local cluster to the network
+- `dragon.router.input.buffer.size: 1024` **Integer** - the size of the buffers for tuples transferring into the local cluster from the network
+- `dragon.router.output.buffer.size: 1024` **Integer** - the size of the buffers for tuples transferring out of the local cluster to the network
+- `dragon.network.remote.host: ""` **String** - the name of the remote host to connect to, for subsequent Dragon nodes (do not send this value for the initial Dragon node)
+- `dragon.network.remote.service.port: 4000` **Integer** - the port number used by the remote host for receiving service messages
+- `dragon.network.remote.node.port: 4001` **Integer** - the port number used by the remote host for receiving data messages
+- `dragon.network.local.host: localhost` **String** - the name used to advertise the local Dragon node
+- `dragon.network.local.service.port: 4000` **Integer** - the port number used by the local Dragon node for receiving service messages
+- `dragon.network.local.node.port: 4001` **Integer** - the port number used by the local Dragon node for receiving node messages
+- `dragon.network.remote.hosts: [{hostname:[port,port]},{hostname:[port,port]}]` **HostArray** - strictly an array of dictionaries, where the sole dictionary key in each array element is the host name of a dragon node and its associated array is the service and node ports in that order
+
+The `dragon.network.remote.hosts` parameter can also be written like this:
+
+    dragon.network.remote.hosts:
+    - hostname: [port,port]
+    - hostname: [port,port]
+    
+If only one port is given, i.e. `[port]` then it is assumed to be the service port (the node port will be the default value), and if no ports are given (in which case write `[]`) then both ports take their default values.
 
 Parameters concerning metrics:
 
-- `dragon.metrics.enable = true` **Boolean** - whether the node should record metrics
-- `dragon.metrics.sample.history = 1` **Integer** - how much sample history to record
-- `dragon.metrics.sample.period.ms = 60000` **Integer** - the sample period in milliseconds
+- `dragon.metrics.enable: true` **Boolean** - whether the node should record metrics
+- `dragon.metrics.sample.history: 1` **Integer** - how much sample history to record
+- `dragon.metrics.sample.period.ms: 60000` **Integer** - the sample period in milliseconds
 
 # Cluster mode
 
 Running in cluster mode requires starting an initial Dragon node, and then starting further Dragon nodes that connect to the initial Dragon node, or any existing Dragon nodes. The Dragon nodes will connect to form a fully connected network. Therefore they must all be visible to each other on the network.
 
-To start an initial Dragon node, ensure that `dragon.network.remote.host` is **not** set in `dragon.properties`, and make sure that `dragon.network.local.host` is set to be the IP address or domain name of the Dragon node, and run:
+To start an initial Dragon node, ensure that `dragon.network.remote.host` is **not** set in `dragon.properties` (or is set to `""`), and make sure that `dragon.network.local.host` is set to be the IP address or domain name of the Dragon node, and run:
 
     java -jar dragon.jar -d
 
@@ -88,7 +96,7 @@ To start further nodes that connect to an existing Dragon node:
 
     java -jar dragon.jar -d -h REMOTE_HOST -p REMOTE_SERVICE_PORT
 
-or set `dragon.network.remote.host = REMOTE_HOST` and run:
+or set `dragon.network.remote.host: REMOTE_HOST` and run:
 
     java -jar dragon.jar -d
 
@@ -98,7 +106,7 @@ Either:
 
     java -jar dragon.jar -h REMOTE_HOST -p REMOTE_SERVICE_PORT -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
 
-or set `dragon.network.remote.host = REMOTE_HOST` and run:
+or set `dragon.network.remote.host: REMOTE_HOST` and run:
 
     java -jar dragon.jar -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
 
@@ -127,7 +135,7 @@ The preferred algorithm can be configured via the `dragon.embedding.algorithm` c
 
 or in the `dragon.properties` file:
 
-    dragon.embedding.algorithm=dragon.topology.FileBasedCustomEmbedding
+    dragon.embedding.algorithm: dragon.topology.FileBasedCustomEmbedding
 
 Further embedding algorithms can developed by implementing the `dragon.topology.IEmbeddingAlgo` interface.
 
@@ -136,7 +144,7 @@ Further embedding algorithms can developed by implementing the `dragon.topology.
 After enabling as mentioned above, `dragon.topology.FileBasedCustomEmbedding` requires an external YAML configuration file that maps a task into one or more host nodes in a valid YAML file with the following format:
 
     "spout name or bolt name": ["node 1 host name:node 1 port", "node 2 host name:node 2 port",...]
-eg:
+For example:
 
     "numberSpout": ["localhost:4001"]
     "textSpout": ["localhost:4001","localhost:4101"]
@@ -150,9 +158,9 @@ The file name can be configured programmatically in the topology:
     
 or in the `dragon.properties` file:
 
-    dragon.embedding.custom.file=embedding.yaml
+    dragon.embedding.custom.file: embedding.yaml
     
-`dragon.topology.FileBasedCustomEmbedding` will look for the configured file name, first in the current directory and then in the class path of the topology jar file.
+The `dragon.topology.FileBasedCustomEmbedding` algorithm will look for the configured file name, first in the current directory and then in the class path of the topology jar file.
 The default embedding file name is `embedding.yaml`.
 
 ## Metrics Monitor

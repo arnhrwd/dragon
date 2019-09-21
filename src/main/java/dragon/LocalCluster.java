@@ -119,7 +119,7 @@ public class LocalCluster {
 		this.dragonTopology=dragonTopology;
 		outputsPending = new LinkedBlockingQueue<NetworkTaskBuffer>();
 		componentsPending = new LinkedBlockingQueue<Component>();
-		networkExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool((Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS));
+		networkExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool((Integer)conf.getDragonLocalclusterThreads());
 		networkExecutorThreads = new ArrayList<Future>();
 		if(!start) {
 			spoutOpenList = new ArrayList<SpoutOpen>();
@@ -399,7 +399,7 @@ public class LocalCluster {
 					}
 					// shutdown the executors and other threads
 					componentExecutorService.shutdown();
-					for(int i=0;i<(Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS);i++) {
+					for(int i=0;i<(Integer)conf.getDragonLocalclusterThreads();i++) {
 						networkExecutorThreads.get(i).cancel(true);
 					}
 					networkExecutorService.shutdown();
@@ -468,8 +468,8 @@ public class LocalCluster {
 
 	
 	private void outputsScheduler(){
-		log.debug("starting the outputs scheduler with "+(Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS)+" threads");
-		for(int i=0;i<(Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS);i++) {
+		log.debug("starting the outputs scheduler with "+(Integer)conf.getDragonLocalclusterThreads()+" threads");
+		for(int i=0;i<(Integer)conf.getDragonLocalclusterThreads();i++) {
 			networkExecutorThreads.add(networkExecutorService.submit(new Runnable() {
 				public void run(){
 					HashSet<Integer> doneTaskIds=new HashSet<Integer>();

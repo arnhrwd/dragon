@@ -73,7 +73,7 @@ public class Node {
 		router = new Router(this,conf);
 		serviceThread=new ServiceProcessor(this);
 		nodeThread=new NodeProcessor(this);
-		if((Boolean)conf.get(Config.DRAGON_METRICS_ENABLED)){
+		if(conf.getDragonMetricsEnabled()){
 			metrics = new Metrics(this);
 			metrics.start();
 		}
@@ -108,7 +108,7 @@ public class Node {
 	}
 	
 	public boolean storeJarFile(String topologyName, byte[] topologyJar) {
-		Path pathname = Paths.get(conf.getJarDir()+"/"+comms.getMyNodeDescriptor(),topologyName);
+		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDescriptor(),topologyName);
 		File f = new File(pathname.getParent().toString());
 		f.mkdirs();
 		try (FileOutputStream fos = new FileOutputStream(pathname.toString())) {
@@ -123,7 +123,7 @@ public class Node {
 	}
 	
 	public boolean loadJarFile(String topologyName) {
-		Path pathname = Paths.get(conf.getJarDir()+"/"+comms.getMyNodeDescriptor(),topologyName);
+		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDescriptor(),topologyName);
 		try {
 			Run.addClassPath(pathname.toString());
 			return true;
@@ -138,7 +138,7 @@ public class Node {
 	}
 	
 	public byte[] readJarFile(String topologyName) {
-		Path pathname = Paths.get(conf.getJarDir()+"/"+comms.getMyNodeDescriptor(),topologyName);
+		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDescriptor(),topologyName);
 		
 		File file = new File(pathname.toString());
 		try {

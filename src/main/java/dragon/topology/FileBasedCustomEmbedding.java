@@ -46,7 +46,7 @@ public class FileBasedCustomEmbedding implements IEmbeddingAlgo {
     @Override
     public ComponentEmbedding generateEmbedding(DragonTopology topology, NodeContext context, Config config) {
         ComponentEmbedding componentEmbedding = new ComponentEmbedding();
-        String embeddingPlanFileName = String.valueOf(config.get(Config.DRAGON_EMBEDDING_CUSTOM_FILE));
+        String embeddingPlanFileName = String.valueOf(config.getDragonEmbeddingCustomFile());
 
         Yaml embeddingPlan = new Yaml();
         try (InputStream inputStream = loadByFileName(embeddingPlanFileName)) {

@@ -178,8 +178,8 @@ public class Run {
         try {
             cmd = parser.parse(options, args);
             if(cmd.hasOption("metrics")){
-            	DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
-        				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_SERVICE_PORT));
+            	DragonSubmitter.node = new NodeDescriptor(conf.getDragonNetworkRemoteHost(),
+        			conf.getDragonNetworkRemoteServicePort());
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
     			}
@@ -191,8 +191,8 @@ public class Run {
     			}
     			DragonSubmitter.getMetrics(conf,cmd.getOptionValue("topology"));
             } else if(cmd.hasOption("terminate")){
-            	DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
-        				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_SERVICE_PORT));
+            	DragonSubmitter.node = new NodeDescriptor(conf.getDragonNetworkRemoteHost(),
+        			conf.getDragonNetworkRemoteServicePort());
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
     			}
@@ -205,8 +205,8 @@ public class Run {
     			DragonSubmitter.terminateTopology(conf,cmd.getOptionValue("topology"));
             } else if(!cmd.hasOption("daemon")){
             
-            	DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
-        				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_SERVICE_PORT));
+            	DragonSubmitter.node = new NodeDescriptor(conf.getDragonNetworkRemoteHost(),
+        			conf.getDragonNetworkRemoteServicePort());
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
     			}
@@ -226,15 +226,15 @@ public class Run {
 	    		Method cmain = c.getMethod("main", String[].class);
 	    		cmain.invoke(cmain, (Object) newargs);
             } else {
-            	DragonSubmitter.node = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST),
-        				(Integer)conf.get(Config.DRAGON_NETWORK_REMOTE_NODE_PORT));
+            	DragonSubmitter.node = new NodeDescriptor(conf.getDragonNetworkRemoteHost(),
+        			conf.getDragonNetworkRemoteNodePort());
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
     			}
     			if(cmd.hasOption("port")) {
     				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
     			}
-            	if(cmd.hasOption("host") || !((String)conf.get(Config.DRAGON_NETWORK_REMOTE_HOST)).equals("") ){
+            	if(cmd.hasOption("host") || !(conf.getDragonNetworkRemoteHost()).equals("") ){
             		log.info("starting dragon node and joining to "+cmd.getOptionValue("host"));
             		new Node(DragonSubmitter.node,conf);
             	} else {

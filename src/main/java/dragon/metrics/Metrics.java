@@ -15,7 +15,7 @@ public class Metrics extends Thread {
 	
 	public Metrics(Node node){
 		log.debug("metrics initialized");
-		samples=new TopologyMetricMap((int)node.getConf().get(Config.DRAGON_METRICS_SAMPLE_HISTORY));
+		samples=new TopologyMetricMap((int)node.getConf().getDragonMetricsSampleHistory());
 		this.node = node;
 	}
 	
@@ -30,7 +30,7 @@ public class Metrics extends Thread {
 	public void run(){
 		while(!isInterrupted()){
 			try {
-				sleep((int)node.getConf().get(Config.DRAGON_METRICS_SAMPLE_PERIOD_MS));
+				sleep((int)node.getConf().getDragonMetricsSamplePeriodMs());
 			} catch (InterruptedException e) {
 				log.info("shutting down");
 			}

@@ -36,7 +36,7 @@ public class MetricsMonitor {
 		
 		while(true){
 			try {
-				Thread.sleep((int)conf.get(Config.DRAGON_METRICS_SAMPLE_PERIOD_MS));
+				Thread.sleep((int)conf.getDragonMetricsSamplePeriodMs());
 			} catch (InterruptedException e) {
 				break;
 			}

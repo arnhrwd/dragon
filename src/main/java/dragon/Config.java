@@ -1,16 +1,19 @@
 package dragon;
 
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.UnknownHostException;
 import java.util.HashMap;
-import java.util.Properties;
+import java.util.Map;
 import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.yaml.snakeyaml.Yaml;
 
 import dragon.network.NodeDescriptor;
 
@@ -65,60 +68,54 @@ public class Config extends HashMap<String, Object>{
 		super();
 		defaults();
 		
-		
-		Properties props = new Properties();
-		FileInputStream propStream=null;
+		Yaml config = new Yaml();
+		//Properties props = new Properties();
+		InputStream inputStream=null;
 		try {
 			log.debug("looking for "+file+" in working directory");
-			propStream = new FileInputStream(file);
+			inputStream = loadByFileName(file);
 		} catch (FileNotFoundException e) {
 			
 		}
-		if(propStream==null) {
+		if(inputStream==null) {
 			try {
 				log.debug("looking for "+file+" in ../conf");
-				propStream = new FileInputStream("../conf/"+file);
+				inputStream =loadByFileName("../conf/"+file);
 			} catch (FileNotFoundException e) {
 				
 			}
 		}
-		if(propStream==null) {
+		if(inputStream==null) {
 			try {
 				log.debug("looking for "+file+" in /etc/dragon");
-				propStream = new FileInputStream("/etc/dragon/"+file);
+				inputStream = loadByFileName("/etc/dragon/"+file);
 			} catch (FileNotFoundException e) {
 				
 			}
 		}
-		if(propStream==null) {
+		if(inputStream==null) {
 			try {
 				String home = System.getenv("HOME");
 				log.debug("looking for "+file+" in "+home+"/.dragon");
-				propStream = new FileInputStream(home+"/.dragon/"+file);
+				inputStream = loadByFileName(home+"/.dragon/"+file);
 			} catch (FileNotFoundException e) {
-				
+				log.warn("cannot find "+file+" - using defaults");
+				return;
 			}
 		}
-		if(propStream==null) {
-			log.warn("cannot find "+file+" - using defaults");
-			return;
-		}
-		props.load(propStream);
-        for(Object prop : props.keySet()) {
-        	String propName = (String) prop;
-        	if(containsKey(propName)) {
-        		if(get(propName) instanceof String) {
-        			put(propName,props.getProperty(propName));
-        		} else if(get(propName) instanceof Integer) {
-        			put(propName,Integer.parseInt(props.getProperty(propName)));
-        		} else if(get(propName) instanceof Boolean) {
-        			put(propName,Boolean.parseBoolean(props.getProperty(propName)));
-        		}
-        	} else {
-        		log.error(propName+" is unknown, ignoring");
-        	}
-        }
+		Map<String,Object> map = config.load(inputStream);
+		log.debug(map);
+		putAll(map);
 	}
+	
+	private InputStream loadByFileName(String name) throws FileNotFoundException {
+        File f = new File(name);
+        if (f.isFile()) {
+            return new FileInputStream(f);
+        } else {
+            return this.getClass().getClassLoader().getResourceAsStream(name);
+        }
+    }
 	
 	public void defaults() {
 		put(DRAGON_OUTPUT_BUFFER_SIZE,1024);
@@ -140,7 +137,7 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_METRICS_ENABLED,true);
 		put(DRAGON_METRICS_SAMPLE_PERIOD_MS,60*1000);
 		put(DRAGON_METRICS_SAMPLE_HISTORY,1);
-		put(DRAGON_NETWORK_REMOTE_HOSTS,"");
+		put(DRAGON_NETWORK_REMOTE_HOSTS,new ArrayList<HashMap<String,ArrayList<Integer>>>());
 		put(DRAGON_EMBEDDING_ALGORITHM, "dragon.topology.RoundRobinEmbedding");
 		put(DRAGON_EMBEDDING_CUSTOM_FILE, "embedding.yaml");
 	}
@@ -161,27 +158,124 @@ public class Config extends HashMap<String, Object>{
 		return this.maxTaskParallelism;
 	}
 	
-	public String getJarDir() {
-		return get(Config.DRAGON_BASE_DIR)+"/"+get(Config.DRAGON_JAR_DIR);
+	//
+	// Simple Getters
+	//
+	
+	public int getDragonOutputBufferSize() {
+		return (Integer)get(DRAGON_OUTPUT_BUFFER_SIZE);
+	}
+	
+	public int getDragonInputBufferSize() {
+		return (Integer)get(DRAGON_INPUT_BUFFER_SIZE);
+	}
+	
+	public String getDragonBaseDir() {
+		return (String)get(DRAGON_BASE_DIR);
+	}
+	
+	public String getDragonPersistanceDir() {
+		return (String)get(DRAGON_PERSISTANCE_DIR);
+	}
+	
+	public String getDragonJarDir() {
+		return (String)get(DRAGON_JAR_DIR);
+	}
+	
+	public int getDragonLocalclusterThreads() {
+		return (Integer)get(DRAGON_LOCALCLUSTER_THREADS);
+	}
+	
+	public int getDragonRouterInputThreads() {
+		return (Integer)get(DRAGON_ROUTER_INPUT_THREADS);
+	}
+	
+	public int getDragonRouterOutputThreads() {
+		return (Integer)get(DRAGON_ROUTER_OUTPUT_THREADS);
+	}
+	
+	public int getDragonRouterInputBufferSize() {
+		return (Integer)get(DRAGON_ROUTER_INPUT_BUFFER_SIZE);
+	}
+	
+	public int getDragonRouterOutputBufferSize() {
+		return (Integer)get(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE);
+	}
+	
+	public String getDragonNetworkRemoteHost() {
+		return (String)get(DRAGON_NETWORK_REMOTE_HOST);
+	}
+	
+	public String getDragonNetworkLocalHost() {
+		return (String)get(DRAGON_NETWORK_LOCAL_HOST);
+	}
+	
+	public int getDragonNetworkRemoteServicePort() {
+		return (Integer)get(DRAGON_NETWORK_REMOTE_SERVICE_PORT);
+	}
+	
+	public int getDragonNetworkLocalServicePort() {
+		return (Integer)get(DRAGON_NETWORK_LOCAL_SERVICE_PORT);
+	}
+	
+	public int getDragonNetworkRemoteNodePort() {
+		return (Integer)get(DRAGON_NETWORK_REMOTE_NODE_PORT);
+	}
+	
+	public int getDragonNetworkLocalNodePort() {
+		return (Integer)get(DRAGON_NETWORK_LOCAL_NODE_PORT);
+	}
+	
+	public boolean getDragonMetricsEnabled() {
+		return (Boolean)get(DRAGON_METRICS_ENABLED);
+	}
+	
+	public int getDragonMetricsSamplePeriodMs() {
+		return (int)get(DRAGON_METRICS_SAMPLE_PERIOD_MS);
+	}
+	
+	public int getDragonMetricsSampleHistory() {
+		return (int)get(DRAGON_METRICS_SAMPLE_HISTORY);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public ArrayList<HashMap<String,ArrayList<Integer>>> getDragonNetworkRemoteHosts(){
+		return (ArrayList<HashMap<String,ArrayList<Integer>>>)get(DRAGON_NETWORK_REMOTE_HOSTS);
+	}
+	
+	public String getDragonEmbeddingAlgorithm() {
+		return (String)get(DRAGON_EMBEDDING_ALGORITHM);
+	}
+	
+	public String getDragonEmbeddingCustomFile() {
+		return (String)get(DRAGON_EMBEDDING_CUSTOM_FILE);
+	}
+	
+	//
+	// Advanced Getters
+	//
+	
+	private String onlyKey(HashMap<String,?> map) {
+		return (new ArrayList<String>(map.keySet())).get(0);
+	}
+	
+	public String getJarPath() {
+		return getDragonBaseDir()+"/"+getDragonJarDir();
 	}
 	
 	public ArrayList<NodeDescriptor> getServiceHosts(){
 		ArrayList<NodeDescriptor> nodes = new ArrayList<NodeDescriptor>();
-		String[] hosts = ((String)get(DRAGON_NETWORK_REMOTE_HOSTS)).split(",");
-		for(int i=0;i<hosts.length;i++) {
-			String[] parts = hosts[i].split(":");
-			if(parts.length==1) {
-				try {
-					nodes.add(new NodeDescriptor(parts[0],(int)get(DRAGON_NETWORK_REMOTE_SERVICE_PORT)));
-				} catch (UnknownHostException e) {
-					log.error(parts[0] + " is not found");
+		ArrayList<HashMap<String,ArrayList<Integer>>> hosts = getDragonNetworkRemoteHosts();
+		for(int i=0;i<hosts.size();i++) {
+			String hostname = onlyKey(hosts.get(i));
+			try {
+				if(hosts.get(i).get(hostname)==null || hosts.get(i).get(hostname).size()==0) {
+					nodes.add(new NodeDescriptor(hostname,getDragonNetworkRemoteServicePort()));
+				} else if(hosts.get(i).get(hostname).size()>=1) {
+					nodes.add(new NodeDescriptor(hostname,hosts.get(i).get(hostname).get(0)));
 				}
-			} else if(parts.length>=2) {
-				try {
-					nodes.add(new NodeDescriptor(parts[0],Integer.parseInt(parts[1])));
-				} catch (UnknownHostException e) {
-					log.error(parts[0] + " is not found");
-				}
+			} catch (UnknownHostException e) {
+				log.error(hostname + " is not found");
 			}
 			
 		}
@@ -190,23 +284,18 @@ public class Config extends HashMap<String, Object>{
 	
 	public ArrayList<NodeDescriptor> getNodeHosts(){
 		ArrayList<NodeDescriptor> nodes = new ArrayList<NodeDescriptor>();
-		String[] hosts = ((String)get(DRAGON_NETWORK_REMOTE_HOSTS)).split(",");
-		for(int i=0;i<hosts.length;i++) {
-			String[] parts = hosts[i].split(":");
-			if(parts.length==1 || parts.length==2) {
-				try {
-					nodes.add(new NodeDescriptor(parts[0],(int)get(DRAGON_NETWORK_REMOTE_NODE_PORT)));
-				} catch (UnknownHostException e) {
-					log.error(parts[0] + " is not found");
-				}
-			} else if(parts.length==3) {
-				try {
-					nodes.add(new NodeDescriptor(parts[0],Integer.parseInt(parts[2])));
-				} catch (UnknownHostException e) {
-					log.error(parts[0] + " is not found");
-				}
+		ArrayList<HashMap<String,ArrayList<Integer>>> hosts = getDragonNetworkRemoteHosts();
+		for(int i=0;i<hosts.size();i++) {
+			String hostname = onlyKey(hosts.get(i));
+			try {
+				if(hosts.get(i).get(hostname)==null || hosts.get(i).get(hostname).size()<2) {				
+					nodes.add(new NodeDescriptor(hostname,getDragonNetworkRemoteNodePort()));
+				} else if(hosts.get(i).get(hostname).size()==2) {
+					nodes.add(new NodeDescriptor(hostname,hosts.get(i).get(hostname).get(1)));
+				} 
+			}catch (UnknownHostException e) {
+				log.error(hostname + " is not found");
 			}
-			
 		}
 		return nodes;
 	}

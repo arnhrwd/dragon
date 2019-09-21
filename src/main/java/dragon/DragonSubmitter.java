@@ -67,7 +67,7 @@ public class DragonSubmitter {
 		
 		log.debug("received context  ["+context+"]");
 
-		IEmbeddingAlgo embedding = ReflectionUtils.newInstance((String)conf.get(Config.DRAGON_EMBEDDING_ALGORITHM));
+		IEmbeddingAlgo embedding = ReflectionUtils.newInstance(conf.getDragonEmbeddingAlgorithm());
 		topology.embedTopology(embedding, context, conf);
 		
 		

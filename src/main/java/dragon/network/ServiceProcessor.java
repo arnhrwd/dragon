@@ -100,7 +100,7 @@ public class ServiceProcessor extends Thread {
 				break;
 			case GET_METRICS:
 				GetMetricsMessage gm = (GetMetricsMessage) command;
-				if((Boolean)node.getConf().get(Config.DRAGON_METRICS_ENABLED)){
+				if((Boolean)node.getConf().getDragonMetricsEnabled()){
 					ComponentMetricMap cm = node.getMetrics(gm.topologyId);
 					if(cm!=null){
 						MetricsMessage r = new MetricsMessage(cm);

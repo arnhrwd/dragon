@@ -3,7 +3,6 @@ package dragon.spout;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import dragon.Config;
 import dragon.LocalCluster;
 
 
@@ -16,7 +15,7 @@ public class SpoutOutputCollector extends Collector {
 	
 	
 	public SpoutOutputCollector(LocalCluster localCluster,Spout spout) {
-		super(spout,localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE));
+		super(spout,localCluster,(Integer)localCluster.getConf().getDragonOutputBufferSize());
 
 	}
 	

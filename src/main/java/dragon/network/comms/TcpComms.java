@@ -49,8 +49,8 @@ public class TcpComms implements IComms {
 	
 	public TcpComms(Config conf) throws UnknownHostException {
 		this.conf=conf;
-		me = new NodeDescriptor((String)conf.get(Config.DRAGON_NETWORK_LOCAL_HOST),
-				(Integer)conf.get(Config.DRAGON_NETWORK_LOCAL_NODE_PORT));
+		me = new NodeDescriptor(conf.getDragonNetworkLocalHost(),
+			conf.getDragonNetworkLocalNodePort());
 		log.debug("this node is ["+me+"]");
 		incommingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
 		incommingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
@@ -96,8 +96,8 @@ public class TcpComms implements IComms {
 	}
 	
 	public void open() throws IOException {
-		serviceSocketServer = new ServerSocket((Integer)conf.get(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT));
-		socketManager = new SocketManager((Integer)conf.get(Config.DRAGON_NETWORK_LOCAL_NODE_PORT),me);
+		serviceSocketServer = new ServerSocket(conf.getDragonNetworkLocalServicePort());
+		socketManager = new SocketManager(conf.getDragonNetworkLocalNodePort(),me);
 		serviceOutputStreams = new HashMap<String,ObjectOutputStream>();
 		serviceThread = new Thread() {
 			@Override
