@@ -21,12 +21,12 @@ public class Sample implements Serializable {
 	
 	public Sample(Bolt bolt){
 		timestamp = Time.currentTimeMillis();
-		inputQueueSize = bolt.getInputCollector().getQueue().getNumElements();
+		inputQueueSize = bolt.getInputCollector().getQueue().size();
 		ComponentTaskBuffer ctb = bolt.getOutputCollector().getComponentTaskBuffer();
 		outputQueueSize=0;
 		for(String componentId:ctb.keySet()) {
 			for(String streamId:ctb.get(componentId).keySet()) {
-				outputQueueSize += ctb.get(componentId).get(streamId).getNumElements();
+				outputQueueSize += ctb.get(componentId).get(streamId).size();
 			}
 		}
 		processed = bolt.getProcessed();
@@ -42,7 +42,7 @@ public class Sample implements Serializable {
 		outputQueueSize=0;
 		for(String componentId:ctb.keySet()) {
 			for(String streamId:ctb.get(componentId).keySet()) {
-				outputQueueSize += ctb.get(componentId).get(streamId).getNumElements();
+				outputQueueSize += ctb.get(componentId).get(streamId).size();
 			}
 		}
 		processed = 0;

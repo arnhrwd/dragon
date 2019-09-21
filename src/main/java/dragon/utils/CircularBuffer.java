@@ -10,7 +10,7 @@ public class CircularBuffer<T> {
 	protected Integer tail;
 	protected Integer prev_tail;
 	protected Integer prev_head;
-	protected Integer size=1024;
+	protected Integer capacity=1024;
 	public Object lock = new Object();
 	public Object putLock = new Object();
 	public Object takeLock = new Object();
@@ -19,25 +19,25 @@ public class CircularBuffer<T> {
 		init();
 	}
 	
-	public CircularBuffer(int size){
-		this.size=size;
+	public CircularBuffer(int capacity){
+		this.capacity=capacity;
 		init();
 	}
 	
 	private void init(){
-		elements = new ArrayList<T>(size);
-		for(int i=0;i<size;i++) {
+		elements = new ArrayList<T>(capacity);
+		for(int i=0;i<capacity;i++) {
 			elements.add( null);
 		}
 		head=0;
 		tail=0;
 	}
 	
-	public int getNumElements() {
+	public int size() {
 		synchronized(elements) {
 			if(tail.equals(head)) return 0;
 			if(tail>head) return tail-head;
-			return size-(head-tail);
+			return capacity-(head-tail);
 		}
 	}
 	
@@ -52,12 +52,12 @@ public class CircularBuffer<T> {
 	public boolean offer(T element){
 		synchronized(takeLock) {
 			synchronized(elements){
-				if((tail+1)%size==head){
+				if((tail+1)%capacity==head){
 					return false;
 				}
 				elements.set(tail,element);
 				prev_tail=tail;
-				tail=(tail+1)%size;
+				tail=(tail+1)%capacity;
 				takeLock.notify();
 				return true;
 			}
@@ -71,7 +71,7 @@ public class CircularBuffer<T> {
 					T element=elements.get(head);
 					elements.set(head, null);
 					prev_head=head;
-					head=(head+1)%size;
+					head=(head+1)%capacity;
 					putLock.notify();
 					return element;
 				}

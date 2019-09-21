@@ -40,9 +40,11 @@ public class StreamQueueMap extends HashMap<String,NetworkTaskBuffer>{
 	}
 
 	public void drop(String streamId) {
-		if(get(streamId).getNumElements()!=0) {
-			log.error("dropping stream ["+streamId+"] of size ["+get(streamId).getNumElements()+"]");
+		if(containsKey(streamId)) {
+			if(get(streamId).size()!=0) {
+				log.error("dropping stream ["+streamId+"] of size ["+get(streamId).size()+"]");
+			}
+			remove(streamId);
 		}
-		remove(streamId);
 	}
 }

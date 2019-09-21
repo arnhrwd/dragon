@@ -58,7 +58,7 @@ public class DurableCircularBuffer<T> extends CircularBuffer<T> {
 	
 	@SuppressWarnings("unchecked")
 	private void recoverElements(){
-		for(int i=0;i<size;i++){
+		for(int i=0;i<capacity;i++){
 			FileInputStream file;
 			try {
 				file = new FileInputStream(Paths.get(dir, i+".dat").toString());

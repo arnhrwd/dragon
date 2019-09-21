@@ -10,6 +10,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -50,7 +52,15 @@ public class LocalCluster {
 	private ArrayList<Future> networkExecutorThreads;
 	private int totalComponents=0;
 	
-	private int componentThreadsDone=0;
+	private volatile int componentThreadsDone=0;
+	private Lock componentThreadsWorkingLock;
+	private volatile Integer componentThreadsWorking=0;
+	private Lock networkThreadsWorkingLock;
+	private volatile Integer networkThreadsWorking=0;
+
+	
+	private volatile Boolean groupTerminateFlag = false;
+	private volatile Boolean networkTerminateFlag = false;
 	
 	private String terminateMessageId;
 	
@@ -68,9 +78,9 @@ public class LocalCluster {
 	
 	private HashMap<String,Integer> boltTickCount;
 	
-	int totalParallelismHint=0;
+	private int totalParallelismHint=0;
 	
-	private boolean shouldTerminate=false;
+	private volatile boolean shouldTerminate=false;
 	
 	private Node node;
 	
@@ -330,6 +340,7 @@ public class LocalCluster {
 		};
 		tickThread.start();
 
+		networkThreadsWorking=0;
 		outputsScheduler();
 		
 		log.debug("starting a component executor with "+totalParallelismHint+" threads");
@@ -339,6 +350,7 @@ public class LocalCluster {
 			scheduleSpouts();
 		}
 		
+		componentThreadsWorking=0;
 		runComponentThreads();
 		
 	}
@@ -385,66 +397,88 @@ public class LocalCluster {
 		}
 	}
 	
-	private synchronized void checkCloseCondition() {
-		componentThreadsDone++;
-		if(componentThreadsDone==componentExecutorService.getPoolSize()) {
-			Thread shutdownThread = new Thread() {
-				@Override
-				public void run() {
-					// call close on bolts
-					for(HashMap<Integer,Bolt> bolts : bolts.values()) {
-						for(Bolt bolt : bolts.values()) {
-							bolt.close();
+	private void checkCloseCondition() {
+		log.debug("starting shutdown thread");
+		Thread shutdownThread = new Thread() {
+			@Override
+			public void run() {
+				log.debug("waiting for all work to finish");
+				while(componentThreadsWorking>0 || networkThreadsWorking>0) {
+					while(outputsPending.size()>0 || componentsPending.size()>0) {
+						try {
+							Thread.sleep(1000);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
 						}
 					}
-					// shutdown the executors and other threads
-					componentExecutorService.shutdown();
-					for(int i=0;i<(Integer)conf.getDragonLocalclusterThreads();i++) {
-						networkExecutorThreads.get(i).cancel(true);
-					}
-					networkExecutorService.shutdown();
 					try {
-						while (!componentExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
-							  log.info("Awaiting completion of component executor threads.");
-							}
-						while (!networkExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
-							  log.info("Awaiting completion of network executor threads.");
-							}
+						Thread.sleep(1000);
 					} catch (InterruptedException e) {
-						log.warn("threads may not have terminated");
+						// TODO Auto-generated catch block
+						e.printStackTrace();
 					}
-					componentExecutorService.purge();
-					networkExecutorService.purge();
-					
-					tickThread.interrupt();
-					tickCounterThread.interrupt();
-					
-					// the local cluster can now be garbage collected
-					node.localClusterTerminated(topologyName, terminateMessageId);
+					log.debug("componentThreadsWorking="+componentThreadsWorking);
+					log.debug("networkThreadsWorking="+networkThreadsWorking);
+					log.debug("outputsPending="+outputsPending.size());
+					log.debug("componentsPending="+componentsPending.size());
 				}
-			};
-			shutdownThread.start();
-		}
+				log.debug("interrupting all threads");
+				for(int i=0;i<totalParallelismHint;i++) {
+					componentExecutorThreads.get(i).cancel(true);
+				}
+				for(int i=0;i<conf.getDragonLocalclusterThreads();i++) {
+					networkExecutorThreads.get(i).cancel(true);
+				}
+				
+				
+				// call close on bolts
+				for(HashMap<Integer,Bolt> bolts : bolts.values()) {
+					for(Bolt bolt : bolts.values()) {
+						bolt.close();
+					}
+				}
+				// shutdown the executors and other threads
+				componentExecutorService.shutdown();
+				networkExecutorService.shutdown();
+				try {
+					while (!componentExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
+						  log.info("Awaiting completion of component executor threads.");
+						}
+					while (!networkExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
+						  log.info("Awaiting completion of network executor threads.");
+						}
+				} catch (InterruptedException e) {
+					log.warn("threads may not have terminated");
+				}
+				componentExecutorService.purge();
+				networkExecutorService.purge();
+				
+				tickThread.interrupt();
+				tickCounterThread.interrupt();
+				
+				// the local cluster can now be garbage collected
+				node.localClusterTerminated(topologyName, terminateMessageId);
+			}
+		};
+		shutdownThread.start();
 	}
 	
 	private void runComponentThreads() {
 		for(int i=0;i<totalParallelismHint;i++){
+			//final int thread_id=i;
 			componentExecutorThreads.add(componentExecutorService.submit(new Runnable(){
 				public void run(){
 					Component component;
 					while(true){
 						try {
-							if(shouldTerminate && componentsPending.size()==0 && outputsPending.size()==0) {
-								log.info("exiting");
-								break;
-							}
 							component = componentsPending.take();
 						} catch (InterruptedException e) {
-							log.info("interrupted");
-							if(componentsPending.size()>0 || outputsPending.size()>0) {
-								log.error("some components or outputs are still pending");
-							}
+							log.info("component thread interrupted");
 							break;
+						}
+						synchronized(componentThreadsWorking) {
+							componentThreadsWorking++;
 						}
 						// TODO:the synchronization can be switched if the component's
 						// execute/nextTuple is thread safe
@@ -454,13 +488,12 @@ public class LocalCluster {
 								// a closed component will not reschedule itself
 							}
 							component.run();
+							
 						}	
+						synchronized(componentThreadsWorking) {
+							componentThreadsWorking--;
+						}
 					}
-					// the first thread that exits will cause all the others to exit
-					for(int i=0;i<totalParallelismHint;i++) {
-						componentExecutorThreads.get(i).cancel(true);
-					}
-					checkCloseCondition();
 				}
 			}));
 		}
@@ -476,46 +509,42 @@ public class LocalCluster {
 					NetworkTaskBuffer queue;
 					while(true) {
 						try {
-							if(shouldTerminate && componentsPending.size()==0 && outputsPending.size()==0) {
-								log.info("exiting");
-								break;
-							}
 							queue = outputsPending.take();
-							synchronized(queue.lock) {
-								NetworkTask networkTask = (NetworkTask) queue.peek();
-								if(networkTask!=null) {
-									Tuple tuple = networkTask.getTuple();
-									String name = networkTask.getComponentId();
-									doneTaskIds.clear();
-									for(Integer taskId : networkTask.getTaskIds()) {
-										if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
-											doneTaskIds.add(taskId);
-											componentPending(bolts.get(name).get(taskId));
-										} else {
-											//log.debug("blocked");
-										}
-									}
-									networkTask.getTaskIds().removeAll(doneTaskIds);
-									if(networkTask.getTaskIds().size()==0) {
-										queue.poll();
-									} else {
-										outputPending(queue);
-									}
-								} else {
-									//log.debug("queue empty!");
-								}
-							}
 						} catch (InterruptedException e) {
-							log.info("interrupted");
-							if(componentsPending.size()>0 || outputsPending.size()>0) {
-								log.error("some components or outputs are still pending");
-							}
+							log.info("network thread interrupted");
 							break;
 						}
-					}
-					// the first thread that exits will cause all the others to exit
-					for(int i=0;i<(Integer)conf.get(Config.DRAGON_LOCALCLUSTER_THREADS);i++) {
-						networkExecutorThreads.get(i).cancel(true);
+						synchronized(networkThreadsWorking) {
+							networkThreadsWorking++;
+						}
+						synchronized(queue.lock) {
+							NetworkTask networkTask = (NetworkTask) queue.peek();
+							if(networkTask!=null) {
+								Tuple tuple = networkTask.getTuple();
+								String name = networkTask.getComponentId();
+								doneTaskIds.clear();
+								for(Integer taskId : networkTask.getTaskIds()) {
+									if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
+										doneTaskIds.add(taskId);
+										componentPending(bolts.get(name).get(taskId));
+									} else {
+										//log.debug("blocked");
+									}
+								}
+								networkTask.getTaskIds().removeAll(doneTaskIds);
+								if(networkTask.getTaskIds().size()==0) {
+									queue.poll();
+								} else {
+									outputPending(queue);
+								}
+							} else {
+								//log.debug("queue empty!");
+							}	
+						}
+						synchronized(networkThreadsWorking) {
+							networkThreadsWorking--;
+						}
+						
 					}
 				}
 			}));
@@ -558,6 +587,7 @@ public class LocalCluster {
 
 	public void setShouldTerminate() {
 		shouldTerminate=true;
+		checkCloseCondition();
 	}
 	
 	public void setShouldTerminate(String error) {
