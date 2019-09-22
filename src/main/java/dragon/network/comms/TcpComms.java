@@ -34,10 +34,10 @@ public class TcpComms implements IComms {
 	private ObjectOutputStream serviceOutputStream;
 	private Config conf;
 
-	private LinkedBlockingQueue<ServiceMessage> incommingServiceQueue;
+	private LinkedBlockingQueue<ServiceMessage> incomingServiceQueue;
 	//LinkedBlockingQueue<ServiceMessage> outgoingServiceQueue;
-	private LinkedBlockingQueue<NodeMessage> incommingNodeQueue;
-	private LinkedBlockingQueue<NetworkTask> incommingTaskQueue;
+	private LinkedBlockingQueue<NodeMessage> incomingNodeQueue;
+	private LinkedBlockingQueue<NetworkTask> incomingTaskQueue;
 	private SocketManager socketManager;
 	
 	private Long id=0L;
@@ -59,9 +59,9 @@ public class TcpComms implements IComms {
 	 */
 	public TcpComms(Config conf) throws UnknownHostException {
 		this.conf=conf;
-		incommingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
-		incommingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
-		incommingTaskQueue = new LinkedBlockingQueue<NetworkTask>();
+		incomingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
+		incomingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
+		incomingTaskQueue = new LinkedBlockingQueue<NetworkTask>();
 		nodeInputsThreads = new HashSet<Thread>();
 		taskInputsThreads = new HashSet<Thread>();
 		
@@ -84,7 +84,7 @@ public class TcpComms implements IComms {
 				try {
 					message = (ServiceMessage) in.readObject();
 					while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
-						incommingServiceQueue.put(message);
+						incomingServiceQueue.put(message);
 						message = (ServiceMessage) in.readObject();
 					}
 					in.close();
@@ -135,7 +135,7 @@ public class TcpComms implements IComms {
 									ServiceMessage message = (ServiceMessage) in.readObject();
 									while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
 										message.setMessageId(myid.toString());
-										incommingServiceQueue.put(message);
+										incomingServiceQueue.put(message);
 										message = (ServiceMessage) in.readObject();
 									}
 									ServiceDoneMessage r = new ServiceDoneMessage();
@@ -178,7 +178,7 @@ public class TcpComms implements IComms {
 								while(!isInterrupted()) {
 									try {
 										NodeMessage message = (NodeMessage) socketManager.getInputStream("node", desc).readObject();
-										incommingNodeQueue.put(message);
+										incomingNodeQueue.put(message);
 									} catch (IOException e) {
 										log.error("ioexception on node stream from ["+desc+"]: "+e.toString());
 										socketManager.delete("node",desc);
@@ -217,7 +217,7 @@ public class TcpComms implements IComms {
 								while(!isInterrupted()) {
 									try {
 										NetworkTask message = (NetworkTask) socketManager.getInputStream("task", desc).readObject();
-										incommingTaskQueue.put(message);
+										incomingTaskQueue.put(message);
 									} catch (IOException e) {
 										log.error("ioexception on task stream from +["+desc+"]: "+e.toString());
 										socketManager.delete("task",desc);
@@ -267,78 +267,97 @@ public class TcpComms implements IComms {
 	}
 
 	public void sendServiceMessage(ServiceMessage response) {
-		try {
-			log.debug("sending service message ["+response.getType().name()+"]");
-			if(response.getMessageId().equals("")){
-				serviceOutputStream.writeObject(response);
-				serviceOutputStream.flush();
-			} else {
-				synchronized(serviceOutputStreams){
-					serviceOutputStreams.get(response.getMessageId()).writeObject(response);
-					serviceOutputStreams.get(response.getMessageId()).flush();
+		int tries=0;
+		while(tries<conf.getDragonCommsRetryAttempts()) {
+			try {
+				log.debug("sending service message ["+response.getType().name()+"]");
+				if(response.getMessageId().equals("")){
+					serviceOutputStream.writeObject(response);
+					serviceOutputStream.flush();
+				} else {
+					synchronized(serviceOutputStreams){
+						serviceOutputStreams.get(response.getMessageId()).writeObject(response);
+						serviceOutputStreams.get(response.getMessageId()).flush();
+					}
+				}
+				return;
+			} catch (IOException e) {
+				tries++;
+				log.warn("could not send ["+response.getType().name()+
+						"]... will retry #["+tries+"] after ["+conf.getDragonCommsRetryMs()+"] ms");
+				try {
+					Thread.sleep(conf.getDragonCommsRetryMs());
+				} catch (InterruptedException e1) {
+					log.error("data was not transmitted");
+					return;
 				}
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
-		
+		log.fatal("data can not be transmitted");
+		throw new DragonCommsException("data can not be transmitted");
 	}
 
-	public ServiceMessage receiveServiceMessage() {
-		ServiceMessage m=null;
-		try {
-			m=incommingServiceQueue.take();
-			log.debug("received service message ["+m.getType().name()+"]");
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	public ServiceMessage receiveServiceMessage() throws InterruptedException {
+		ServiceMessage m=incomingServiceQueue.take();
+		log.debug("received service message ["+m.getType().name()+"]");
 		return m;
 	}
 
 	public void sendNodeMessage(NodeDescriptor desc, NodeMessage command) {
-		command.setSender(me);
-		try {
-			log.debug("sending ["+command.getType().name()+"] to ["+desc+"]");
-			socketManager.getOutputStream("node",desc).writeObject(command);
-			socketManager.getOutputStream("node",desc).flush();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		command.setSender(me); // node messages typically require to be replied to
+		int tries=0;
+		while(tries<conf.getDragonCommsRetryAttempts()) {
+			try {
+				log.debug("sending ["+command.getType().name()+"] to ["+desc+"]");
+				socketManager.getOutputStream("node",desc).writeObject(command);
+				socketManager.getOutputStream("node",desc).flush();
+				return;
+			} catch (IOException e) {
+				tries++;
+				log.warn("could not connect to ["+desc+
+						"]... will retry #["+tries+"] after ["+conf.getDragonCommsRetryMs()+"] ms");
+				try {
+					Thread.sleep(conf.getDragonCommsRetryMs());
+				} catch (InterruptedException e1) {
+					log.error("data was not transmitted");
+					return;
+				}
+			}
 		}
+		log.fatal("data can not be transmitted");
+		throw new DragonCommsException("data can not be transmitted");
 	}
 
-	public NodeMessage receiveNodeMessage() {
-		NodeMessage m=null;
-		try {
-			m=incommingNodeQueue.take();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		return m;
+	public NodeMessage receiveNodeMessage() throws InterruptedException {
+		return incomingNodeQueue.take();
 	}
 
 	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task) {
-		try {
-			//log.debug("sending ["+task+"] to ["+desc+"]");
-			synchronized(socketManager.getOutputStream("task", desc)) {
-				socketManager.getOutputStream("task",desc).writeObject(task);
-				socketManager.getOutputStream("task", desc).flush();
+		int tries=0;
+		while(tries<conf.getDragonCommsRetryAttempts()) {
+			try {
+				synchronized(socketManager.getOutputStream("task", desc)) {
+					socketManager.getOutputStream("task",desc).writeObject(task);
+					socketManager.getOutputStream("task", desc).flush();
+				}
+				return;
+			} catch (IOException e) {
+				tries++;
+				log.warn("could not connect to ["+desc+
+						"]... will retry #["+tries+"] after ["+conf.getDragonCommsRetryMs()+"] ms");
+				try {
+					Thread.sleep(conf.getDragonCommsRetryMs());
+				} catch (InterruptedException e1) {
+					log.error("data was not transmitted");
+					return;
+				}
 			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
+		log.fatal("data can not be transmitted");
+		throw new DragonCommsException("data can not be transmitted");
 	}
 
-	public NetworkTask receiveNetworkTask() {
-		NetworkTask m=null;
-		try {
-			m=incommingTaskQueue.take();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		return m;
+	public NetworkTask receiveNetworkTask() throws InterruptedException {
+		return incomingTaskQueue.take();
 	}
 }

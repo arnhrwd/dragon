@@ -243,8 +243,9 @@ public class Run {
     				conf.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT, Integer.parseInt(cmd.getOptionValue("sport")));
     			}
             	log.info("starting dragon daemon");
-            	new Node(conf);
             	
+				new Node(conf);
+
             }
         } catch (ParseException e) {
             System.out.println(e.getMessage());

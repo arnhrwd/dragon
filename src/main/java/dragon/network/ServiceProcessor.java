@@ -35,7 +35,13 @@ public class ServiceProcessor extends Thread {
 	@Override
 	public void run(){
 		while(!shouldTerminate){
-			ServiceMessage command = node.getComms().receiveServiceMessage();
+			ServiceMessage command;
+			try {
+				command = node.getComms().receiveServiceMessage();
+			} catch (InterruptedException e) {
+				log.info("interrupted");
+				break;
+			}
 			switch(command.getType()){
 			case UPLOAD_JAR:
 				UploadJarMessage jf = (UploadJarMessage) command;

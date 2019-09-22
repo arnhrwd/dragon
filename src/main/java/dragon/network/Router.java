@@ -18,7 +18,7 @@ public class Router {
 	private static Log log = LogFactory.getLog(Router.class);
 	private Node node;
 	private ExecutorService outgoingExecutorService;
-	private ExecutorService incommingExecutorService;
+	private ExecutorService incomingExecutorService;
 	private TopologyQueueMap inputQueues;
 	private TopologyQueueMap outputQueues;
 	private boolean shouldTerminate=false;
@@ -30,7 +30,7 @@ public class Router {
 		inputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterInputBufferSize());
 		outputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterOutputBufferSize());
 		outgoingExecutorService = Executors.newFixedThreadPool((Integer)conf.getDragonRouterOutputThreads());
-		incommingExecutorService = Executors.newFixedThreadPool((Integer)conf.getDragonRouterInputThreads());
+		incomingExecutorService = Executors.newFixedThreadPool((Integer)conf.getDragonRouterInputThreads());
 		outputsPending=new LinkedBlockingQueue<NetworkTaskBuffer>();
 		runExecutors();
 	}
@@ -80,10 +80,16 @@ public class Router {
 			});
 		}
 		for(int i=0;i<(Integer)conf.getDragonRouterInputThreads();i++) {
-			incommingExecutorService.execute(new Runnable() {
+			incomingExecutorService.execute(new Runnable() {
 				public void run() {
 					while(!shouldTerminate) {
-						NetworkTask task = node.getComms().receiveNetworkTask();
+						NetworkTask task;
+						try {
+							task = node.getComms().receiveNetworkTask();
+						} catch (InterruptedException e1) {
+							log.info("interrupted");
+							break;
+						}
 						try {
 							if(node.getLocalClusters().containsKey(task.getTopologyId())) {
 								inputQueues.put(task);

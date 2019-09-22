@@ -32,17 +32,23 @@ public class NodeProcessor extends Thread {
 		this.node=node;
 		context=new NodeContext();
 		nextNode=node.getComms().getMyNodeDescriptor();
-		log.debug("next pointer = ["+this.nextNode+"]");
+		log.info("next pointer = ["+this.nextNode+"]");
 		context.put(nextNode);
 		pendingJoinRequests = new HashSet<NodeMessage>();
-		log.debug("starting node processor");
+		log.info("starting node processor");
 		start();
 	}
 	
 	@Override
 	public void run() {
 		while(!shouldTerminate) {
-			NodeMessage message = node.getComms().receiveNodeMessage();
+			NodeMessage message;
+			try {
+				message = node.getComms().receiveNodeMessage();
+			} catch (InterruptedException e) {
+				log.info("interrupted");
+				break;
+			}
 			log.debug("received ["+message.getType().name()+"] from ["+message.getSender());
 			switch(message.getType()) {
 			case JOIN_REQUEST:

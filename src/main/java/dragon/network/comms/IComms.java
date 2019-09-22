@@ -46,13 +46,14 @@ public interface IComms {
 	/**
 	 * Blocking receive message.
 	 * @return received message
+	 * @throws InterruptedException 
 	 */
-	public ServiceMessage receiveServiceMessage();
+	public ServiceMessage receiveServiceMessage() throws InterruptedException;
 	
 	
 	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message);
-	public NodeMessage receiveNodeMessage();
+	public NodeMessage receiveNodeMessage() throws InterruptedException;
 	
 	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task);
-	public NetworkTask receiveNetworkTask();
+	public NetworkTask receiveNetworkTask() throws InterruptedException;
 }

@@ -44,6 +44,9 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_ROUTER_INPUT_BUFFER_SIZE="dragon.router.input.buffer.size";
 	public static final String DRAGON_ROUTER_OUTPUT_BUFFER_SIZE="dragon.router.output.buffer.size";
 
+	public static final String DRAGON_COMMS_RETRY_MS="dragon.comms.retry.ms";
+	public static final String DRAGON_COMMS_RETRY_ATTEMPTS="dragon.comms.retry.attempts";
+	
 	public static final String DRAGON_NETWORK_LOCAL_HOST="dragon.network.local.host";
 	public static final String DRAGON_NETWORK_LOCAL_SERVICE_PORT="dragon.network.local.service.port";
 	public static final String DRAGON_NETWORK_LOCAL_DATA_PORT="dragon.network.local.data.port";
@@ -132,6 +135,8 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_ROUTER_OUTPUT_THREADS,10);
 		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,1024);
 		put(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,1024);
+		put(DRAGON_COMMS_RETRY_MS,10*1000);
+		put(DRAGON_COMMS_RETRY_ATTEMPTS,500);
 		put(DRAGON_NETWORK_LOCAL_HOST,"localhost");
 		put(DRAGON_NETWORK_DEFAULT_SERVICE_PORT,4000);
 		//put(DRAGON_NETWORK_LOCAL_SERVICE_PORT,4000);
@@ -205,6 +210,14 @@ public class Config extends HashMap<String, Object>{
 		return (Integer)get(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE);
 	}
 	
+	public int getDragonCommsRetryMs() {
+		return (Integer)get(DRAGON_COMMS_RETRY_MS);
+	}
+	
+	public int getDragonCommsRetryAttempts() {
+		return (Integer)get(DRAGON_COMMS_RETRY_ATTEMPTS);
+	}
+	
 	public String getDragonNetworkLocalHost() {
 		return (String)get(DRAGON_NETWORK_LOCAL_HOST);
 	}
@@ -254,7 +267,7 @@ public class Config extends HashMap<String, Object>{
 		return (String)get(DRAGON_EMBEDDING_CUSTOM_FILE);
 	}
 	
-	//
+ 	//
 	// Advanced Getters
 	//
 	

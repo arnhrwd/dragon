@@ -30,7 +30,7 @@ public class MetricsMonitor {
 	private static IComms comms;
 	private static Config conf;
 	
-	public static void runMonitor() throws IOException {
+	public static void runMonitor() throws IOException, InterruptedException {
 		comms = new TcpComms(conf);
 		log.debug("hosts are "+conf.getHosts());
 		

@@ -39,21 +39,26 @@ public class DragonSubmitter {
 			comms = new TcpComms(conf);
 			comms.open(node);
 		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.exit(-1);
+			log.error("unknown host ["+node+"]");
+			System.exit(1);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			System.exit(-1);
+			log.error("ioexception: "+e.toString());
+			System.exit(1);
 		}
 	}
-	public static void submitTopology(String string, Config conf, DragonTopology topology){
+	public static void submitTopology(String string, Config conf, DragonTopology topology) {
 		initComms(conf);
-		log.debug("requesting context from ["+node+"]");
+		log.info("requesting context from ["+node+"]");
 		comms.sendServiceMessage(new GetNodeContextMessage());
-		ServiceMessage message = comms.receiveServiceMessage();
-		NodeContext context;
+		ServiceMessage message=null;
+		try {
+			message = comms.receiveServiceMessage();
+		} catch (InterruptedException e) {
+			log.info("interrupted waiting for context");
+			comms.close();
+			System.exit(-1);
+		}
+		NodeContext context=null;
 		switch(message.getType()) {
 		case NODE_CONTEXT:
 			NodeContextMessage nc = (NodeContextMessage) message;
@@ -62,18 +67,24 @@ public class DragonSubmitter {
 		default:
 			log.error("unexpected response: "+message.getType().name());
 			comms.close();
-			throw new RuntimeException("could not obtain node context");
+			System.exit(-1);
 		}
 		
-		log.debug("received context  ["+context+"]");
+		log.info("received context  ["+context+"]");
 
 		IEmbeddingAlgo embedding = ReflectionUtils.newInstance(conf.getDragonEmbeddingAlgorithm());
 		topology.embedTopology(embedding, context, conf);
 		
 		
-		log.debug("uploading jar file to ["+node+"]");
+		log.info("uploading jar file to ["+node+"]");
 		comms.sendServiceMessage(new UploadJarMessage(string,topologyJar));
-		message = comms.receiveServiceMessage();
+		try {
+			message = comms.receiveServiceMessage();
+		} catch (InterruptedException e) {
+			log.info("interrupted waiting for upload jar confirmation");
+			comms.close();
+			System.exit(-1);
+		}
 		UploadJarFailedMessage te;
 		switch(message.getType()) {
 		case UPLOAD_JAR_FAILED:
@@ -87,12 +98,18 @@ public class DragonSubmitter {
 		default:
 			log.error("unexpected response: "+message.getType().name());
 			comms.close();
-			throw new RuntimeException("could not upload jar file");
+			System.exit(-1);
 		}
 		
 		log.debug("running topology on ["+node+"]");
 		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
-		message = comms.receiveServiceMessage();
+		try {
+			message = comms.receiveServiceMessage();
+		} catch (InterruptedException e) {
+			log.info("interrupted waiting for run confirmation");
+			comms.close();
+			System.exit(-1);
+		}
 		RunTopologyErrorMessage rtem;
 		switch(message.getType()){
 		case RUN_TOPOLOGY_ERROR:
@@ -105,13 +122,13 @@ public class DragonSubmitter {
 		default:
 			log.error("unexpected response: "+message.getType().name());
 			comms.close();
-			throw new RuntimeException("could not run the topology");
+			System.exit(-1);
 		}
 		comms.sendServiceMessage(new ServiceDoneMessage());
 		comms.close();
 	}
 	
-	public static void getMetrics(Config conf,String topologyId){
+	public static void getMetrics(Config conf,String topologyId) throws InterruptedException{
 		initComms(conf);
 		comms.sendServiceMessage(new GetMetricsMessage(topologyId));
 		ServiceMessage message = comms.receiveServiceMessage();
@@ -127,13 +144,13 @@ public class DragonSubmitter {
 		default:
 			log.error("unexpected response: "+message.getType().name());
 			comms.close();
-			throw new RuntimeException("could not get metrics");
+			System.exit(-1);
 		}
 		comms.sendServiceMessage(new ServiceDoneMessage());
 		comms.close();
 	}
 	
-	public static void terminateTopology(Config conf, String topologyId) {
+	public static void terminateTopology(Config conf, String topologyId) throws InterruptedException {
 		initComms(conf);
 		comms.sendServiceMessage(new TerminateTopologyMessage(topologyId));
 		ServiceMessage message = comms.receiveServiceMessage();
@@ -148,7 +165,7 @@ public class DragonSubmitter {
 		default:
 			log.error("unexpected response: "+message.getType().name());
 			comms.close();
-			throw new RuntimeException("could not terminate topology");
+			System.exit(-1);
 		}
 		comms.sendServiceMessage(new ServiceDoneMessage());
 		comms.close();

@@ -10,7 +10,7 @@ import dragon.topology.base.Spout;
 
 public class Topology1 {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		
 		TopologyBuilder topologyBuilder = new TopologyBuilder();
 		
