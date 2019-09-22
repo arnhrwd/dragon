@@ -67,6 +67,11 @@ Buffer and thread resources:
 - `dragon.router.input.buffer.size: 1024` **Integer** - the size of the buffers for tuples transferring into the local cluster from the network
 - `dragon.router.output.buffer.size: 1024` **Integer** - the size of the buffers for tuples transferring out of the local cluster to the network
 
+Comms details:
+
+- `dragon.comms.retry.ms: 10000` **Integer** - the number of milliseconds to wait between retries when attempting to make a connection
+- `dragon.comms.retry.attempts: 500` **Integer** - the number of retries to make before suspending retry attempts
+
 Network details:
 
 - `dragon.network.default.service.port: 4000` **Integer** - the default service port
