@@ -10,6 +10,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -52,15 +54,12 @@ public class LocalCluster {
 	private ArrayList<Future> networkExecutorThreads;
 	private int totalComponents=0;
 	
-	private volatile int componentThreadsDone=0;
-	private Lock componentThreadsWorkingLock;
-	private volatile Integer componentThreadsWorking=0;
-	private Lock networkThreadsWorkingLock;
-	private volatile Integer networkThreadsWorking=0;
-
 	
-	private volatile Boolean groupTerminateFlag = false;
-	private volatile Boolean networkTerminateFlag = false;
+	private AtomicLong totalComponentWork=new AtomicLong(0L);
+	private AtomicLong totalNetworkWork=new AtomicLong(0L);
+	private AtomicInteger componentThreadsBusy=new AtomicInteger(0);
+	private AtomicInteger networkThreadsBusy=new AtomicInteger(0);
+
 	
 	private String terminateMessageId;
 	
@@ -340,7 +339,7 @@ public class LocalCluster {
 		};
 		tickThread.start();
 
-		networkThreadsWorking=0;
+
 		outputsScheduler();
 		
 		log.debug("starting a component executor with "+totalParallelismHint+" threads");
@@ -350,7 +349,8 @@ public class LocalCluster {
 			scheduleSpouts();
 		}
 		
-		componentThreadsWorking=0;
+
+		
 		runComponentThreads();
 		
 	}
@@ -403,25 +403,36 @@ public class LocalCluster {
 			@Override
 			public void run() {
 				log.debug("waiting for all work to finish");
-				while(componentThreadsWorking>0 || networkThreadsWorking>0) {
-					while(outputsPending.size()>0 || componentsPending.size()>0) {
-						try {
-							Thread.sleep(1000);
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					}
+				while(true) {
+					long ctw=totalComponentWork.longValue();
+					long ntw=totalNetworkWork.longValue();
 					try {
 						Thread.sleep(1000);
 					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+						log.warn("interrupted while waiting for work to complete");
+						break;
 					}
-					log.debug("componentThreadsWorking="+componentThreadsWorking);
-					log.debug("networkThreadsWorking="+networkThreadsWorking);
-					log.debug("outputsPending="+outputsPending.size());
-					log.debug("componentsPending="+componentsPending.size());
+					synchronized(totalComponentWork) {
+						synchronized(totalNetworkWork) {
+							synchronized(componentThreadsBusy) {
+								synchronized(networkThreadsBusy) {
+									if(ctw==totalComponentWork.longValue() && ntw==totalNetworkWork.longValue() &&
+											outputsPending.size()==0 && componentsPending.size()==0 &&
+											componentThreadsBusy.get()==0 && networkThreadsBusy.get()==0) {
+										break;
+									} else {
+										log.debug("totalComponentWork="+totalComponentWork);
+										log.debug("totalNetworkWork="+totalNetworkWork);
+										log.debug("output pending="+outputsPending.size());
+										log.debug("components pending="+componentsPending.size());
+										log.debug("componentThreadsBusy="+componentThreadsBusy);
+										log.debug("networkThreadsBusy="+networkThreadsBusy);
+									}
+								}
+							}
+						}
+					}
+					log.debug("waiting for work to complete");
 				}
 				log.debug("interrupting all threads");
 				for(int i=0;i<totalParallelismHint;i++) {
@@ -477,9 +488,8 @@ public class LocalCluster {
 							log.info("component thread interrupted");
 							break;
 						}
-						synchronized(componentThreadsWorking) {
-							componentThreadsWorking++;
-						}
+						totalComponentWork.incrementAndGet();
+						componentThreadsBusy.incrementAndGet();
 						// TODO:the synchronization can be switched if the component's
 						// execute/nextTuple is thread safe
 						synchronized(component) {
@@ -488,11 +498,8 @@ public class LocalCluster {
 								// a closed component will not reschedule itself
 							}
 							component.run();
-							
 						}	
-						synchronized(componentThreadsWorking) {
-							componentThreadsWorking--;
-						}
+						componentThreadsBusy.decrementAndGet();
 					}
 				}
 			}));
@@ -514,9 +521,8 @@ public class LocalCluster {
 							log.info("network thread interrupted");
 							break;
 						}
-						synchronized(networkThreadsWorking) {
-							networkThreadsWorking++;
-						}
+						totalNetworkWork.incrementAndGet();
+						networkThreadsBusy.incrementAndGet();
 						synchronized(queue.lock) {
 							NetworkTask networkTask = (NetworkTask) queue.peek();
 							if(networkTask!=null) {
@@ -541,10 +547,7 @@ public class LocalCluster {
 								//log.debug("queue empty!");
 							}	
 						}
-						synchronized(networkThreadsWorking) {
-							networkThreadsWorking--;
-						}
-						
+						networkThreadsBusy.decrementAndGet();
 					}
 				}
 			}));
