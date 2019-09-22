@@ -28,7 +28,6 @@ import org.apache.commons.logging.LogFactory;
 
 
 import dragon.network.Node;
-import dragon.network.NodeDescriptor;
 
 public class Run {
 	private static Log log = LogFactory.getLog(Run.class);
@@ -154,12 +153,15 @@ public class Run {
 		Option daemonOption = new Option("d", "daemon", false, "start as a daemon");
 		daemonOption.setRequired(false);
 		options.addOption(daemonOption);
-		Option nodeOption = new Option("h","host",true,"hostname of existing node");
+		Option nodeOption = new Option("h","host",true,"host name override");
 		nodeOption.setRequired(false);
 		options.addOption(nodeOption);
-		Option portOption = new Option("p","port",true,"port number of existing node");
+		Option portOption = new Option("p","port",true,"dat port override");
 		portOption.setRequired(false);
 		options.addOption(portOption);
+		Option sportOption = new Option("s","sport",true,"service port override");
+		sportOption.setRequired(false);
+		options.addOption(sportOption);
 		Option metricsOption = new Option("m","metrics",false,"obtain metrics from existing node");
 		metricsOption.setRequired(false);
 		options.addOption(metricsOption);
@@ -178,40 +180,45 @@ public class Run {
         try {
             cmd = parser.parse(options, args);
             if(cmd.hasOption("metrics")){
-            	DragonSubmitter.node = new NodeDescriptor(conf.getDragonNetworkRemoteHost(),
-        			conf.getDragonNetworkRemoteServicePort());
+            	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
     			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
     			if(cmd.hasOption("port")) {
-    				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
+    				log.warn("the -p option was given but metrics does not use that option");
     			}
     			if(!cmd.hasOption("topology")){
     				throw new ParseException("must provide a topology name with -t option");
     			}
     			DragonSubmitter.getMetrics(conf,cmd.getOptionValue("topology"));
             } else if(cmd.hasOption("terminate")){
-            	DragonSubmitter.node = new NodeDescriptor(conf.getDragonNetworkRemoteHost(),
-        			conf.getDragonNetworkRemoteServicePort());
+            	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
     			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
     			if(cmd.hasOption("port")) {
-    				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
+    				log.warn("the -p option was given but terminate does not use that option");
     			}
     			if(!cmd.hasOption("topology")){
     				throw new ParseException("must provide a topology name with -t option");
     			}
     			DragonSubmitter.terminateTopology(conf,cmd.getOptionValue("topology"));
             } else if(!cmd.hasOption("daemon")){
-            
-            	DragonSubmitter.node = new NodeDescriptor(conf.getDragonNetworkRemoteHost(),
-        			conf.getDragonNetworkRemoteServicePort());
+            	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
     			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
     			if(cmd.hasOption("port")) {
-    				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
+    				log.warn("the -p option was given but submission does not use that option");
     			}
 	            if(!cmd.hasOption("jar") || !cmd.hasOption("class")){
 	            	throw new ParseException("must provide a jar file and class to run");
@@ -226,25 +233,22 @@ public class Run {
 	    		Method cmain = c.getMethod("main", String[].class);
 	    		cmain.invoke(cmain, (Object) newargs);
             } else {
-            	DragonSubmitter.node = new NodeDescriptor(conf.getDragonNetworkRemoteHost(),
-        			conf.getDragonNetworkRemoteNodePort());
     			if(cmd.hasOption("host")) {
-    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    				conf.put(Config.DRAGON_NETWORK_LOCAL_HOST, cmd.getOptionValue("host"));
     			}
     			if(cmd.hasOption("port")) {
-    				DragonSubmitter.node.setPort(Integer.parseInt(cmd.getOptionValue("port")));
+    				conf.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,Integer.parseInt(cmd.getOptionValue("port")));
     			}
-            	if(cmd.hasOption("host") || !(conf.getDragonNetworkRemoteHost()).equals("") ){
-            		log.info("starting dragon node and joining to "+cmd.getOptionValue("host"));
-            		new Node(DragonSubmitter.node,conf);
-            	} else {
-	            	log.info("starting dragon node");
-	            	new Node(conf);
-            	}
+    			if(cmd.hasOption("sport")) {
+    				conf.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT, Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
+            	log.info("starting dragon daemon");
+            	new Node(conf);
+            	
             }
         } catch (ParseException e) {
             System.out.println(e.getMessage());
-            formatter.printHelp("dragon [-d [-h host] [-p port]] [-j jarPath -c className [[-h host] [-p port] args]]", options);
+            formatter.printHelp("see the README.md file for usage information", options);
             System.exit(1);
         }
 		

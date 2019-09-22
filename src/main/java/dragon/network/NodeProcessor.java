@@ -95,20 +95,25 @@ public class NodeProcessor extends Thread {
 				if(!hit) context.putAll(cu.context);
 				break;
 			case PREPARE_JAR:
-				PrepareJarMessage pjf = (PrepareJarMessage) message;
-				if(!node.storeJarFile(pjf.topologyName,pjf.topologyJar)) {
-					PrepareJarErrorMessage r = new PrepareJarErrorMessage(pjf.topologyName,"could not store the topology jar");
-					r.setMessageId(message.getMessageId());
-					node.getComms().sendNodeMessage(pjf.getSender(), r);
-					continue;
-				} else if(!node.loadJarFile(pjf.topologyName)) {
-					PrepareJarErrorMessage r = new PrepareJarErrorMessage(pjf.topologyName,"could not load the topology jar");
-					r.setMessageId(message.getMessageId());
-					node.getComms().sendNodeMessage(pjf.getSender(), r);
-					continue;
+				{
+					PrepareJarMessage pjf = (PrepareJarMessage) message;
+					if(!node.storeJarFile(pjf.topologyName,pjf.topologyJar)) {
+						PrepareJarErrorMessage r = new PrepareJarErrorMessage(pjf.topologyName,"could not store the topology jar");
+						r.setMessageId(message.getMessageId());
+						node.getComms().sendNodeMessage(pjf.getSender(), r);
+						continue;
+					} else if(!node.loadJarFile(pjf.topologyName)) {
+						PrepareJarErrorMessage r = new PrepareJarErrorMessage(pjf.topologyName,"could not load the topology jar");
+						r.setMessageId(message.getMessageId());
+						node.getComms().sendNodeMessage(pjf.getSender(), r);
+						continue;
+					}
+					JarReadyMessage jrm = new JarReadyMessage(pjf.topologyName);
+					jrm.setMessageId(message.getMessageId());
+					node.getComms().sendNodeMessage(message.getSender(), jrm);
 				}
-				node.getComms().sendNodeMessage(message.getSender(), new JarReadyMessage(pjf.topologyName));
 				break;
+			
 			case JAR_READY:
 				{
 					JarReadyMessage jrm = (JarReadyMessage) message;

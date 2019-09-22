@@ -15,7 +15,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
-import dragon.DragonSubmitter;
 import dragon.LocalCluster;
 import dragon.Run;
 import dragon.metrics.ComponentMetricMap;
@@ -35,7 +34,6 @@ public class Node {
 	private HashMap<String,LocalCluster> localClusters;
 	private ServiceProcessor serviceThread;
 	private NodeProcessor nodeThread;
-	private boolean shouldTerminate=false;
 	private Config conf;
 	private Metrics metrics;
 	
@@ -52,24 +50,20 @@ public class Node {
 	
 	private HashMap<String,HashSet<NodeDescriptor>> startupTopology;
 	
-	public Node(NodeDescriptor existingNode, Config conf) throws IOException {
-		this.conf=conf;
-		nodeState=NodeState.JOIN_REQUESTED;
-		init();
-		comms.sendNodeMessage(existingNode, new JoinRequestMessage());
-		
-	}
 	public Node(Config conf) throws IOException {
 		this.conf=conf;
-		nodeState=NodeState.OPERATIONAL;
-		init();
-	}
-	
-	private void init() throws IOException {
 		localClusters = new HashMap<String,LocalCluster>();
 		startupTopology = new HashMap<String,HashSet<NodeDescriptor>>();
 		comms = new TcpComms(conf);
 		comms.open();
+		nodeState=NodeState.OPERATIONAL;
+		for(NodeDescriptor existingNode : conf.getHosts()) {
+			if(!existingNode.equals(comms.getMyNodeDescriptor())) {
+				nodeState=NodeState.JOIN_REQUESTED;
+				comms.sendNodeMessage(existingNode, new JoinRequestMessage());
+				break;
+			}
+		}
 		router = new Router(this,conf);
 		serviceThread=new ServiceProcessor(this);
 		nodeThread=new NodeProcessor(this);

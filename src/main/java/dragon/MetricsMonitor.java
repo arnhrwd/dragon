@@ -32,7 +32,7 @@ public class MetricsMonitor {
 	
 	public static void runMonitor() throws IOException {
 		comms = new TcpComms(conf);
-		log.debug("remote service hosts are "+conf.getServiceHosts());
+		log.debug("hosts are "+conf.getHosts());
 		
 		while(true){
 			try {
@@ -47,8 +47,8 @@ public class MetricsMonitor {
 			HashMap<String,Long> totalTransferred = new HashMap<String,Long>();
 			int meanInputQueueLengthCount=0;
 			int meanOutputQueueLengthCount=0;
-			for(NodeDescriptor desc : conf.getServiceHosts()){
-				log.debug("requesting metrics from ["+desc.toString()+"]");
+			for(NodeDescriptor desc : conf.getHosts()){
+				log.debug("requesting metrics from ["+desc.toString()+"] on service port ["+desc.getServicePort()+"]");
 				comms.open(desc);
 				comms.sendServiceMessage(new GetMetricsMessage(topologyId));
 				ServiceMessage response = comms.receiveServiceMessage();

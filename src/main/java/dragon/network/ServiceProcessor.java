@@ -80,6 +80,7 @@ public class ServiceProcessor extends Thread {
 						if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
 							hit=true;
 							NodeMessage preparejarfile = new PrepareJarMessage(scommand.topologyName,node.readJarFile(scommand.topologyName));
+							preparejarfile.setMessageId(scommand.getMessageId());
 							node.getComms().sendNodeMessage(desc, preparejarfile);
 						}
 					}

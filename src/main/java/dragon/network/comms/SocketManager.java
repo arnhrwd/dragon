@@ -13,12 +13,12 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.network.NodeDescriptor;
 
+/**
+ * The socket manage is used to manage any number of incoming connections on the data port.
+ * @author aaron
+ *
+ */
 public class SocketManager {
-
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1747088785800939467L;
 	private static Log log = LogFactory.getLog(SocketManager.class);
 
 	ServerSocket server;
@@ -30,6 +30,12 @@ public class SocketManager {
 	HashMap<String,LinkedBlockingQueue<NodeDescriptor>> inputsWaiting;
 	SocketManager socketManager;
 	
+	/**
+	 * Start up a server on the provide port and manage any number of incoming connections.
+	 * @param port
+	 * @param me
+	 * @throws IOException
+	 */
 	public SocketManager(int port,NodeDescriptor me) throws IOException {
 		this.me=me;
 		this.socketManager=this;
@@ -43,7 +49,7 @@ public class SocketManager {
 			public void run() {
 				while(!isInterrupted()) {
 					try {
-						log.debug("accepting connections on port ["+server.getLocalPort()+"]");
+						log.debug("accepting data connections on port ["+server.getLocalPort()+"]");
 						Socket socket = server.accept();
 						log.debug("new socket from inet address ["+socket.getInetAddress()+"]");
 						ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
@@ -102,7 +108,7 @@ public class SocketManager {
 			}
 		
 			log.debug("creating a socket to ["+desc+"]");
-			Socket socket = new Socket(desc.host,desc.port);
+			Socket socket = new Socket(desc.getHost(),desc.getDataPort());
 			log.debug("writing handshake information ["+me+","+id+"] to ["+desc+"]");
 			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());

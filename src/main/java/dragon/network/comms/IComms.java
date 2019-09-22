@@ -12,14 +12,14 @@ public interface IComms {
 	/**
 	 * Prepare the comms layer for operation. Connect to the supplied node
 	 * for service. Implies that other comms features are not required.
+	 * @param nodeDescriptor The node descriptor to connect to on its service port.
 	 * @throws IOException 
 	 */
-	public void open(NodeDescriptor serviceNode) throws IOException;
+	public void open(NodeDescriptor nodeDescriptor) throws IOException;
 	
 	/**
 	 * Prepare the comms layer for operation. Make a service port available
-	 * as well as other comms features.
-	 * @param serviceOnly
+	 * as well as other comms features, i.e. start up as a Dragon daemon.
 	 * @throws IOException 
 	 */
 	public void open() throws IOException;
@@ -30,7 +30,7 @@ public interface IComms {
 	public void close();
 	
 	/**
-	 * 
+	 * Always use this method to get the NodeDescriptor for this Dragon node.
 	 * @return the node descriptor for this node
 	 */
 	public NodeDescriptor getMyNodeDescriptor();

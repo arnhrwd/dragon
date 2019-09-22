@@ -43,16 +43,20 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_ROUTER_OUTPUT_THREADS="dragon.router.output.threads";
 	public static final String DRAGON_ROUTER_INPUT_BUFFER_SIZE="dragon.router.input.buffer.size";
 	public static final String DRAGON_ROUTER_OUTPUT_BUFFER_SIZE="dragon.router.output.buffer.size";
-	public static final String DRAGON_NETWORK_REMOTE_HOST="dragon.network.remote.host";
+
 	public static final String DRAGON_NETWORK_LOCAL_HOST="dragon.network.local.host";
-	public static final String DRAGON_NETWORK_REMOTE_SERVICE_PORT="dragon.network.remote.service.port";
 	public static final String DRAGON_NETWORK_LOCAL_SERVICE_PORT="dragon.network.local.service.port";
-	public static final String DRAGON_NETWORK_REMOTE_NODE_PORT="dragon.network.remote.node.port";
-	public static final String DRAGON_NETWORK_LOCAL_NODE_PORT="dragon.network.local.node.port";
+	public static final String DRAGON_NETWORK_LOCAL_DATA_PORT="dragon.network.local.data.port";
+	
+	public static final String DRAGON_NETWORK_DEFAULT_SERVICE_PORT="dragon.network.default.service.port";
+	public static final String DRAGON_NETWORK_DEFAULT_DATA_PORT="dragon.network.default.node.port";
+	
+	public static final String DRAGON_NETWORK_HOSTS="dragon.network.hosts";
+	
 	public static final String DRAGON_METRICS_SAMPLE_PERIOD_MS="dragon.metrics.sample.period.ms";
 	public static final String DRAGON_METRICS_ENABLED="dragon.metrics.enabled";
 	public static final String DRAGON_METRICS_SAMPLE_HISTORY="dragon.metrics.sample.history";
-	public static final String DRAGON_NETWORK_REMOTE_HOSTS="dragon.network.remote.hosts";
+	
 	public static final String DRAGON_EMBEDDING_ALGORITHM="dragon.embedding.algorithm";
 	public static final String DRAGON_EMBEDDING_CUSTOM_FILE="dragon.embedding.custom.file";
 	
@@ -128,16 +132,15 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_ROUTER_OUTPUT_THREADS,10);
 		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,1024);
 		put(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,1024);
-		put(DRAGON_NETWORK_REMOTE_HOST,"");
 		put(DRAGON_NETWORK_LOCAL_HOST,"localhost");
-		put(DRAGON_NETWORK_REMOTE_SERVICE_PORT,4000);
-		put(DRAGON_NETWORK_LOCAL_SERVICE_PORT,4000);
-		put(DRAGON_NETWORK_REMOTE_NODE_PORT,4001);
-		put(DRAGON_NETWORK_LOCAL_NODE_PORT,4001);
+		put(DRAGON_NETWORK_DEFAULT_SERVICE_PORT,4000);
+		//put(DRAGON_NETWORK_LOCAL_SERVICE_PORT,4000);
+		put(DRAGON_NETWORK_DEFAULT_DATA_PORT,4001);
+		//put(DRAGON_NETWORK_LOCAL_DATA_PORT,4001);
 		put(DRAGON_METRICS_ENABLED,true);
 		put(DRAGON_METRICS_SAMPLE_PERIOD_MS,60*1000);
 		put(DRAGON_METRICS_SAMPLE_HISTORY,1);
-		put(DRAGON_NETWORK_REMOTE_HOSTS,new ArrayList<HashMap<String,ArrayList<Integer>>>());
+		put(DRAGON_NETWORK_HOSTS,new ArrayList<HashMap<String,ArrayList<Integer>>>());
 		put(DRAGON_EMBEDDING_ALGORITHM, "dragon.topology.RoundRobinEmbedding");
 		put(DRAGON_EMBEDDING_CUSTOM_FILE, "embedding.yaml");
 	}
@@ -202,28 +205,28 @@ public class Config extends HashMap<String, Object>{
 		return (Integer)get(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE);
 	}
 	
-	public String getDragonNetworkRemoteHost() {
-		return (String)get(DRAGON_NETWORK_REMOTE_HOST);
-	}
-	
 	public String getDragonNetworkLocalHost() {
 		return (String)get(DRAGON_NETWORK_LOCAL_HOST);
 	}
 	
-	public int getDragonNetworkRemoteServicePort() {
-		return (Integer)get(DRAGON_NETWORK_REMOTE_SERVICE_PORT);
+	public int getDragonNetworkDefaultServicePort() {
+		return (Integer)get(DRAGON_NETWORK_DEFAULT_SERVICE_PORT);
 	}
 	
 	public int getDragonNetworkLocalServicePort() {
+		if(containsKey(DRAGON_NETWORK_LOCAL_SERVICE_PORT))
 		return (Integer)get(DRAGON_NETWORK_LOCAL_SERVICE_PORT);
+		return getDragonNetworkDefaultServicePort();
 	}
 	
-	public int getDragonNetworkRemoteNodePort() {
-		return (Integer)get(DRAGON_NETWORK_REMOTE_NODE_PORT);
+	public int getDragonNetworkDefaultDataPort() {
+		return (Integer)get(DRAGON_NETWORK_DEFAULT_DATA_PORT);
 	}
 	
-	public int getDragonNetworkLocalNodePort() {
-		return (Integer)get(DRAGON_NETWORK_LOCAL_NODE_PORT);
+	public int getDragonNetworkLocalDataPort() {
+		if(containsKey(DRAGON_NETWORK_LOCAL_DATA_PORT))
+		return (Integer)get(DRAGON_NETWORK_LOCAL_DATA_PORT);
+		return getDragonNetworkDefaultDataPort();
 	}
 	
 	public boolean getDragonMetricsEnabled() {
@@ -239,8 +242,8 @@ public class Config extends HashMap<String, Object>{
 	}
 	
 	@SuppressWarnings("unchecked")
-	public ArrayList<HashMap<String,ArrayList<Integer>>> getDragonNetworkRemoteHosts(){
-		return (ArrayList<HashMap<String,ArrayList<Integer>>>)get(DRAGON_NETWORK_REMOTE_HOSTS);
+	public ArrayList<HashMap<String,ArrayList<Integer>>> getDragonNetworkHosts(){
+		return (ArrayList<HashMap<String,ArrayList<Integer>>>)get(DRAGON_NETWORK_HOSTS);
 	}
 	
 	public String getDragonEmbeddingAlgorithm() {
@@ -263,39 +266,35 @@ public class Config extends HashMap<String, Object>{
 		return getDragonBaseDir()+"/"+getDragonJarDir();
 	}
 	
-	public ArrayList<NodeDescriptor> getServiceHosts(){
+	public NodeDescriptor getLocalHost() throws UnknownHostException {
+		return new NodeDescriptor(getDragonNetworkLocalHost(),
+				getDragonNetworkLocalDataPort(),
+				getDragonNetworkLocalServicePort());
+	}
+	
+	public ArrayList<NodeDescriptor> getHosts(){
 		ArrayList<NodeDescriptor> nodes = new ArrayList<NodeDescriptor>();
-		ArrayList<HashMap<String,ArrayList<Integer>>> hosts = getDragonNetworkRemoteHosts();
+		ArrayList<HashMap<String,ArrayList<Integer>>> hosts = getDragonNetworkHosts();
 		for(int i=0;i<hosts.size();i++) {
 			String hostname = onlyKey(hosts.get(i));
 			try {
 				if(hosts.get(i).get(hostname)==null || hosts.get(i).get(hostname).size()==0) {
-					nodes.add(new NodeDescriptor(hostname,getDragonNetworkRemoteServicePort()));
-				} else if(hosts.get(i).get(hostname).size()>=1) {
-					nodes.add(new NodeDescriptor(hostname,hosts.get(i).get(hostname).get(0)));
+					nodes.add(new NodeDescriptor(hostname,
+							getDragonNetworkDefaultDataPort(),
+							getDragonNetworkDefaultServicePort()));
+				} else if(hosts.get(i).get(hostname).size()==1) {
+					nodes.add(new NodeDescriptor(hostname,
+							getDragonNetworkDefaultDataPort(),
+							hosts.get(i).get(hostname).get(0)));
+				} else {
+					nodes.add(new NodeDescriptor(hostname,
+							hosts.get(i).get(hostname).get(1),
+							hosts.get(i).get(hostname).get(0)));
 				}
 			} catch (UnknownHostException e) {
 				log.error(hostname + " is not found");
 			}
 			
-		}
-		return nodes;
-	}
-	
-	public ArrayList<NodeDescriptor> getNodeHosts(){
-		ArrayList<NodeDescriptor> nodes = new ArrayList<NodeDescriptor>();
-		ArrayList<HashMap<String,ArrayList<Integer>>> hosts = getDragonNetworkRemoteHosts();
-		for(int i=0;i<hosts.size();i++) {
-			String hostname = onlyKey(hosts.get(i));
-			try {
-				if(hosts.get(i).get(hostname)==null || hosts.get(i).get(hostname).size()<2) {				
-					nodes.add(new NodeDescriptor(hostname,getDragonNetworkRemoteNodePort()));
-				} else if(hosts.get(i).get(hostname).size()==2) {
-					nodes.add(new NodeDescriptor(hostname,hosts.get(i).get(hostname).get(1)));
-				} 
-			}catch (UnknownHostException e) {
-				log.error(hostname + " is not found");
-			}
 		}
 		return nodes;
 	}

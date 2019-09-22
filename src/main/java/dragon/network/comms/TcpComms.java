@@ -20,7 +20,11 @@ import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceDoneMessage;
 import dragon.network.messages.service.ServiceMessage;
 
-
+/**
+ * An initial implementation of the IComms interface. Based on simple TCP sockets.
+ * @author aaron
+ *
+ */
 public class TcpComms implements IComms {
 	private static Log log = LogFactory.getLog(TcpComms.class);
 	
@@ -47,11 +51,14 @@ public class TcpComms implements IComms {
 	
 	private NodeDescriptor me;
 	
+	/**
+	 * This method opens comms as a Dragon daemon, using the parameters found in conf
+	 * to initialize its own NodeDescriptor.
+	 * @param conf
+	 * @throws UnknownHostException
+	 */
 	public TcpComms(Config conf) throws UnknownHostException {
 		this.conf=conf;
-		me = new NodeDescriptor(conf.getDragonNetworkLocalHost(),
-			conf.getDragonNetworkLocalNodePort());
-		log.debug("this node is ["+me+"]");
 		incommingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
 		incommingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
 		incommingTaskQueue = new LinkedBlockingQueue<NetworkTask>();
@@ -60,9 +67,13 @@ public class TcpComms implements IComms {
 		
 	}
 	
+	/**
+	 * Startup only a connection to the provided Dragon node's service port.
+	 * Used for communicating service commands only.
+	 */
 	public void open(NodeDescriptor serviceNode) throws IOException {
 		log.debug("opening a service socket to ["+serviceNode+"]");
-		serviceSocketClient = new Socket(serviceNode.host,serviceNode.port);
+		serviceSocketClient = new Socket(serviceNode.getHost(),serviceNode.getServicePort());
 		serviceOutputStream = new ObjectOutputStream(serviceSocketClient.getOutputStream());
 		
 		ObjectInputStream in = new ObjectInputStream(serviceSocketClient.getInputStream());
@@ -95,17 +106,21 @@ public class TcpComms implements IComms {
 		return id;
 	}
 	
+	/**
+	 * Open both service and data port server sockets, i.e. to operate as a Dragon daemon.
+	 */
 	public void open() throws IOException {
-		serviceSocketServer = new ServerSocket(conf.getDragonNetworkLocalServicePort());
-		socketManager = new SocketManager(conf.getDragonNetworkLocalNodePort(),me);
+		me = conf.getLocalHost();
+		log.info("this Dragon node is ["+me+"]");
+		serviceSocketServer = new ServerSocket(me.getServicePort());
+		socketManager = new SocketManager(me.getDataPort(),me);
 		serviceOutputStreams = new HashMap<String,ObjectOutputStream>();
 		serviceThread = new Thread() {
 			@Override
 			public void run() {
-				
 				while(!isInterrupted()) {
 					try {
-						log.debug("accepting service messages");
+						log.debug("accepting service messages on port ["+serviceSocketServer.getLocalPort()+"]");
 						Socket socket = serviceSocketServer.accept();
 						id=id+1;
 						Thread servlet = new Thread(){

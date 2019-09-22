@@ -1,7 +1,7 @@
 
 # Dragon
 
-A high performance stream processing system, loosely based on the Apache Storm API.
+A high performance, distributed stream processing system, loosely based on the Apache Storm API.
 
 # Compiling
 
@@ -26,11 +26,13 @@ Assuming `dragon.jar` is the jar file with dependencies compiled in:
 
     java -jar dragon.jar -h
 
-will provide help on options. To execute a topology in local mode:
+will provide help on options. To execute a topology in *local mode*:
 
     java -jar dragon.jar -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY
 
-Running in local mode, Dragon creates a *local cluster* in a single JVM that contains all Spouts and Bolts without any need for networking.
+Running in local mode, Dragon creates a *local cluster* in a single JVM that contains all Spouts and Bolts without any need for networking. It does not create a Dragon daemon and therefore it cannot be connected to on a service port.
+
+Local mode is useful for development and debugging. Alternatively, *Network mode* (described later) requires starting one or more Dragon daemons (typically on a cluster) that will connect to each other and allow topologies to be submitted via a service port to any selected Dragon daemon. Details on how to run Dragon in Network mode are provided after the Configuration details below, which describe how to configure Dragon in both Local mode and Network mode.
 
 # Configuration
 
@@ -47,7 +49,7 @@ The first file found will be used to load the parameters.
 
 The available parameters and their defaults are listed below.
 
-Parameters that affect both local and remotely submitted topologies:
+### General parameters
 
 - `dragon.output.buffer.size: 1024` **Integer** - the size of the buffers on Spout and Bolt outputs
 - `dragon.input.buffer.size: 1024` **Integer** - the size of the buffers on Spout and Bolt inputs
@@ -56,79 +58,73 @@ Parameters that affect both local and remotely submitted topologies:
 - `dragon.localcluster.threads: 10` **Integer** - the size of the thread pool that transfers tuples within a local cluster
 - `dragon.embedding.algorithm: dragon.topology.RoundRobinEmbedding` **String** - the embedding algorithm that maps a task in the topology to a host node
 
-Parameters that affect only remotely submitted topologies:
+### Network mode parameters
+
+Buffer and thread resources:
 
 - `dragon.router.input.threads: 10` **Integer** - the size of the thread pool that transfers tuples into the local cluster from the network
 - `dragon.router.output.threads: 10` **Integer** - the size of the thread pool that transfers tuples out of the local cluster to the network
 - `dragon.router.input.buffer.size: 1024` **Integer** - the size of the buffers for tuples transferring into the local cluster from the network
 - `dragon.router.output.buffer.size: 1024` **Integer** - the size of the buffers for tuples transferring out of the local cluster to the network
-- `dragon.network.remote.host: ""` **String** - the name of the remote host to connect to, for subsequent Dragon nodes (do not send this value for the initial Dragon node)
-- `dragon.network.remote.service.port: 4000` **Integer** - the port number used by the remote host for receiving service messages
-- `dragon.network.remote.node.port: 4001` **Integer** - the port number used by the remote host for receiving data messages
-- `dragon.network.local.host: localhost` **String** - the name used to advertise the local Dragon node
-- `dragon.network.local.service.port: 4000` **Integer** - the port number used by the local Dragon node for receiving service messages
-- `dragon.network.local.node.port: 4001` **Integer** - the port number used by the local Dragon node for receiving node messages
-- `dragon.network.remote.hosts: [{hostname:[port,port]},{hostname:[port,port]}]` **HostArray** - strictly an array of dictionaries, where the sole dictionary key in each array element is the host name of a dragon node and its associated array is the service and node ports in that order
 
-The `dragon.network.remote.hosts` parameter can also be written like this:
+Network details:
+
+- `dragon.network.default.service.port: 4000` **Integer** - the default service port
+- `dragon.network.default.data.port: 4001` **Integer** - the default data port
+- `dragon.network.local.host: localhost` **String** - the default advertised host name for the Dragon daemon
+- `dragon.network.local.service.port: ` **Integer** - the service port for the Dragon daemon, if not set then the default service port is used 
+- `dragon.network.local.data.port: ` **Integer** - the data port for the Dragon daemon, if not set then the default data port is used
+- `dragon.network.hosts: [{hostname:[port,port]},{hostname:[port,port]}]` **HostArray** - strictly an array of dictionaries, where the sole dictionary key in each array element is the host name of a Dragon daemon and its associated array is the service and data ports in that order, all Dragon daemons should be listed including the local one
+
+The `dragon.network.hosts` parameter can also be written like this:
 
     dragon.network.remote.hosts:
     - hostname: [port,port]
     - hostname: [port,port]
     
-If only one port is given, i.e. `[port]` then it is assumed to be the service port (the node port will be the default value), and if no ports are given (in which case write `[]`) then both ports take their default values.
+If only one port is given, i.e. `[port]` then it is assumed to be the service port (the data port will be the default value), and if no ports are given (in which case write `[]`) then both ports take their default values.
 
 Parameters concerning metrics:
 
-- `dragon.metrics.enable: true` **Boolean** - whether the node should record metrics
+- `dragon.metrics.enable: true` **Boolean** - whether the Dragon daemon should record metrics
 - `dragon.metrics.sample.history: 1` **Integer** - how much sample history to record
 - `dragon.metrics.sample.period.ms: 60000` **Integer** - the sample period in milliseconds
 
-# Cluster mode
+# Network mode
 
-Running in cluster mode requires starting an initial Dragon node, and then starting further Dragon nodes that connect to the initial Dragon node, or any existing Dragon nodes. The Dragon nodes will connect to form a fully connected network. Therefore they must all be visible to each other on the network.
+Running in Network mode requires starting Dragon daemons on a number of hosts that are all visible to each other on the network. Multiple daemons can be started on a single host, but the service and data ports must be configured to be non-conflicting for all instances, i.e. each daemon must have its own `dragon.yaml` configuration file with `dragon.network.local.data.port` and `dragon.network.local.service.port` set appropriately. Command line options can be used to override the configuration parameters, if a single `dragon.yaml` is preferred. Each daemon is a single JVM.
 
-To start an initial Dragon node, ensure that `dragon.network.remote.host` is **not** set in `dragon.yaml` (or is set to `""`), and make sure that `dragon.network.local.host` is set to be the IP address or domain name of the Dragon node, and run:
-
-    java -jar dragon.jar -d
-
-To start further nodes that connect to an existing Dragon node:
-
-    java -jar dragon.jar -d -h REMOTE_HOST -p REMOTE_SERVICE_PORT
-
-or set `dragon.network.remote.host: REMOTE_HOST` and run:
+To start a Dragon daemon, run:
 
     java -jar dragon.jar -d
+
+The daemon will attempt to make a connection to the first available other Dragon daemon listed in the `dragon.network.hosts` parameter. To override the host name, service and data port of the daemon being started run:
+
+    java -jar dragon.jar -d -h HOST_NAME -p DATA_PORT -s SERVICE_PORT
 
 ## Submitting a topology
 
-Either:
+Submitting a topology to a Dragon daemon requires providing the host name and optional service port of the daemon, as well as the topology JAR, topology class, and positional argument for the topology name:
 
-    java -jar dragon.jar -h REMOTE_HOST -p REMOTE_SERVICE_PORT -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
+    java -jar dragon.jar -h HOST_NAME -s SERVICE_PORT -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
 
-or set `dragon.network.remote.host: REMOTE_HOST` and run:
-
-    java -jar dragon.jar -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
+The topology JAR will be uploaded and stored at all Dragon daemons that the topology maps to, according to the embedding algorithm used (explained later). It will commence running immediately.
 
 ## Terminating a topology
 
-Either:
+To terminate a topology:
 
-    java -jar dragon.jar -h REMOTE_HOST -p REMOTE_SERVICE_PORT -x -t TOPOLOGY_NAME
+    java -jar dragon.jar -h HOST_NAME -s SERVICE_PORT -x -t TOPOLOGY_NAME
     
-or set `dragon.network.remote.host = REMOTE_HOST` and run:
-
-    java -jar dragon.jar -x -t TOPOLOGY_NAME
-    
-For a large topology over a number of nodes you may need to wait some time for it to terminate.
+For a large topology over a number of nodes you may need to wait some time for it to terminate. This is because Dragon first *closes* all Spouts, then waits for all existing data to be fully processed (all outstanding messages to be communicated, which may lead to further processing, etc.) before proceeding to close all Bolts and release all of the resources that the topology consumed. If your topology is not "well behaved" it may not terminate. A well behaved topology will cease to emit tuples, and terminate any transient threads, when the `close` method has been called on Spouts and Bolts.
 
 ## Configuring the embedding algorithm for a topology
 
 There are two embedding algorithms available with dragon:
-1. `dragon.topology.RoundRobinEmbedding` - embeds each task to connected nodes in a round robin manner (default algorithm)
-2. `dragon.topology.FileBasedCustomEmbedding` - embeds each task to a connected node as defined via an external configuration file
+1. `dragon.topology.RoundRobinEmbedding` - embeds each task to connected daemons in a round robin manner (default algorithm)
+2. `dragon.topology.FileBasedCustomEmbedding` - embeds each task to a connected daemon as defined via an external configuration file
 
-The preferred algorithm can be configured via the `dragon.embedding.algorithm` configuration either programatically in the topology:
+The preferred algorithm can be configured via the `dragon.embedding.algorithm` configuration either programmatically in the topology:
 
     Config conf = new Config();
     conf.put(Config.DRAGON_EMBEDDING_ALGORITHM, "dragon.topology.FileBasedCustomEmbedding");
@@ -141,7 +137,7 @@ Further embedding algorithms can developed by implementing the `dragon.topology.
 
 ### File based custom embedding algorithm
 
-After enabling as mentioned above, `dragon.topology.FileBasedCustomEmbedding` requires an external YAML configuration file that maps a task into one or more host nodes in a valid YAML file with the following format:
+After enabling as mentioned above, `dragon.topology.FileBasedCustomEmbedding` requires an external YAML configuration file that maps a task into one or more hosts in a valid YAML file with the following format:
 
     "spout name or bolt name": ["node 1 host name:node 1 port", "node 2 host name:node 2 port",...]
 For example:
@@ -165,11 +161,11 @@ The default embedding file name is `embedding.yaml`.
 
 ## Metrics Monitor
 
-Metrics is available only in Cluster mode. A simple text based metrics monitor can be run:
+Metrics is available only in Network mode. A simple text based metrics monitor can be run:
 
     java -cp dragon.jar dragon.MetricsMonitor -t TOPOLOGY_NAME
 
-Note that the Metrics Monitor needs the `dragon.network.remote.hosts` parameter to be set, that lists all Dragon hosts in the system.
+Note that the Metrics Monitor needs the `dragon.network.hosts` parameter to be set, that lists all Dragon hosts in the system.
 
 # Porting from an Apache Storm Project
 
