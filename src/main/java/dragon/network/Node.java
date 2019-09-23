@@ -14,6 +14,7 @@ import java.util.HashSet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import dragon.Agent;
 import dragon.Config;
 import dragon.LocalCluster;
 import dragon.Run;
@@ -130,13 +131,11 @@ public class Node {
 	public boolean loadJarFile(String topologyName) {
 		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDescriptor(),topologyName);
 		try {
-			Run.addClassPath(pathname.toString());
+			Agent.addToClassPath(new File(pathname.toString()));
 			return true;
-		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
-				| InvocationTargetException | MalformedURLException e) {
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			
 		}
 		log.error("failed to add topology jar file to the classpath ["+topologyName+"]");
 		return false;

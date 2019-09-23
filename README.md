@@ -19,16 +19,26 @@ Include the dependency in your project's `pom.xml`:
         <version>0.0.1-SNAPSHOT</version>
         <scope>provided</scope>
     </dependency>
+    
+# Note about class loading in Java 11
+
+Dynamic addition of a JAR file to the class path is used by Dragon to load a topology class, and all associated classes, from a supplied topology JAR file. The current practice, in Java 11, is to use the `instrumentation` package to achieve this, which requires a Java agent to load prior to the `main` method. Assuming `dragon.jar` is the JAR file with dependencies compiled in then running Dragon directly from the command line becomes:
+
+    java -javaagent:dragon.jar -jar dragon.jar ...
+ 
+In this rest of this documentation, the above is simplified as just:
+
+    dragon ...
 
 # Local mode
 
-Assuming `dragon.jar` is the jar file with dependencies compiled in:
+Run:
 
-    java -jar dragon.jar -h
+    dragon -h
 
-will provide help on options. To execute a topology in *local mode*:
+to provide help on options. To execute a topology in *local mode*:
 
-    java -jar dragon.jar -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY
+    dragon -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY
 
 Running in local mode, Dragon creates a *local cluster* in a single JVM that contains all Spouts and Bolts without any need for networking. It does not create a Dragon daemon and therefore it cannot be connected to on a service port.
 
@@ -101,17 +111,17 @@ Running in Network mode requires starting Dragon daemons on a number of hosts th
 
 To start a Dragon daemon, run:
 
-    java -jar dragon.jar -d
+    dragon -d
 
 The daemon will attempt to make a connection to the first available other Dragon daemon listed in the `dragon.network.hosts` parameter. To override the host name, service and data port of the daemon being started run:
 
-    java -jar dragon.jar -d -h HOST_NAME -p DATA_PORT -s SERVICE_PORT
+    dragon -d -h HOST_NAME -p DATA_PORT -s SERVICE_PORT
 
 ## Submitting a topology
 
 Submitting a topology to a Dragon daemon requires providing the host name and optional service port of the daemon, as well as the topology JAR, topology class, and positional argument for the topology name:
 
-    java -jar dragon.jar -h HOST_NAME -s SERVICE_PORT -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
+    dragon -h HOST_NAME -s SERVICE_PORT -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
 
 The topology JAR will be uploaded and stored at all Dragon daemons that the topology maps to, according to the embedding algorithm used (explained later). It will commence running immediately.
 
@@ -119,7 +129,7 @@ The topology JAR will be uploaded and stored at all Dragon daemons that the topo
 
 To terminate a topology:
 
-    java -jar dragon.jar -h HOST_NAME -s SERVICE_PORT -x -t TOPOLOGY_NAME
+    dragon -h HOST_NAME -s SERVICE_PORT -x -t TOPOLOGY_NAME
     
 For a large topology over a number of nodes you may need to wait some time for it to terminate. This is because Dragon first *closes* all Spouts, then waits for all existing data to be fully processed (all outstanding messages to be communicated, which may lead to further processing, etc.) before proceeding to close all Bolts and release all of the resources that the topology consumed. If your topology is not "well behaved" it may not terminate. A well behaved topology will cease to emit tuples, and terminate any transient threads, when the `close` method has been called on Spouts and Bolts.
 
@@ -168,7 +178,7 @@ The default embedding file name is `embedding.yaml`.
 
 Metrics is available only in Network mode. A simple text based metrics monitor can be run:
 
-    java -cp dragon.jar dragon.MetricsMonitor -t TOPOLOGY_NAME
+    dragon dragon.MetricsMonitor -t TOPOLOGY_NAME
 
 Note that the Metrics Monitor needs the `dragon.network.hosts` parameter to be set, that lists all Dragon hosts in the system.
 

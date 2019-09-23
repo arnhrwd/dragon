@@ -15,7 +15,7 @@ public class ReflectionUtils {
     }
 
     public static <T> T newInstance(Class<T> klass) {
-        return _instance.newInstanceImpl(klass);
+    	return _instance.newInstanceImpl(klass);
     }
 
     public <T> T newInstanceImpl(Class<T> klass) {
