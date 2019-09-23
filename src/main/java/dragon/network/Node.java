@@ -19,6 +19,7 @@ import dragon.LocalCluster;
 import dragon.Run;
 import dragon.metrics.ComponentMetricMap;
 import dragon.metrics.Metrics;
+import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.JoinRequestMessage;
@@ -56,13 +57,23 @@ public class Node {
 		startupTopology = new HashMap<String,HashSet<NodeDescriptor>>();
 		comms = new TcpComms(conf);
 		comms.open();
-		nodeState=NodeState.OPERATIONAL;
+		nodeState=NodeState.JOINING;
 		for(NodeDescriptor existingNode : conf.getHosts()) {
 			if(!existingNode.equals(comms.getMyNodeDescriptor())) {
 				nodeState=NodeState.JOIN_REQUESTED;
-				comms.sendNodeMessage(existingNode, new JoinRequestMessage());
+				try {
+					comms.sendNodeMessage(existingNode, new JoinRequestMessage());
+				} catch (DragonCommsException e) {
+					log.error("failed to join with ["+existingNode+"]: "+e.getMessage());
+					nodeState=NodeState.JOINING;
+					continue;
+				}
 				break;
 			}
+		}
+		if(nodeState==NodeState.JOINING) {
+			log.warn("did not join with any existing Dragon daemons");
+			nodeState=NodeState.OPERATIONAL;
 		}
 		router = new Router(this,conf);
 		serviceThread=new ServiceProcessor(this);
@@ -148,7 +159,7 @@ public class Node {
 		startupTopology.put(topologyId,new HashSet<NodeDescriptor>());
 		startupTopology.get(topologyId).add(comms.getMyNodeDescriptor());
 	}
-	public boolean checkStartupTopology(NodeDescriptor sender, String topologyId) {
+	public boolean checkStartupTopology(NodeDescriptor sender, String topologyId) throws DragonCommsException {
 		startupTopology.get(topologyId).add(sender);
 		if(startupTopology.get(topologyId).size()==localClusters.get(topologyId).getTopology().getReverseEmbedding().size()) {
 			localClusters.get(topologyId).openAll();
@@ -182,7 +193,12 @@ public class Node {
 		if(messageId!=null) {
 			TopologyTerminatedMessage ttm = new TopologyTerminatedMessage(topologyId);
 			ttm.setMessageId(messageId);
-			comms.sendServiceMessage(ttm);
+			try {
+				comms.sendServiceMessage(ttm);
+			} catch (DragonCommsException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	

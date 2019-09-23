@@ -1,6 +1,6 @@
 package dragon.network.comms;
 
-public class DragonCommsException extends RuntimeException {
+public class DragonCommsException extends Exception {
 	/**
 	 * 
 	 */

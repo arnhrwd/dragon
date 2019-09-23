@@ -19,6 +19,11 @@ public class NodeContext extends HashMap<String,NodeDescriptor>{
 		logContext();
 	}
 	
+	public void remove(NodeDescriptor desc) {
+		remove(desc.toString());
+		logContext();
+	}
+	
 	public void putAll(NodeContext context) {
 		for(String key: context.keySet()) {
 			put(key,context.get(key));

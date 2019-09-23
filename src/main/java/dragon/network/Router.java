@@ -11,6 +11,7 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
 import dragon.NetworkTask;
+import dragon.network.comms.DragonCommsException;
 import dragon.topology.DragonTopology;
 import dragon.utils.NetworkTaskBuffer;
 
@@ -68,12 +69,16 @@ public class Router {
 												task.getComponentId(),
 												task.getTopologyId());
 										//log.debug("seding to "+desc+" "+nt);
-										node.getComms().sendNetworkTask(desc, nt);
+										try {
+											node.getComms().sendNetworkTask(desc, nt);
+										} catch (DragonCommsException e) {
+											log.error("failed to send network task to ["+desc+"]");
+										}
 									}
 								}
 							}
 						} catch (InterruptedException e) {
-							log.debug("interrupted while taking from queue");
+							log.info("interrupted while taking from queue");
 						}
 					}
 				}

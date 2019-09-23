@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import dragon.NetworkTask;
 import dragon.network.NodeDescriptor;
+import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceMessage;
 
@@ -30,30 +31,57 @@ public interface IComms {
 	public void close();
 	
 	/**
-	 * Always use this method to get the NodeDescriptor for this Dragon node.
+	 * Always use this method to get the NodeDescriptor for this Dragon daemon.
 	 * @return the node descriptor for this node
 	 */
 	public NodeDescriptor getMyNodeDescriptor();
 	
-	
-	/**
-	 * Locally-blocking send message.
-	 * @param message to send
+	/*
+	 * Service connections are only initiated by clients. They are not expected to be
+	 * high performance, i.e. the implementation does not need to be thread safe.
 	 */
-	public void sendServiceMessage(ServiceMessage message);
-	
 	
 	/**
-	 * Blocking receive message.
+	 * Send a service message as the initial message. May block until the message
+	 * has been accepted by the OS for transmission, i.e. writing to the output stream.
+	 * @param message to send
+	 * @throws DragonCommsException if the message could not be sent.
+	 */
+	public void sendServiceMessage(ServiceMessage message) throws DragonCommsException;
+	
+	/**
+	 * Send a service message in response to a service message. May block until the message
+	 * has been accepted by the OS for transmission, i.e. writing to the output stream.
+	 * @param message to send
+	 * @param inResponseTo message in response to
+	 * @throws DragonCommsException if the message could not be sent.
+	 */
+	public void sendServiceMessage(ServiceMessage message, Message inResponseTo) throws DragonCommsException;
+	
+	/**
+	 * Blocking receive message for service messages. A received service message
+	 * will have a message id that can be used when responding to it.
 	 * @return received message
 	 * @throws InterruptedException 
 	 */
 	public ServiceMessage receiveServiceMessage() throws InterruptedException;
 	
+	/*
+	 * Node connections are initiated only between Dragon daemons. They are not expected to be
+	 * high performance, i.e. the implementation does not need to be thread safe.
+	 */
 	
-	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message);
+	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message) throws DragonCommsException;
+	
+	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message, Message inReponseTo) throws DragonCommsException;
+	
 	public NodeMessage receiveNodeMessage() throws InterruptedException;
 	
-	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task);
+	/*
+	 * Network task connections are only initiated by clients. They ARE expected to be high
+	 * performance and the implementation MUST be thread safe.
+	 */
+	
+	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task) throws DragonCommsException;
 	public NetworkTask receiveNetworkTask() throws InterruptedException;
 }

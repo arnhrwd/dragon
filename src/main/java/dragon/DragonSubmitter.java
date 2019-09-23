@@ -10,6 +10,7 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.GetMetricsMessage;
@@ -49,7 +50,12 @@ public class DragonSubmitter {
 	public static void submitTopology(String string, Config conf, DragonTopology topology) {
 		initComms(conf);
 		log.info("requesting context from ["+node+"]");
-		comms.sendServiceMessage(new GetNodeContextMessage());
+		try {
+			comms.sendServiceMessage(new GetNodeContextMessage());
+		} catch (DragonCommsException e1) {
+			log.error("could not send get node context message");
+			System.exit(-1);
+		}
 		ServiceMessage message=null;
 		try {
 			message = comms.receiveServiceMessage();
@@ -77,7 +83,12 @@ public class DragonSubmitter {
 		
 		
 		log.info("uploading jar file to ["+node+"]");
-		comms.sendServiceMessage(new UploadJarMessage(string,topologyJar));
+		try {
+			comms.sendServiceMessage(new UploadJarMessage(string,topologyJar));
+		} catch (DragonCommsException e1) {
+			log.error("could not send upload jar message");
+			System.exit(-1);
+		}
 		try {
 			message = comms.receiveServiceMessage();
 		} catch (InterruptedException e) {
@@ -89,7 +100,12 @@ public class DragonSubmitter {
 		switch(message.getType()) {
 		case UPLOAD_JAR_FAILED:
 			te = (UploadJarFailedMessage) message;
-			comms.sendServiceMessage(new ServiceDoneMessage());
+			try {
+				comms.sendServiceMessage(new ServiceDoneMessage());
+			} catch (DragonCommsException e1) {
+				log.error("could not send service done message");
+				System.exit(-1);
+			}
 			comms.close();
 			log.error("uploading jar failed for ["+string+"]: "+te.error);
 			System.exit(-1);
@@ -102,7 +118,12 @@ public class DragonSubmitter {
 		}
 		
 		log.debug("running topology on ["+node+"]");
-		comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
+		try {
+			comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
+		} catch (DragonCommsException e1) {
+			log.error("could not send run topoology message");
+			System.exit(-1);
+		}
 		try {
 			message = comms.receiveServiceMessage();
 		} catch (InterruptedException e) {
@@ -124,11 +145,16 @@ public class DragonSubmitter {
 			comms.close();
 			System.exit(-1);
 		}
-		comms.sendServiceMessage(new ServiceDoneMessage());
+		try {
+			comms.sendServiceMessage(new ServiceDoneMessage());
+		} catch (DragonCommsException e) {
+			log.error("could not send service done message");
+			System.exit(-1);
+		}
 		comms.close();
 	}
 	
-	public static void getMetrics(Config conf,String topologyId) throws InterruptedException{
+	public static void getMetrics(Config conf,String topologyId) throws InterruptedException, DragonCommsException{
 		initComms(conf);
 		comms.sendServiceMessage(new GetMetricsMessage(topologyId));
 		ServiceMessage message = comms.receiveServiceMessage();
@@ -150,7 +176,7 @@ public class DragonSubmitter {
 		comms.close();
 	}
 	
-	public static void terminateTopology(Config conf, String topologyId) throws InterruptedException {
+	public static void terminateTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
 		comms.sendServiceMessage(new TerminateTopologyMessage(topologyId));
 		ServiceMessage message = comms.receiveServiceMessage();

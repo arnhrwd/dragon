@@ -17,6 +17,7 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.metrics.Sample;
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.GetMetricsMessage;
@@ -30,7 +31,7 @@ public class MetricsMonitor {
 	private static IComms comms;
 	private static Config conf;
 	
-	public static void runMonitor() throws IOException, InterruptedException {
+	public static void runMonitor() throws IOException, InterruptedException, DragonCommsException {
 		comms = new TcpComms(conf);
 		log.debug("hosts are "+conf.getHosts());
 		
@@ -94,7 +95,7 @@ public class MetricsMonitor {
 		}
 	}
 	
-	public static void main(String[] args) throws IOException, InterruptedException {
+	public static void main(String[] args) throws IOException, InterruptedException, DragonCommsException {
 		final Properties properties = new Properties();
 		properties.load(Run.class.getClassLoader().getResourceAsStream("project.properties"));
 		log.debug("metrics monitor version "+properties.getProperty("project.version"));

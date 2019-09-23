@@ -8,6 +8,7 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.LocalCluster;
 import dragon.network.Node.NodeState;
+import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.node.AcceptingJoinMessage;
 import dragon.network.messages.node.ContextUpdateMessage;
 import dragon.network.messages.node.JarReadyMessage;
@@ -53,14 +54,20 @@ public class NodeProcessor extends Thread {
 			switch(message.getType()) {
 			case JOIN_REQUEST:
 				if(node.getNodeState()!=NodeState.OPERATIONAL) {
-					log.debug("placing joing request from ["+message.getSender()+"] on pending list");
+					log.debug("placing join request from ["+message.getSender()+"] on pending list");
 					pendingJoinRequests.add(message);
 				} else {
 					node.setNodeState(NodeState.ACCEPTING_JOIN);
 					context.put(message.getSender());
-					node.getComms().sendNodeMessage(message.getSender(),new AcceptingJoinMessage(nextNode,context));
-					nextNode=message.getSender();
-					log.debug("next pointer = ["+nextNode+"]");
+					try {
+						node.getComms().sendNodeMessage(message.getSender(),new AcceptingJoinMessage(nextNode,context));
+						nextNode=message.getSender();
+						log.debug("next pointer = ["+nextNode+"]");
+					} catch (DragonCommsException e) {
+						log.error("a join request could not be completed to ["+message.getSender()+"]");
+						context.remove(message.getSender());
+						node.setNodeState(NodeState.OPERATIONAL);
+					}
 				}
 				break;
 			case ACCEPTING_JOIN:
@@ -70,11 +77,21 @@ public class NodeProcessor extends Thread {
 					AcceptingJoinMessage aj = (AcceptingJoinMessage) message;
 					nextNode=aj.nextNode;
 					log.debug("next pointer = ["+nextNode+"]");
-					node.getComms().sendNodeMessage(message.getSender(), new JoinCompleteMessage());
+					try {
+						node.getComms().sendNodeMessage(message.getSender(), new JoinCompleteMessage());
+					} catch (DragonCommsException e) {
+						log.error("could not complete join with ["+message.getSender());
+						// TODO: possibly signal that the node has failed
+					}
 					context.putAll(aj.context);
 					for(NodeDescriptor descriptor : context.values()) {
 						if(!descriptor.equals(node.getComms().getMyNodeDescriptor())) {
-							node.getComms().sendNodeMessage(descriptor, new ContextUpdateMessage(context));
+							try {
+								node.getComms().sendNodeMessage(descriptor, new ContextUpdateMessage(context));
+							} catch (DragonCommsException e) {
+								log.error("could not send context update to ["+descriptor+"]");
+								// TODO: possibly signal that the node has failed
+							}
 						}
 					}
 					processPendingJoins();
@@ -93,7 +110,12 @@ public class NodeProcessor extends Thread {
 				for(String key : context.keySet()) {
 					if(!cu.context.containsKey(key)) {
 						context.putAll(cu.context);
-						node.getComms().sendNodeMessage(message.getSender(), new ContextUpdateMessage(context));
+						try {
+							node.getComms().sendNodeMessage(message.getSender(), new ContextUpdateMessage(context));
+						} catch (DragonCommsException e) {
+							log.debug("could not send context update to ["+message.getSender()+"]");
+							// TODO: possibly signal that the node has failed
+						}
 						hit=true;
 						break;
 					}
@@ -104,19 +126,33 @@ public class NodeProcessor extends Thread {
 				{
 					PrepareJarMessage pjf = (PrepareJarMessage) message;
 					if(!node.storeJarFile(pjf.topologyName,pjf.topologyJar)) {
-						PrepareJarErrorMessage r = new PrepareJarErrorMessage(pjf.topologyName,"could not store the topology jar");
-						r.setMessageId(message.getMessageId());
-						node.getComms().sendNodeMessage(pjf.getSender(), r);
+						try {
+							node.getComms().sendNodeMessage(pjf.getSender(), 
+									new PrepareJarErrorMessage(pjf.topologyName,"could not store the topology jar"),
+									message);
+						} catch (DragonCommsException e) {
+							log.debug("could not send prepare jare error message to ["+pjf.getSender()+"]");
+							// TODO: possibly signal that the node has failed
+						}
 						continue;
 					} else if(!node.loadJarFile(pjf.topologyName)) {
-						PrepareJarErrorMessage r = new PrepareJarErrorMessage(pjf.topologyName,"could not load the topology jar");
-						r.setMessageId(message.getMessageId());
-						node.getComms().sendNodeMessage(pjf.getSender(), r);
+						try {
+							node.getComms().sendNodeMessage(pjf.getSender(), 
+									new PrepareJarErrorMessage(pjf.topologyName,"could not load the topology jar"),
+									message);
+						} catch (DragonCommsException e) {
+							log.debug("could not send prepare jare error message to ["+pjf.getSender()+"]");
+							// TODO: possibly signal that the node has failed
+						}
 						continue;
 					}
-					JarReadyMessage jrm = new JarReadyMessage(pjf.topologyName);
-					jrm.setMessageId(message.getMessageId());
-					node.getComms().sendNodeMessage(message.getSender(), jrm);
+					try {
+						node.getComms().sendNodeMessage(message.getSender(), 
+								new JarReadyMessage(pjf.topologyName),message);
+					} catch (DragonCommsException e) {
+						log.debug("could not send prepare jare ready message to ["+pjf.getSender()+"]");
+						// TODO: possibly signal that the node has failed
+					}
 				}
 				break;
 			
@@ -126,8 +162,12 @@ public class NodeProcessor extends Thread {
 					NodeMessage response = new PrepareTopologyMessage(jrm.topologyId,
 							node.getLocalClusters().get(jrm.topologyId).getConf(),
 							node.getLocalClusters().get(jrm.topologyId).getTopology());
-					response.setMessageId(message.getMessageId());
-					node.getComms().sendNodeMessage(message.getSender(), response);
+					try {
+						node.getComms().sendNodeMessage(message.getSender(), response, message);
+					} catch (DragonCommsException e) {
+						log.error("could not send prepare topology message to ["+message.getSender()+"]");
+						// TODO: possibly signal that the node has failed
+					}
 				}
 				break;
 			case PREPARE_TOPOLOGY:
@@ -137,17 +177,23 @@ public class NodeProcessor extends Thread {
 					cluster.submitTopology(pt.topologyName, pt.conf, pt.topology, false);
 					node.getRouter().submitTopology(pt.topologyName,pt.topology);
 					node.getLocalClusters().put(pt.topologyName, cluster);
-					TopologyReadyMessage r = new TopologyReadyMessage(pt.topologyName);
-					r.setMessageId(message.getMessageId());
-					node.getComms().sendNodeMessage(pt.getSender(), r);
+					try {
+						node.getComms().sendNodeMessage(pt.getSender(), 
+								new TopologyReadyMessage(pt.topologyName), message);
+					} catch (DragonCommsException e) {
+						log.error("could not send topology ready message to ["+pt.getSender()+"]");
+						// TODO: clean up
+					}
 				}
 				break;
 			case TOPOLOGY_READY:
 				TopologyReadyMessage tr = (TopologyReadyMessage) message;
-				if(node.checkStartupTopology(tr.getSender(),tr.topologyId)) {
-					TopologyRunningMessage r = new TopologyRunningMessage(tr.topologyId);
-					r.setMessageId(tr.getMessageId());
-					node.getComms().sendServiceMessage(r);
+				try {
+					if(node.checkStartupTopology(tr.getSender(),tr.topologyId)) {
+						node.getComms().sendServiceMessage(new TopologyRunningMessage(tr.topologyId),tr);
+					}
+				} catch (DragonCommsException e) {
+					log.error("could not send appropriate messages when running the topology");
 				}
 				break;
 			case START_TOPOLOGY:
@@ -157,9 +203,11 @@ public class NodeProcessor extends Thread {
 			case PREPARE_JAR_ERROR:
 				PrepareJarErrorMessage pf = (PrepareJarErrorMessage) message;
 				node.removeStartupTopology(pf.topologyId);
-				RunTopologyErrorMessage r = new RunTopologyErrorMessage(pf.topologyId,pf.error);
-				r.setMessageId(pf.getMessageId());
-				node.getComms().sendServiceMessage(r);
+				try {
+					node.getComms().sendServiceMessage(new RunTopologyErrorMessage(pf.topologyId,pf.error),pf);
+				} catch (DragonCommsException e) {
+					// ignore
+				}
 				break;
 			case STOP_TOPOLOGY:
 				break;
@@ -174,7 +222,11 @@ public class NodeProcessor extends Thread {
 			NodeMessage m = (NodeMessage) pendingJoinRequests.toArray()[0];
 			node.setNodeState(NodeState.ACCEPTING_JOIN);
 			context.put(m.getSender());
-			node.getComms().sendNodeMessage(m.getSender(),new AcceptingJoinMessage(nextNode,context));
+			try {
+				node.getComms().sendNodeMessage(m.getSender(),new AcceptingJoinMessage(nextNode,context));
+			} catch (DragonCommsException e) {
+				log.error("could not send accepting join to ["+m.getSender()+"]");
+			}
 			nextNode=m.getSender();
 			pendingJoinRequests.remove(m);
 		} else {

@@ -16,6 +16,7 @@ import org.apache.commons.logging.LogFactory;
 import dragon.Config;
 import dragon.NetworkTask;
 import dragon.network.NodeDescriptor;
+import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceDoneMessage;
 import dragon.network.messages.service.ServiceMessage;
@@ -140,7 +141,11 @@ public class TcpComms implements IComms {
 									}
 									ServiceDoneMessage r = new ServiceDoneMessage();
 									r.setMessageId(myid.toString());
-									sendServiceMessage(r);
+									try {
+										sendServiceMessage(r);
+									} catch (DragonCommsException e) {
+										log.error(e.getMessage());
+									}
 									synchronized(serviceOutputStreams){
 										serviceOutputStreams.get(myid.toString()).close();
 										serviceOutputStreams.remove(myid.toString());
@@ -266,35 +271,30 @@ public class TcpComms implements IComms {
 		
 	}
 
-	public void sendServiceMessage(ServiceMessage response) {
-		int tries=0;
-		while(tries<conf.getDragonCommsRetryAttempts()) {
-			try {
-				log.debug("sending service message ["+response.getType().name()+"]");
-				if(response.getMessageId().equals("")){
-					serviceOutputStream.writeObject(response);
-					serviceOutputStream.flush();
-				} else {
-					synchronized(serviceOutputStreams){
-						serviceOutputStreams.get(response.getMessageId()).writeObject(response);
-						serviceOutputStreams.get(response.getMessageId()).flush();
-					}
-				}
-				return;
-			} catch (IOException e) {
-				tries++;
-				log.warn("could not send ["+response.getType().name()+
-						"]... will retry #["+tries+"] after ["+conf.getDragonCommsRetryMs()+"] ms");
-				try {
-					Thread.sleep(conf.getDragonCommsRetryMs());
-				} catch (InterruptedException e1) {
-					log.error("data was not transmitted");
-					return;
+	public void sendServiceMessage(ServiceMessage response) throws DragonCommsException {
+		// no need to retry sending service message since we cannot form a connection
+		// back to the client
+		try {
+			log.debug("sending service message ["+response.getType().name()+"]");
+			if(response.getMessageId().equals("")){
+				serviceOutputStream.writeObject(response);
+				serviceOutputStream.flush();
+			} else {
+				synchronized(serviceOutputStreams){
+					serviceOutputStreams.get(response.getMessageId()).writeObject(response);
+					serviceOutputStreams.get(response.getMessageId()).flush();
 				}
 			}
+			return;
+		} catch (IOException e) {
+				log.error("service data was not transmitted");
 		}
-		log.fatal("data can not be transmitted");
-		throw new DragonCommsException("data can not be transmitted");
+		throw new DragonCommsException("service data can not be transmitted");
+	}
+	
+	public void sendServiceMessage(ServiceMessage message, Message inResponseTo) throws DragonCommsException {
+		message.setMessageId(inResponseTo.getMessageId());
+		sendServiceMessage(message);
 	}
 
 	public ServiceMessage receiveServiceMessage() throws InterruptedException {
@@ -303,7 +303,7 @@ public class TcpComms implements IComms {
 		return m;
 	}
 
-	public void sendNodeMessage(NodeDescriptor desc, NodeMessage command) {
+	public void sendNodeMessage(NodeDescriptor desc, NodeMessage command) throws DragonCommsException {
 		command.setSender(me); // node messages typically require to be replied to
 		int tries=0;
 		while(tries<conf.getDragonCommsRetryAttempts()) {
@@ -325,14 +325,19 @@ public class TcpComms implements IComms {
 			}
 		}
 		log.fatal("data can not be transmitted");
-		throw new DragonCommsException("data can not be transmitted");
+		throw new DragonCommsException("node data can not be transmitted");
+	}
+	
+	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message, Message inResponseTo) throws DragonCommsException {
+		message.setMessageId(inResponseTo.getMessageId());
+		sendNodeMessage(desc,message);
 	}
 
 	public NodeMessage receiveNodeMessage() throws InterruptedException {
 		return incomingNodeQueue.take();
 	}
 
-	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task) {
+	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task) throws DragonCommsException {
 		int tries=0;
 		while(tries<conf.getDragonCommsRetryAttempts()) {
 			try {
@@ -354,7 +359,7 @@ public class TcpComms implements IComms {
 			}
 		}
 		log.fatal("data can not be transmitted");
-		throw new DragonCommsException("data can not be transmitted");
+		throw new DragonCommsException("task data can not be transmitted");
 	}
 
 	public NetworkTask receiveNetworkTask() throws InterruptedException {
