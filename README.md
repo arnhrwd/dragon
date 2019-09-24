@@ -53,7 +53,9 @@ Dragon looks for `dragon.yaml` in several places, in this order:
 - `/etc/dragon/dragon.yaml`
 - `${HOME}/.dragon/dragon.yaml`
 
-The first file found will be used to load the parameters.
+The first file found will be used to load the parameters. If you wish to specify the configuration file name on the command line then use:
+
+    dragon -C YOUR_CONF.yaml ...
 
 ## Parameters
 

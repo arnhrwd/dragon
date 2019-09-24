@@ -37,36 +37,29 @@ public class Run {
 	public static void main(String[] args) throws Exception {
 		final Properties properties = new Properties();
 		properties.load(Run.class.getClassLoader().getResourceAsStream("project.properties"));
-		log.debug("dragon version "+properties.getProperty("project.version"));
-		Config conf = new Config(Constants.DRAGON_PROPERTIES);
+		log.info("dragon version "+properties.getProperty("project.version"));
+		
 		Options options = new Options();
 		Option jarOption = new Option("j", "jar", true, "path to topology jar file");
-		jarOption.setRequired(false);
 		options.addOption(jarOption);
 		Option classOption = new Option("c", "class", true, "toplogy class name");
-		classOption.setRequired(false);
 		options.addOption(classOption);
 		Option daemonOption = new Option("d", "daemon", false, "start as a daemon");
-		daemonOption.setRequired(false);
 		options.addOption(daemonOption);
 		Option nodeOption = new Option("h","host",true,"host name override");
-		nodeOption.setRequired(false);
 		options.addOption(nodeOption);
-		Option portOption = new Option("p","port",true,"dat port override");
-		portOption.setRequired(false);
+		Option portOption = new Option("p","port",true,"data port override");
 		options.addOption(portOption);
 		Option sportOption = new Option("s","sport",true,"service port override");
-		sportOption.setRequired(false);
 		options.addOption(sportOption);
 		Option metricsOption = new Option("m","metrics",false,"obtain metrics from existing node");
-		metricsOption.setRequired(false);
 		options.addOption(metricsOption);
 		Option topologyOption = new Option("t","topology",true,"name of the topology");
-		topologyOption.setRequired(false);
 		options.addOption(topologyOption);
 		Option terminateOption = new Option("x","terminate",false,"terminate a topology");
-		terminateOption.setRequired(false);
 		options.addOption(terminateOption);
+		Option confOption = new Option("C","conf",true,"specify the dragon conf file");
+		options.addOption(confOption);
 		
 		
 		CommandLineParser parser = new DefaultParser();
@@ -75,6 +68,12 @@ public class Run {
         
         try {
             cmd = parser.parse(options, args);
+            Config conf;
+            if(cmd.hasOption("conf")) {
+            	conf = new Config(cmd.getOptionValue("conf"));
+            } else {
+            	conf = new Config(Constants.DRAGON_PROPERTIES);
+            }
             if(cmd.hasOption("metrics")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {

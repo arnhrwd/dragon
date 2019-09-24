@@ -111,8 +111,12 @@ public class Config extends HashMap<String, Object>{
 			}
 		}
 		Map<String,Object> map = config.load(inputStream);
-		log.debug(map);
-		putAll(map);
+		if(map!=null) {
+			log.debug(map);
+			putAll(map);
+		} else {
+			log.warn("empty conf file");
+		}
 	}
 	
 	private InputStream loadByFileName(String name) throws FileNotFoundException {
@@ -136,7 +140,7 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,1024);
 		put(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,1024);
 		put(DRAGON_COMMS_RETRY_MS,10*1000);
-		put(DRAGON_COMMS_RETRY_ATTEMPTS,500);
+		put(DRAGON_COMMS_RETRY_ATTEMPTS,30);
 		put(DRAGON_NETWORK_LOCAL_HOST,"localhost");
 		put(DRAGON_NETWORK_DEFAULT_SERVICE_PORT,4000);
 		//put(DRAGON_NETWORK_LOCAL_SERVICE_PORT,4000);
