@@ -23,10 +23,6 @@ import dragon.network.messages.node.StopTopologyMessage;
 import dragon.network.messages.node.TopologyReadyMessage;
 import dragon.network.messages.node.TopologyStartedMessage;
 import dragon.network.messages.node.TopologyStoppedMessage;
-import dragon.network.messages.service.RunTopologyErrorMessage;
-import dragon.network.messages.service.TerminateTopologyErrorMessage;
-import dragon.network.messages.service.TopologyRunningMessage;
-import dragon.topology.DragonTopology;
 
 public class NodeProcessor extends Thread {
 	private static Log log = LogFactory.getLog(NodeProcessor.class);
@@ -122,7 +118,7 @@ public class NodeProcessor extends Thread {
 						try {
 							node.getComms().sendNodeMessage(message.getSender(), new ContextUpdateMessage(context));
 						} catch (DragonCommsException e) {
-							log.debug("could not send context update to ["+message.getSender()+"]");
+							log.error("could not send context update to ["+message.getSender()+"]");
 							// TODO: possibly signal that the node has failed
 						}
 						hit=true;
@@ -158,10 +154,7 @@ public class NodeProcessor extends Thread {
 			}
 			case PREPARE_TOPOLOGY:{
 				PrepareTopologyMessage pt = (PrepareTopologyMessage) message;
-				LocalCluster cluster=new LocalCluster(node);
-				cluster.submitTopology(pt.topologyName, pt.conf, pt.topology, false);
-				node.getRouter().submitTopology(pt.topologyName,pt.topology);
-				node.getLocalClusters().put(pt.topologyName, cluster);
+				node.prepareTopology(pt.topologyName, pt.conf, pt.topology, false);
 				pt.getGroupOperation().sendSuccess(node.getComms());
 				break;
 			}
@@ -187,10 +180,7 @@ public class NodeProcessor extends Thread {
 					stm.getGroupOperation().sendError(node.getComms(),
 							"topology does not exist");
 				} else {
-					
-					LocalCluster localCluster = node.getLocalClusters().get(stm.topologyId);
-					localCluster.setGroupOperation(stm.getGroupOperation());
-					localCluster.setShouldTerminate();
+					node.stopTopology(stm.topologyId,stm.getGroupOperation());
 				}
 				break;
 			}

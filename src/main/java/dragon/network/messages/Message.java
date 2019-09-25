@@ -2,7 +2,7 @@ package dragon.network.messages;
 
 import java.io.Serializable;
 
-import dragon.network.GroupOperation;
+import dragon.network.operations.GroupOperation;
 
 
 public class Message implements Serializable {

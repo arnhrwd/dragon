@@ -16,10 +16,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.grouping.AbstractGrouping;
-import dragon.network.GroupOperation;
 import dragon.network.Node;
-import dragon.network.NodeDescriptor;
-import dragon.network.TerminateTopologyGroupOperation;
+import dragon.network.operations.GroupOperation;
+import dragon.network.operations.TerminateTopologyGroupOperation;
 import dragon.spout.SpoutOutputCollector;
 import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
@@ -292,6 +291,7 @@ public class LocalCluster {
 		
 		tickCounterThread = new Thread() {
 			public void run() {
+				this.setName("tick counter");
 				while(!shouldTerminate && !isInterrupted()) {
 					if(tickCounterTime==tickTime) {
 						synchronized(tickCounterThread){
@@ -322,6 +322,7 @@ public class LocalCluster {
 		
 		tickThread = new Thread() {
 			public void run() {
+				this.setName("tick");
 				while(!shouldTerminate && !isInterrupted()) {
 					try {
 						Thread.sleep(1000);
@@ -401,6 +402,7 @@ public class LocalCluster {
 		Thread shutdownThread = new Thread() {
 			@Override
 			public void run() {
+				this.setName("shutdown");
 				log.debug("waiting for all work to finish");
 				while(true) {
 					long ctw=totalComponentWork.longValue();
@@ -449,8 +451,8 @@ public class LocalCluster {
 					}
 				}
 				// shutdown the executors and other threads
-				componentExecutorService.shutdown();
-				networkExecutorService.shutdown();
+				componentExecutorService.shutdownNow();
+				networkExecutorService.shutdownNow();
 				try {
 					while (!componentExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
 						  log.info("Awaiting completion of component executor threads.");
@@ -466,6 +468,13 @@ public class LocalCluster {
 				
 				tickThread.interrupt();
 				tickCounterThread.interrupt();
+				
+				try {
+					tickThread.join();
+					tickCounterThread.join();
+				} catch (InterruptedException e) {
+					log.warn("interrupted while waiting for tick thread");
+				}
 				
 				// the local cluster can now be garbage collected
 				synchronized(groupOperations) {
@@ -576,10 +585,6 @@ public class LocalCluster {
 		}
 	}
 	
-	//public String getPersistanceDir(){
-	//	return conf.get(Config.DRAGON_BASE_DIR)+"/"+conf.get(Config.DRAGON_PERSISTANCE_DIR);
-	//}
-	
 	public String getTopologyId() {
 		return topologyName;
 	}
@@ -624,13 +629,4 @@ public class LocalCluster {
 		}
 	}
 
-//	public void setTerminateMessageId(String messageId) {
-//		terminateMessageId=messageId;
-//	}
-//
-//	public void setTerminateNodeDesc(NodeDescriptor sender) {
-//		terminateNodeDesc = sender;
-//		
-//	}
-//	
 }

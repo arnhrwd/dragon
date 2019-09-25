@@ -1,5 +1,6 @@
-package dragon.network;
+package dragon.network.operations;
 
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.StartTopologyMessage;
 import dragon.network.messages.node.TopologyStartedMessage;

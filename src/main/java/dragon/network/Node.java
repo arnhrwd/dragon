@@ -21,9 +21,9 @@ import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.JoinRequestMessage;
-import dragon.network.messages.node.StartTopologyMessage;
-import dragon.network.messages.node.TopologyStoppedMessage;
-import dragon.network.messages.service.TopologyTerminatedMessage;
+import dragon.network.operations.GroupOperation;
+import dragon.network.operations.TerminateTopologyGroupOperation;
+import dragon.topology.DragonTopology;
 
 
 
@@ -155,8 +155,21 @@ public class Node {
 		
 	}
 	
+	public void prepareTopology(String topologyId, Config conf, DragonTopology topology, boolean start) {
+		LocalCluster cluster=new LocalCluster(this);
+		cluster.submitTopology(topologyId, conf, topology, start);
+		getRouter().submitTopology(topologyId,topology);
+		getLocalClusters().put(topologyId, cluster);
+	}
+	
 	public void startTopology(String topologyId) {
 		localClusters.get(topologyId).openAll();
+	}
+	
+	public void stopTopology(String topologyId,GroupOperation go) {
+		LocalCluster localCluster = getLocalClusters().get(topologyId);
+		localCluster.setGroupOperation(go);
+		localCluster.setShouldTerminate();
 	}
 	
 	public ComponentMetricMap getMetrics(String topologyId){

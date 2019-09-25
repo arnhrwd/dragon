@@ -1,4 +1,4 @@
-package dragon.network;
+package dragon.network.operations;
 
 import java.io.Serializable;
 import java.util.HashSet;
@@ -6,6 +6,7 @@ import java.util.HashSet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import dragon.network.NodeDescriptor;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.messages.Message;
@@ -13,15 +14,12 @@ import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceMessage;
 
 public class GroupOperation implements Serializable {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 7500196228211761411L;
 	private static Log log = LogFactory.getLog(GroupOperation.class);
 	protected transient HashSet<NodeDescriptor> group;
 	private long id;
-	protected NodeDescriptor sourceDesc;
-	protected Message orig;
+	private NodeDescriptor sourceDesc;
+	private Message orig;
 	
 	public GroupOperation(Message orig) {
 		this.orig = orig;

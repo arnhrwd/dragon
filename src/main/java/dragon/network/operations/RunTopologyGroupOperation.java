@@ -1,7 +1,7 @@
-package dragon.network;
+package dragon.network.operations;
 
-
-import dragon.LocalCluster;
+import dragon.network.Node;
+import dragon.network.NodeDescriptor;
 import dragon.network.comms.IComms;
 import dragon.network.messages.node.JarReadyMessage;
 import dragon.network.messages.node.NodeMessage;
@@ -14,10 +14,6 @@ import dragon.network.messages.service.TopologyRunningMessage;
 import dragon.topology.DragonTopology;
 
 public class RunTopologyGroupOperation extends GroupOperation {
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -2038551040445600017L;
 	private RunTopologyMessage rtm;
 	private transient Node node;
@@ -50,16 +46,13 @@ public class RunTopologyGroupOperation extends GroupOperation {
 	@Override
 	public void success(IComms comms) {
 		PrepareTopologyGroupOperation ptgo = new PrepareTopologyGroupOperation(rtm,node);
-		DragonTopology dragonTopology = node.getLocalClusters().get(rtm.topologyName).getTopology();
+		DragonTopology dragonTopology = rtm.dragonTopology;//node.getLocalClusters().get(rtm.topologyName).getTopology();
 		for(NodeDescriptor desc : dragonTopology.getReverseEmbedding().keySet()) {
 			ptgo.add(desc);
 		}
 		node.register(ptgo);
 		ptgo.initiate(comms);
-		LocalCluster cluster=new LocalCluster(node);
-		cluster.submitTopology(rtm.topologyName, rtm.conf, rtm.dragonTopology, false);
-		node.getRouter().submitTopology(rtm.topologyName,rtm.dragonTopology);
-		node.getLocalClusters().put(rtm.topologyName, cluster);
+		node.prepareTopology(rtm.topologyName, rtm.conf, rtm.dragonTopology, false);
 		ptgo.receiveSuccess(comms,comms.getMyNodeDescriptor());
 	}
 

@@ -18,6 +18,8 @@ import dragon.network.messages.node.StopTopologyMessage;
 import dragon.network.messages.service.GetMetricsMessage;
 import dragon.network.messages.service.UploadJarMessage;
 import dragon.network.messages.service.UploadJarSuccessMessage;
+import dragon.network.operations.RunTopologyGroupOperation;
+import dragon.network.operations.TerminateTopologyGroupOperation;
 import dragon.topology.DragonTopology;
 import dragon.network.messages.service.GetMetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
@@ -95,11 +97,11 @@ public class ServiceProcessor extends Thread {
 					node.register(rtgc);
 					rtgc.initiate(node.getComms());
 					
-					LocalCluster cluster=new LocalCluster(node);
-					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology, false);
-					node.getRouter().submitTopology(scommand.topologyName, scommand.dragonTopology);
-					node.getLocalClusters().put(scommand.topologyName, cluster);
-					
+//					LocalCluster cluster=new LocalCluster(node);
+//					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology, false);
+//					node.getRouter().submitTopology(scommand.topologyName, scommand.dragonTopology);
+//					node.getLocalClusters().put(scommand.topologyName, cluster);
+					// the jar is already prepared for this node
 					rtgc.receiveSuccess(node.getComms(), node.getComms().getMyNodeDescriptor());
 				}
 				break;	
@@ -156,10 +158,7 @@ public class ServiceProcessor extends Thread {
 					}
 					node.register(ttgo);
 					ttgo.initiate(node.getComms());
-					
-					LocalCluster localCluster = node.getLocalClusters().get(tt.topologyId);
-					localCluster.setGroupOperation(ttgo);
-					localCluster.setShouldTerminate();
+					node.stopTopology(tt.topologyId, ttgo);
 					
 				}
 				break;
