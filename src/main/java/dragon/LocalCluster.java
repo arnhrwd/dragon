@@ -292,7 +292,7 @@ public class LocalCluster {
 		
 		tickCounterThread = new Thread() {
 			public void run() {
-				while(!shouldTerminate) {
+				while(!shouldTerminate && !isInterrupted()) {
 					if(tickCounterTime==tickTime) {
 						synchronized(tickCounterThread){
 							try {
@@ -322,7 +322,7 @@ public class LocalCluster {
 		
 		tickThread = new Thread() {
 			public void run() {
-				while(!shouldTerminate) {
+				while(!shouldTerminate && !isInterrupted()) {
 					try {
 						Thread.sleep(1000);
 					} catch (InterruptedException e) {

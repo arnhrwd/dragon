@@ -12,7 +12,7 @@ import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceMessage;
 
-public abstract class GroupOperation implements Serializable {
+public class GroupOperation implements Serializable {
 	/**
 	 * 
 	 */
@@ -120,10 +120,20 @@ public abstract class GroupOperation implements Serializable {
 	 * Appropriate message are provided by the subclass.
 	 */
 
-	protected abstract NodeMessage initiateNodeMessage();
-	protected abstract NodeMessage successNodeMessage();
-	protected abstract NodeMessage errorNodeMessage(String error);
-	protected abstract ServiceMessage successServiceMessage();
-	protected abstract ServiceMessage failServiceMessage(String error);
+	protected NodeMessage initiateNodeMessage() {
+		return null;
+	}
+	protected NodeMessage successNodeMessage() {
+		return null;
+	}
+	protected NodeMessage errorNodeMessage(String error) {
+		return null;
+	}
+	protected ServiceMessage successServiceMessage() {
+		return null;
+	}
+	protected ServiceMessage failServiceMessage(String error) {
+		return null;
+	}
 
 }

@@ -21,6 +21,7 @@ import dragon.network.messages.node.StartTopologyMessage;
 import dragon.network.messages.node.StopTopologyErrorMessage;
 import dragon.network.messages.node.StopTopologyMessage;
 import dragon.network.messages.node.TopologyReadyMessage;
+import dragon.network.messages.node.TopologyStartedMessage;
 import dragon.network.messages.node.TopologyStoppedMessage;
 import dragon.network.messages.service.RunTopologyErrorMessage;
 import dragon.network.messages.service.TerminateTopologyErrorMessage;
@@ -57,7 +58,7 @@ public class NodeProcessor extends Thread {
 			}
 			log.debug("received ["+message.getType().name()+"] from ["+message.getSender());
 			switch(message.getType()) {
-			case JOIN_REQUEST:
+			case JOIN_REQUEST:{
 				if(node.getNodeState()!=NodeState.OPERATIONAL) {
 					log.debug("placing join request from ["+message.getSender()+"] on pending list");
 					pendingJoinRequests.add(message);
@@ -75,7 +76,8 @@ public class NodeProcessor extends Thread {
 					}
 				}
 				break;
-			case ACCEPTING_JOIN:
+			}
+			case ACCEPTING_JOIN:{
 				if(node.getNodeState()!=NodeState.JOIN_REQUESTED) {
 					log.error("unexpected message: "+NodeMessage.NodeMessageType.ACCEPTING_JOIN.name());
 				} else {
@@ -102,14 +104,16 @@ public class NodeProcessor extends Thread {
 					processPendingJoins();
 				}
 				break;
-			case JOIN_COMPLETE:
+			}
+			case JOIN_COMPLETE:{
 				if(node.getNodeState()!=NodeState.ACCEPTING_JOIN) {
 					log.error("unexpected message: "+NodeMessage.NodeMessageType.JOIN_COMPLETE.name());
 				} else {
 					processPendingJoins();
 				}
 				break;
-			case CONTEXT_UPDATE:
+			}
+			case CONTEXT_UPDATE:{
 				ContextUpdateMessage cu = (ContextUpdateMessage) message;
 				boolean hit=false;
 				for(String key : context.keySet()) {
@@ -127,95 +131,57 @@ public class NodeProcessor extends Thread {
 				}
 				if(!hit) context.putAll(cu.context);
 				break;
-			case PREPARE_JAR:
-				{
-					PrepareJarMessage pjf = (PrepareJarMessage) message;
-					if(!node.storeJarFile(pjf.topologyName,pjf.topologyJar)) {
-						try {
-							node.getComms().sendNodeMessage(pjf.getSender(), 
-									new PrepareJarErrorMessage(pjf.topologyName,"could not store the topology jar"),
-									message);
-						} catch (DragonCommsException e) {
-							log.debug("could not send prepare jare error message to ["+pjf.getSender()+"]");
-							// TODO: possibly signal that the node has failed
-						}
-						continue;
-					} else if(!node.loadJarFile(pjf.topologyName)) {
-						try {
-							node.getComms().sendNodeMessage(pjf.getSender(), 
-									new PrepareJarErrorMessage(pjf.topologyName,"could not load the topology jar"),
-									message);
-						} catch (DragonCommsException e) {
-							log.debug("could not send prepare jare error message to ["+pjf.getSender()+"]");
-							// TODO: possibly signal that the node has failed
-						}
-						continue;
-					}
-					try {
-						node.getComms().sendNodeMessage(message.getSender(), 
-								new JarReadyMessage(pjf.topologyName),message);
-					} catch (DragonCommsException e) {
-						log.debug("could not send prepare jare ready message to ["+pjf.getSender()+"]");
-						// TODO: possibly signal that the node has failed
-					}
+			}
+			case PREPARE_JAR:{
+				PrepareJarMessage pjf = (PrepareJarMessage) message;
+				if(!node.storeJarFile(pjf.topologyName,pjf.topologyJar)) {
+					pjf.getGroupOperation().sendError(node.getComms(),"could not store the topology jar");
+					continue;
+				} else if(!node.loadJarFile(pjf.topologyName)) {
+					pjf.getGroupOperation().sendError(node.getComms(), "could not load the topology jar");
+					continue;
 				}
+				pjf.getGroupOperation().sendSuccess(node.getComms());
 				break;
-			
-			case JAR_READY:
-				{
-					JarReadyMessage jrm = (JarReadyMessage) message;
-					NodeMessage response = new PrepareTopologyMessage(jrm.topologyId,
-							node.getLocalClusters().get(jrm.topologyId).getConf(),
-							node.getLocalClusters().get(jrm.topologyId).getTopology());
-					try {
-						node.getComms().sendNodeMessage(message.getSender(), response, message);
-					} catch (DragonCommsException e) {
-						log.error("could not send prepare topology message to ["+message.getSender()+"]");
-						// TODO: possibly signal that the node has failed
-					}
-				}
+			}
+			case PREPARE_JAR_ERROR:{
+				PrepareJarErrorMessage pjem = (PrepareJarErrorMessage) message;
+				node.getGroupOperation(pjem.getGroupOperation()
+						.getId()).receiveError(node.getComms(), pjem.getSender(), pjem.error);
 				break;
-			case PREPARE_TOPOLOGY:
+			}
+			case JAR_READY:{
+				JarReadyMessage jrm = (JarReadyMessage) message;
+				node.getGroupOperation(jrm.getGroupOperation()
+						.getId()).receiveSuccess(node.getComms(), jrm.getSender());
+				break;
+			}
+			case PREPARE_TOPOLOGY:{
 				PrepareTopologyMessage pt = (PrepareTopologyMessage) message;
-				{
-					LocalCluster cluster=new LocalCluster(node);
-					cluster.submitTopology(pt.topologyName, pt.conf, pt.topology, false);
-					node.getRouter().submitTopology(pt.topologyName,pt.topology);
-					node.getLocalClusters().put(pt.topologyName, cluster);
-					try {
-						node.getComms().sendNodeMessage(pt.getSender(), 
-								new TopologyReadyMessage(pt.topologyName), message);
-					} catch (DragonCommsException e) {
-						log.error("could not send topology ready message to ["+pt.getSender()+"]");
-						// TODO: clean up
-					}
-				}
+				LocalCluster cluster=new LocalCluster(node);
+				cluster.submitTopology(pt.topologyName, pt.conf, pt.topology, false);
+				node.getRouter().submitTopology(pt.topologyName,pt.topology);
+				node.getLocalClusters().put(pt.topologyName, cluster);
+				pt.getGroupOperation().sendSuccess(node.getComms());
 				break;
-			case TOPOLOGY_READY:
+			}
+			case TOPOLOGY_READY:{
 				TopologyReadyMessage tr = (TopologyReadyMessage) message;
-				try {
-					if(node.checkStartupTopology(tr.getSender(),tr.topologyId)) {
-						node.getComms().sendServiceMessage(new TopologyRunningMessage(tr.topologyId),tr);
-					}
-				} catch (DragonCommsException e) {
-					log.error("could not send appropriate messages when running the topology");
-				}
+				node.getGroupOperation(tr.getGroupOperation().getId()).receiveSuccess(node.getComms(), tr.getSender());
 				break;
-			case START_TOPOLOGY:
+			}
+			case START_TOPOLOGY:{
 				StartTopologyMessage st = (StartTopologyMessage) message;
 				node.startTopology(st.topologyId);
+				st.getGroupOperation().sendSuccess(node.getComms());
 				break;
-			case PREPARE_JAR_ERROR:
-				PrepareJarErrorMessage pf = (PrepareJarErrorMessage) message;
-				node.removeStartupTopology(pf.topologyId);
-				try {
-					node.getComms().sendServiceMessage(new RunTopologyErrorMessage(pf.topologyId,pf.error),pf);
-				} catch (DragonCommsException e) {
-					// ignore
-				}
+			}
+			case TOPOLOGY_STARTED:{
+				TopologyStartedMessage tsm = (TopologyStartedMessage) message;
+				node.getGroupOperation(tsm.getGroupOperation().getId()).receiveSuccess(node.getComms(), tsm.getSender());
 				break;
-			case STOP_TOPOLOGY:
-			{
+			}
+			case STOP_TOPOLOGY:{
 				StopTopologyMessage stm = (StopTopologyMessage) message;
 				if(!node.getLocalClusters().containsKey(stm.topologyId)){
 					stm.getGroupOperation().sendError(node.getComms(),
@@ -226,26 +192,24 @@ public class NodeProcessor extends Thread {
 					localCluster.setGroupOperation(stm.getGroupOperation());
 					localCluster.setShouldTerminate();
 				}
-			}
 				break;
-			case TOPOLOGY_STOPPED:
-			{
+			}
+			case TOPOLOGY_STOPPED:{
 				TopologyStoppedMessage tsm = (TopologyStoppedMessage) message;
 				node.getGroupOperation(tsm
 						.getGroupOperation()
 						.getId())
 						.receiveSuccess(node.getComms(),tsm.getSender());
-			}
 				break;
-			case STOP_TOPOLOGY_ERROR:
-			{
+			}
+			case STOP_TOPOLOGY_ERROR:{
 				StopTopologyErrorMessage stem = (StopTopologyErrorMessage) message;
 				node.getGroupOperation(stem
 						.getGroupOperation()
 						.getId())
 						.receiveError(node.getComms(),stem.getSender(),stem.error);
-			}
 				break;
+			}
 			default:
 				break;
 			}

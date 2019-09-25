@@ -154,30 +154,9 @@ public class Node {
 		}
 		
 	}
-	public void createStartupTopology(String topologyId) {
-		startupTopology.put(topologyId,new HashSet<NodeDescriptor>());
-		startupTopology.get(topologyId).add(comms.getMyNodeDescriptor());
-	}
-	public boolean checkStartupTopology(NodeDescriptor sender, String topologyId) throws DragonCommsException {
-		startupTopology.get(topologyId).add(sender);
-		if(startupTopology.get(topologyId).size()==localClusters.get(topologyId).getTopology().getReverseEmbedding().size()) {
-			localClusters.get(topologyId).openAll();
-			for(NodeDescriptor desc : startupTopology.get(topologyId)) {
-				if(!desc.equals(comms.getMyNodeDescriptor())) {
-					comms.sendNodeMessage(desc, new StartTopologyMessage(topologyId));
-				}
-			}
-			startupTopology.remove(topologyId);
-			return true;
-		}
-		return false;
-	}
+	
 	public void startTopology(String topologyId) {
 		localClusters.get(topologyId).openAll();
-	}
-	
-	public void removeStartupTopology(String topologyId) {
-		startupTopology.remove(topologyId);
 	}
 	
 	public ComponentMetricMap getMetrics(String topologyId){

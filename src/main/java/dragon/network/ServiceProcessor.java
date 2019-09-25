@@ -44,7 +44,7 @@ public class ServiceProcessor extends Thread {
 				break;
 			}
 			switch(command.getType()){
-			case UPLOAD_JAR:
+			case UPLOAD_JAR:{
 				UploadJarMessage jf = (UploadJarMessage) command;
 				if(node.getLocalClusters().containsKey(jf.topologyName)){
 					try {
@@ -77,7 +77,8 @@ public class ServiceProcessor extends Thread {
 					}
 				}
 				break;
-			case RUN_TOPOLOGY:
+			}
+			case RUN_TOPOLOGY:{
 				RunTopologyMessage scommand = (RunTopologyMessage) command;
 				if(node.getLocalClusters().containsKey(scommand.topologyName)){
 					try {
@@ -86,55 +87,33 @@ public class ServiceProcessor extends Thread {
 						// ignore
 					}
 				} else {
+					
+					RunTopologyGroupOperation rtgc = new RunTopologyGroupOperation(scommand,node);
+					for(NodeDescriptor desc : scommand.dragonTopology.getReverseEmbedding().keySet()) {
+						rtgc.add(desc);
+					}
+					node.register(rtgc);
+					rtgc.initiate(node.getComms());
+					
 					LocalCluster cluster=new LocalCluster(node);
 					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology, false);
 					node.getRouter().submitTopology(scommand.topologyName, scommand.dragonTopology);
 					node.getLocalClusters().put(scommand.topologyName, cluster);
-					node.createStartupTopology(scommand.topologyName);
-					boolean hit=false;
-					for(NodeDescriptor desc : scommand.dragonTopology.getReverseEmbedding().keySet()) {
-						if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
-							hit=true;
-							try {
-								node.getComms().sendNodeMessage(desc, 
-										new PrepareJarMessage(scommand.topologyName,
-												node.readJarFile(scommand.topologyName)), scommand);
-							} catch (DragonCommsException e) {
-								log.error("network errors prevent topology from running correctly");
-								try {
-									node.getComms().sendServiceMessage(
-											new RunTopologyErrorMessage(scommand.topologyName,
-													"network errors prevented topology from running correctly"),
-											scommand);
-								} catch (DragonCommsException e1) {
-									// TODO: cleanup failed topology
-									continue;
-								}
-							}
-						}
-					}
-					if(!hit) {
-						node.getLocalClusters().get(scommand.topologyName).openAll();
-						try {
-							node.getComms().sendServiceMessage(
-									new TopologyRunningMessage(scommand.topologyName),scommand);
-						} catch (DragonCommsException e) {
-							// ignore
-						}
-					}
+					
+					rtgc.receiveSuccess(node.getComms(), node.getComms().getMyNodeDescriptor());
 				}
 				break;	
-			case GET_NODE_CONTEXT:
-				{
-					try {
-						node.getComms().sendServiceMessage(
-								new NodeContextMessage(node.getNodeProcessor().getContext()),command);
-					} catch (DragonCommsException e) {
-						// ignore
-					}
+			}
+			case GET_NODE_CONTEXT:{
+				try {
+					node.getComms().sendServiceMessage(
+							new NodeContextMessage(node.getNodeProcessor().getContext()),command);
+				} catch (DragonCommsException e) {
+					// ignore
 				}
 				break;
-			case GET_METRICS:
+			}
+			case GET_METRICS:{
 				GetMetricsMessage gm = (GetMetricsMessage) command;
 				if((Boolean)node.getConf().getDragonMetricsEnabled()){
 					ComponentMetricMap cm = node.getMetrics(gm.topologyId);
@@ -160,8 +139,8 @@ public class ServiceProcessor extends Thread {
 					}
 				}
 				break;
-			case TERMINATE_TOPOLOGY:
-			{
+			}
+			case TERMINATE_TOPOLOGY:{
 				TerminateTopologyMessage tt = (TerminateTopologyMessage) command;
 				if(!node.getLocalClusters().containsKey(tt.topologyId)){
 					try {
@@ -183,8 +162,8 @@ public class ServiceProcessor extends Thread {
 					localCluster.setShouldTerminate();
 					
 				}
+				break;
 			}
-			break;
 			default:
 			}
 		}
