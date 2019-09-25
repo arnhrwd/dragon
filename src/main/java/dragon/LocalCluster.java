@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -12,14 +11,15 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.grouping.AbstractGrouping;
+import dragon.network.GroupOperation;
 import dragon.network.Node;
+import dragon.network.NodeDescriptor;
+import dragon.network.TerminateTopologyGroupOperation;
 import dragon.spout.SpoutOutputCollector;
 import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
@@ -54,14 +54,12 @@ public class LocalCluster {
 	private ArrayList<Future> networkExecutorThreads;
 	private int totalComponents=0;
 	
+	private HashMap<Class,HashSet<GroupOperation>> groupOperations;
 	
 	private AtomicLong totalComponentWork=new AtomicLong(0L);
 	private AtomicLong totalNetworkWork=new AtomicLong(0L);
 	private AtomicInteger componentThreadsBusy=new AtomicInteger(0);
 	private AtomicInteger networkThreadsBusy=new AtomicInteger(0);
-
-	
-	private String terminateMessageId;
 	
 	private String topologyName;
 	private Config conf;
@@ -111,11 +109,12 @@ public class LocalCluster {
 	private ArrayList<SpoutOpen> spoutOpenList;
 	
 	public LocalCluster(){
-		
+		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
 	}
 	
 	public LocalCluster(Node node) {
 		this.node=node;
+		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
 	}
 	
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
@@ -469,7 +468,12 @@ public class LocalCluster {
 				tickCounterThread.interrupt();
 				
 				// the local cluster can now be garbage collected
-				node.localClusterTerminated(topologyName, terminateMessageId);
+				synchronized(groupOperations) {
+					for(GroupOperation go : groupOperations.get(TerminateTopologyGroupOperation.class)) {
+						node.localClusterTerminated(topologyName,(TerminateTopologyGroupOperation) go);
+					}
+				}
+				
 			}
 		};
 		shutdownThread.start();
@@ -609,9 +613,24 @@ public class LocalCluster {
 	public Node getNode(){
 		return node;
 	}
-
-	public void setTerminateMessageId(String messageId) {
-		terminateMessageId=messageId;
-	}
 	
+	public void setGroupOperation(GroupOperation go) {
+		synchronized(groupOperations) {
+			if(!groupOperations.containsKey(go.getClass())) {
+				groupOperations.put(go.getClass(), new HashSet<GroupOperation>());
+			}
+			HashSet<GroupOperation> gos = groupOperations.get(go.getClass());
+			gos.add(go);
+		}
+	}
+
+//	public void setTerminateMessageId(String messageId) {
+//		terminateMessageId=messageId;
+//	}
+//
+//	public void setTerminateNodeDesc(NodeDescriptor sender) {
+//		terminateNodeDesc = sender;
+//		
+//	}
+//	
 }

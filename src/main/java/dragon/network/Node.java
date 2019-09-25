@@ -3,8 +3,6 @@ package dragon.network;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,7 +15,6 @@ import org.apache.commons.logging.LogFactory;
 import dragon.Agent;
 import dragon.Config;
 import dragon.LocalCluster;
-import dragon.Run;
 import dragon.metrics.ComponentMetricMap;
 import dragon.metrics.Metrics;
 import dragon.network.comms.DragonCommsException;
@@ -25,6 +22,7 @@ import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.JoinRequestMessage;
 import dragon.network.messages.node.StartTopologyMessage;
+import dragon.network.messages.node.TopologyStoppedMessage;
 import dragon.network.messages.service.TopologyTerminatedMessage;
 
 
@@ -38,7 +36,8 @@ public class Node {
 	private NodeProcessor nodeThread;
 	private Config conf;
 	private Metrics metrics;
-	
+	private long groupOperationCounter=0;
+	private HashMap<Long,GroupOperation> groupOperations;
 	private Router router;
 	
 	public enum NodeState {
@@ -54,6 +53,7 @@ public class Node {
 	
 	public Node(Config conf) throws IOException {
 		this.conf=conf;
+		groupOperations=new HashMap<Long,GroupOperation>();
 		localClusters = new HashMap<String,LocalCluster>();
 		startupTopology = new HashMap<String,HashSet<NodeDescriptor>>();
 		comms = new TcpComms(conf);
@@ -186,19 +186,29 @@ public class Node {
 		} else return null;
 	}
 	
-	public void localClusterTerminated(String topologyId, String messageId) {
+	public void localClusterTerminated(String topologyId, TerminateTopologyGroupOperation ttgo) {
 		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
-		if(messageId!=null) {
-			TopologyTerminatedMessage ttm = new TopologyTerminatedMessage(topologyId);
-			ttm.setMessageId(messageId);
-			try {
-				comms.sendServiceMessage(ttm);
-			} catch (DragonCommsException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+		ttgo.sendSuccess(comms);
+	}
+
+	public void register(GroupOperation groupOperation) {
+		synchronized(groupOperations) {
+			groupOperation.init(comms.getMyNodeDescriptor(),groupOperationCounter);
+			groupOperations.put(groupOperationCounter, groupOperation);
+			groupOperationCounter++;
 		}
 	}
 	
+	public GroupOperation getGroupOperation(Long id) {
+		synchronized(groupOperations) {
+			return groupOperations.get(id);
+		}
+	}
+	
+	public synchronized void removeGroupOperation(Long id) {
+		synchronized(groupOperations) {
+			groupOperations.remove(id);
+		}
+	}
 }

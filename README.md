@@ -3,6 +3,28 @@
 
 A high performance, distributed stream processing system, loosely based on the Apache Storm API.
 
+# Distribution usage
+
+The Dragon distribution has the following directory structure and relevant files:
+
+    dragon
+    |   README.md
+    └───bin
+    |   |   dragon.sh
+    |
+    └───conf
+    |   |   dragon.yaml
+    |
+    └───lib
+        |   dragon.jar
+
+To see simple help on using Dragon:
+
+    cd dragon/bin
+    ./dragon.sh -h
+ 
+Detailed usage instructions are below.
+
 # Compiling
 
 To install Dragon into your local cache:

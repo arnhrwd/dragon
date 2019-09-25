@@ -14,9 +14,11 @@ import dragon.network.messages.service.UploadJarFailedMessage;
 import dragon.network.messages.service.RunTopologyErrorMessage;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.node.PrepareJarMessage;
+import dragon.network.messages.node.StopTopologyMessage;
 import dragon.network.messages.service.GetMetricsMessage;
 import dragon.network.messages.service.UploadJarMessage;
 import dragon.network.messages.service.UploadJarSuccessMessage;
+import dragon.topology.DragonTopology;
 import dragon.network.messages.service.GetMetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
@@ -168,9 +170,18 @@ public class ServiceProcessor extends Thread {
 						// ignore
 					}
 				} else {
+					DragonTopology dragonTopology = node.getLocalClusters().get(tt.topologyId).getTopology();
+					TerminateTopologyGroupOperation ttgo = new TerminateTopologyGroupOperation(tt);
+					for(NodeDescriptor desc : dragonTopology.getReverseEmbedding().keySet()) {
+						ttgo.add(desc);
+					}
+					node.register(ttgo);
+					ttgo.initiate(node.getComms());
+					
 					LocalCluster localCluster = node.getLocalClusters().get(tt.topologyId);
-					localCluster.setTerminateMessageId(tt.getMessageId());
+					localCluster.setGroupOperation(ttgo);
 					localCluster.setShouldTerminate();
+					
 				}
 			}
 			break;

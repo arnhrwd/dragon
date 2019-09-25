@@ -18,9 +18,14 @@ import dragon.network.messages.node.PrepareJarErrorMessage;
 import dragon.network.messages.node.PrepareJarMessage;
 import dragon.network.messages.node.PrepareTopologyMessage;
 import dragon.network.messages.node.StartTopologyMessage;
+import dragon.network.messages.node.StopTopologyErrorMessage;
+import dragon.network.messages.node.StopTopologyMessage;
 import dragon.network.messages.node.TopologyReadyMessage;
+import dragon.network.messages.node.TopologyStoppedMessage;
 import dragon.network.messages.service.RunTopologyErrorMessage;
+import dragon.network.messages.service.TerminateTopologyErrorMessage;
 import dragon.network.messages.service.TopologyRunningMessage;
+import dragon.topology.DragonTopology;
 
 public class NodeProcessor extends Thread {
 	private static Log log = LogFactory.getLog(NodeProcessor.class);
@@ -210,6 +215,36 @@ public class NodeProcessor extends Thread {
 				}
 				break;
 			case STOP_TOPOLOGY:
+			{
+				StopTopologyMessage stm = (StopTopologyMessage) message;
+				if(!node.getLocalClusters().containsKey(stm.topologyId)){
+					stm.getGroupOperation().sendError(node.getComms(),
+							"topology does not exist");
+				} else {
+					
+					LocalCluster localCluster = node.getLocalClusters().get(stm.topologyId);
+					localCluster.setGroupOperation(stm.getGroupOperation());
+					localCluster.setShouldTerminate();
+				}
+			}
+				break;
+			case TOPOLOGY_STOPPED:
+			{
+				TopologyStoppedMessage tsm = (TopologyStoppedMessage) message;
+				node.getGroupOperation(tsm
+						.getGroupOperation()
+						.getId())
+						.receiveSuccess(node.getComms(),tsm.getSender());
+			}
+				break;
+			case STOP_TOPOLOGY_ERROR:
+			{
+				StopTopologyErrorMessage stem = (StopTopologyErrorMessage) message;
+				node.getGroupOperation(stem
+						.getGroupOperation()
+						.getId())
+						.receiveError(node.getComms(),stem.getSender(),stem.error);
+			}
 				break;
 			default:
 				break;

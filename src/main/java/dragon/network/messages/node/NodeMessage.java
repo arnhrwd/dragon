@@ -21,7 +21,11 @@ public class NodeMessage extends Message {
 		PREPARE_JAR_ERROR,
 		PREPARE_JAR,
 		STOP_TOPOLOGY,
-		JAR_READY
+		JAR_READY,
+		TOPOLOGY_STOPPED,
+		STOP_TOPOLOGY_ERROR,
+		START_TOPOLOGY_ERROR
+		
 	}
 	
 	private NodeMessageType type;

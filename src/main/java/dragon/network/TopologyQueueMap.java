@@ -42,7 +42,8 @@ public class TopologyQueueMap extends HashMap<String,StreamQueueMap> {
 	public void drop(String topologyName, String streamId) {
 		if(containsKey(topologyName)) {
 			get(topologyName).drop(streamId);
+			if(get(topologyName).isEmpty()) remove(topologyName);
 		}
-		if(get(topologyName).isEmpty()) remove(topologyName);
+		
 	}
 }
