@@ -2,7 +2,7 @@ package dragon.network;
 
 import java.util.HashMap;
 
-import dragon.NetworkTask;
+import dragon.tuple.NetworkTask;
 import dragon.utils.NetworkTaskBuffer;
 
 

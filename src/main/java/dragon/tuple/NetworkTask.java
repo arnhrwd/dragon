@@ -1,9 +1,7 @@
-package dragon;
+package dragon.tuple;
 
 import java.io.Serializable;
 import java.util.HashSet;
-
-import dragon.tuple.Tuple;
 
 public class NetworkTask implements Serializable {
 	/**

@@ -1,6 +1,6 @@
 package dragon.utils;
 
-import dragon.NetworkTask;
+import dragon.tuple.NetworkTask;
 
 public class NetworkTaskBuffer extends CircularBuffer<NetworkTask> {
 

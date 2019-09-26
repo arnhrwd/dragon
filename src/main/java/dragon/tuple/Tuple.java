@@ -3,9 +3,6 @@ package dragon.tuple;
 import java.io.Serializable;
 
 public class Tuple implements Serializable {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -8616313770722910200L;
 	private String sourceComponent;
 	private String sourceStreamId;
@@ -22,9 +19,7 @@ public class Tuple implements Serializable {
 	
 	public Tuple(Fields fields,Values values) {
 		this.fields=fields.copy();
-		for(int i=0;i<values.size();i++) {
-			this.fields.set(i, values.get(i));
-		}
+		setValues(values);
 	}
 	
 	public void setValues(Values values) {

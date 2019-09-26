@@ -2,11 +2,11 @@ package dragon.network.comms;
 
 import java.io.IOException;
 
-import dragon.NetworkTask;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceMessage;
+import dragon.tuple.NetworkTask;
 
 public interface IComms {
 	

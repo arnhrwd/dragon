@@ -6,10 +6,6 @@ import dragon.generated.GlobalStreamId;
 import dragon.task.WorkerTopologyContext;
 
 public class ShuffleGrouping extends AbstractGrouping  {
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 6002992363152902945L;
 	private List<Integer> targetTasks;
 	private int index;

@@ -5,9 +5,6 @@ import java.io.Serializable;
 import java.util.HashMap;
 
 public class Fields implements Serializable, Cloneable {
-	/**
-	 *
-	 */
 	private static final long serialVersionUID = -134149710944581963L;
 	private Object[] values;
 	private HashMap<String,Integer> fieldMap;

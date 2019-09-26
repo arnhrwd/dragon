@@ -6,10 +6,6 @@ import dragon.generated.GlobalStreamId;
 import dragon.task.WorkerTopologyContext;
 
 public class DirectGrouping extends AbstractGrouping {
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -4021927336869082984L;
 
 	@Override

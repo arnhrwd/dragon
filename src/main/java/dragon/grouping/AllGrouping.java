@@ -6,10 +6,6 @@ import dragon.generated.GlobalStreamId;
 import dragon.task.WorkerTopologyContext;
 
 public class AllGrouping extends AbstractGrouping {
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -1445957562325407092L;
 	private List<Integer> targetTasks;
 

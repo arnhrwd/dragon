@@ -4,9 +4,6 @@ import dragon.Config;
 import dragon.topology.DragonTopology;
 
 public class RunTopologyMessage extends ServiceMessage {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1511393375978089832L;
 
 	public DragonTopology dragonTopology;

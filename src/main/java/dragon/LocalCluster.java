@@ -36,6 +36,7 @@ import dragon.topology.base.Component;
 
 import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
+import dragon.tuple.NetworkTask;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 import dragon.utils.NetworkTaskBuffer;

@@ -10,9 +10,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
-import dragon.NetworkTask;
 import dragon.network.comms.DragonCommsException;
 import dragon.topology.DragonTopology;
+import dragon.tuple.NetworkTask;
 import dragon.utils.NetworkTaskBuffer;
 
 public class Router {

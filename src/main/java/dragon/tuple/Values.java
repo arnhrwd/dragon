@@ -4,9 +4,6 @@ import java.util.ArrayList;
 
 
 public class Values extends ArrayList<Object>  {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 3560041625790748387L;
 
 	public Values() {

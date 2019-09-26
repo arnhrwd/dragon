@@ -9,12 +9,12 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.Constants;
 import dragon.LocalCluster;
-import dragon.NetworkTask;
 import dragon.grouping.AbstractGrouping;
 import dragon.topology.DestComponentMap;
 import dragon.topology.GroupingsSet;
 import dragon.topology.StreamMap;
 import dragon.tuple.Fields;
+import dragon.tuple.NetworkTask;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 import dragon.utils.ComponentTaskBuffer;
@@ -25,9 +25,9 @@ import dragon.utils.NetworkTaskBuffer;
 public class Collector {
 	private Log log = LogFactory.getLog(Collector.class);
 	//private NetworkTaskBuffer outputQueue;
-	private ComponentTaskBuffer outputQueues;
-	private LocalCluster localCluster;
-	private Component component;
+	private final ComponentTaskBuffer outputQueues;
+	private final LocalCluster localCluster;
+	private final Component component;
 	
 	private boolean emitted;
 	

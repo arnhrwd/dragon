@@ -6,8 +6,8 @@ import dragon.Constants;
 import dragon.tuple.Fields;
 
 public class OutputFieldsDeclarer {
-	public HashMap<String,Fields> streamFields;
-	public HashMap<String,Fields> directStreamFields;
+	public final HashMap<String,Fields> streamFields;
+	public final HashMap<String,Fields> directStreamFields;
 	
 	public OutputFieldsDeclarer() {
 		streamFields = new HashMap<String,Fields>();

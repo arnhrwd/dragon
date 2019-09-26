@@ -3,18 +3,14 @@ package dragon.network;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import dragon.LocalCluster;
 import dragon.metrics.ComponentMetricMap;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.TerminateTopologyErrorMessage;
 import dragon.network.messages.service.TerminateTopologyMessage;
-import dragon.network.messages.service.TopologyRunningMessage;
 import dragon.network.messages.service.UploadJarFailedMessage;
 import dragon.network.messages.service.RunTopologyErrorMessage;
 import dragon.network.comms.DragonCommsException;
-import dragon.network.messages.node.PrepareJarMessage;
-import dragon.network.messages.node.StopTopologyMessage;
 import dragon.network.messages.service.GetMetricsMessage;
 import dragon.network.messages.service.UploadJarMessage;
 import dragon.network.messages.service.UploadJarSuccessMessage;
@@ -89,9 +85,9 @@ public class ServiceProcessor extends Thread {
 						// ignore
 					}
 				} else {
-					
+					DragonTopology dragonTopology=scommand.dragonTopology;
 					RunTopologyGroupOperation rtgc = new RunTopologyGroupOperation(scommand,node);
-					for(NodeDescriptor desc : scommand.dragonTopology.getReverseEmbedding().keySet()) {
+					for(NodeDescriptor desc : dragonTopology.getReverseEmbedding().keySet()) {
 						rtgc.add(desc);
 					}
 					node.register(rtgc);

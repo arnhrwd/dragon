@@ -14,12 +14,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
-import dragon.NetworkTask;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceDoneMessage;
 import dragon.network.messages.service.ServiceMessage;
+import dragon.tuple.NetworkTask;
 
 /**
  * An initial implementation of the IComms interface. Based on simple TCP sockets.
