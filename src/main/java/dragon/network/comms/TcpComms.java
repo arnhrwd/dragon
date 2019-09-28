@@ -221,7 +221,8 @@ public class TcpComms implements IComms {
 							public void run() {
 								while(!isInterrupted()) {
 									try {
-										NetworkTask message = (NetworkTask) socketManager.getInputStream("task", desc).readObject();
+										//NetworkTask message = (NetworkTask) socketManager.getInputStream("task", desc).readObject();
+										NetworkTask message = (NetworkTask) NetworkTask.readFromStream(socketManager.getInputStream("task", desc));
 										incomingTaskQueue.put(message);
 									} catch (IOException e) {
 										log.error("ioexception on task stream from +["+desc+"]: "+e.toString());
@@ -342,7 +343,8 @@ public class TcpComms implements IComms {
 		while(tries<conf.getDragonCommsRetryAttempts()) {
 			try {
 				synchronized(socketManager.getOutputStream("task", desc)) {
-					socketManager.getOutputStream("task",desc).writeObject(task);
+					//socketManager.getOutputStream("task",desc).writeObject(task);
+					task.sendToStream(socketManager.getOutputStream("task",desc));
 					socketManager.getOutputStream("task", desc).flush();
 				}
 				return;

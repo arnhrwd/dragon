@@ -4,6 +4,8 @@ import java.util.HashMap;
 
 import dragon.Constants;
 import dragon.tuple.Fields;
+import dragon.tuple.RecycleStation;
+import dragon.tuple.Tuple;
 
 public class OutputFieldsDeclarer {
 	public final HashMap<String,Fields> streamFields;
@@ -16,6 +18,7 @@ public class OutputFieldsDeclarer {
 	
 	public void declare(Fields fields) {
 		declare(Constants.DEFAULT_STREAM,fields);
+		RecycleStation.getInstance().createTupleRecycler(new Tuple(fields), 1024, 1024);
 	}
 	
 	public void declare(boolean direct,Fields fields) {
@@ -28,6 +31,7 @@ public class OutputFieldsDeclarer {
 	
 	public void declare(String streamId,Fields fields) {
 		streamFields.put(streamId, fields);
+		RecycleStation.getInstance().createTupleRecycler(new Tuple(fields), 1024, 1024);
 	}
 	
 	public void declareStream(String streamId,Fields fields) {
@@ -39,6 +43,7 @@ public class OutputFieldsDeclarer {
 			declare(streamId,fields);
 		} else {
 			directStreamFields.put(streamId, fields);
+			RecycleStation.getInstance().createTupleRecycler(new Tuple(fields), 1024, 1024);
 		}
 	}
 	

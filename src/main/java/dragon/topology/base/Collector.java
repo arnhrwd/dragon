@@ -15,6 +15,7 @@ import dragon.topology.GroupingsSet;
 import dragon.topology.StreamMap;
 import dragon.tuple.Fields;
 import dragon.tuple.NetworkTask;
+import dragon.tuple.RecycleStation;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 import dragon.utils.ComponentTaskBuffer;
@@ -84,7 +85,12 @@ public class Collector {
 					"] does not match the number of fields ["+
 					fields.getFieldNamesAsString()+"]");
 		}
-		Tuple tuple = new Tuple(fields,values);
+		//Tuple tuple = new Tuple(fields,values);
+		Tuple tuple = RecycleStation.getInstance()
+				.getTupleRecycler(fields.getFieldNamesAsString())
+				.newObject();
+		//tuple.setFields(fields);
+		tuple.setValues(values);
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
 		tuple.setSourceStreamId(streamId);
@@ -104,18 +110,26 @@ public class Collector {
 						}
 					}
 					if(!remoteTaskIds.isEmpty()){
-						NetworkTask task = new NetworkTask(tuple,remoteTaskIds,componentId,localCluster.getTopologyId());
+						//NetworkTask task = new NetworkTask(tuple,remoteTaskIds,componentId,localCluster.getTopologyId());
+						NetworkTask task = RecycleStation.getInstance()
+								.getNetworkTaskRecycler().newObject();
+						task.init(tuple, remoteTaskIds, componentId, localCluster.getTopologyId());
 						try {
 							localCluster.getNode().getRouter().put(task);
 						} catch (InterruptedException e) {
 							log.error("failed to emit tuple: "+e.toString());
-						}
+						} 
+						
 					}
 					HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
 					localTaskIds.removeAll(remoteTaskIds);
 					if(!localTaskIds.isEmpty()){
 						try {
-							getQueue(componentId,streamId).put(new NetworkTask(tuple,localTaskIds,componentId,localCluster.getTopologyId()));
+							NetworkTask task = RecycleStation.getInstance()
+									.getNetworkTaskRecycler().newObject();
+							
+							task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
+							getQueue(componentId,streamId).put(task);
 							localCluster.outputPending(getQueue(componentId,streamId));
 						} catch (InterruptedException e) {
 							log.error("failed to emit tuple: "+e.toString());
@@ -125,6 +139,7 @@ public class Collector {
 			}
 			
 		}
+		tuple.crushRecyclable(1);
 		setEmit();
 		return receivingTaskIds;
 	}

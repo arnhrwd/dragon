@@ -42,6 +42,7 @@ public class Bolt extends Component {
 		if(tuple!=null){
 			getOutputCollector().resetEmit();
 			execute(tuple);
+			tuple.crushRecyclable(1);
 			processed++;
 
 		} else {

@@ -13,6 +13,7 @@ import dragon.Config;
 import dragon.network.comms.DragonCommsException;
 import dragon.topology.DragonTopology;
 import dragon.tuple.NetworkTask;
+import dragon.tuple.RecycleStation;
 import dragon.utils.NetworkTaskBuffer;
 
 public class Router {
@@ -64,7 +65,13 @@ public class Router {
 										tasks.add(taskId);
 									}
 									for(NodeDescriptor desc : destinations.keySet()) {
-										NetworkTask nt = new NetworkTask(task.getTuple(),
+//										NetworkTask nt = new NetworkTask(task.getTuple(),
+//												destinations.get(desc),
+//												task.getComponentId(),
+//												task.getTopologyId());
+										NetworkTask nt = RecycleStation.getInstance()
+												.getNetworkTaskRecycler().newObject();
+										nt.init(task.getTuple(),
 												destinations.get(desc),
 												task.getComponentId(),
 												task.getTopologyId());
@@ -74,7 +81,9 @@ public class Router {
 										} catch (DragonCommsException e) {
 											log.error("failed to send network task to ["+desc+"]");
 										}
+										nt.crushRecyclable(1);
 									}
+									task.crushRecyclable(1);
 								}
 							}
 						} catch (InterruptedException e) {
@@ -97,8 +106,10 @@ public class Router {
 						}
 						try {
 							if(node.getLocalClusters().containsKey(task.getTopologyId())) {
+								task.shareRecyclable(1);
 								inputQueues.put(task);
 								node.getLocalClusters().get(task.getTopologyId()).outputPending(inputQueues.getBuffer(task));
+								task.crushRecyclable(1);
 							} else {
 								log.error("received a network task for a non-existant topology ["+task.getTopologyId()+"]");
 							}

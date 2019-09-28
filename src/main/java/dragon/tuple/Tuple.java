@@ -1,8 +1,15 @@
 package dragon.tuple;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-public class Tuple implements Serializable {
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+public class Tuple extends RecyclableObject implements Serializable {
+	private static Log log = LogFactory.getLog(Tuple.class);
 	private static final long serialVersionUID = -8616313770722910200L;
 	private String sourceComponent;
 	private String sourceStreamId;
@@ -28,6 +35,12 @@ public class Tuple implements Serializable {
 		}
 	}
 	
+	public void clearValues() {
+		for(int i=0;i<fields.size();i++) {
+			fields.set(i, null);
+		}
+	}
+	
 	public Object getValue(int index){
 		return fields.getValues()[index];
 	}
@@ -38,6 +51,10 @@ public class Tuple implements Serializable {
 	
 	public Fields getFields() {
 		return fields;
+	}
+	
+	public void setFields(Fields fields) {
+		this.fields=fields;
 	}
 	
 	public Object getValueByField(String fieldName) {
@@ -71,6 +88,40 @@ public class Tuple implements Serializable {
 	@Override
 	public String toString() {
 		return "source("+sourceComponent+":"+sourceStreamId+":"+sourceTaskId+")<"+fields.getValues().toString()+">";
+	}
+
+	@Override
+	public void recycle() {
+		//log.debug("recycling tuple "+toString());
+		clearValues();
+		sourceComponent=null;
+		sourceStreamId=null;
+		sourceTaskId=null;
+	}
+
+	@Override
+	public IRecyclable newRecyclable() {
+		return new Tuple(this.fields);
+	}
+	
+	public void sendToStream(ObjectOutputStream out) throws IOException {
+		out.writeObject(sourceComponent);
+		out.writeObject(sourceStreamId);
+		out.writeObject(sourceTaskId);
+		fields.sendToStream(out);
+	}
+	
+	public static Tuple readFromStream(ObjectInputStream in) throws ClassNotFoundException, IOException {
+		String sourceComponent = (String)in.readObject();
+		String sourceStreamId = (String)in.readObject();
+		Integer sourceTaskId = (Integer)in.readObject();
+		Fields fields = Fields.readFromStream(in);
+		Tuple t = RecycleStation.getInstance().getTupleRecycler(fields.getFieldNamesAsString()).newObject();
+		t.setSourceComponent(sourceComponent);
+		t.setSourceStreamId(sourceStreamId);
+		t.setSourceTaskId(sourceTaskId);
+		t.setFields(fields);
+		return t;
 	}
 
 }

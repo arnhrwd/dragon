@@ -37,6 +37,7 @@ import dragon.topology.base.Component;
 import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
 import dragon.tuple.NetworkTask;
+import dragon.tuple.Recycler;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 import dragon.utils.NetworkTaskBuffer;
@@ -544,16 +545,19 @@ public class LocalCluster {
 								String name = networkTask.getComponentId();
 								doneTaskIds.clear();
 								for(Integer taskId : networkTask.getTaskIds()) {
+									tuple.shareRecyclable(1);
 									if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
 										doneTaskIds.add(taskId);
 										componentPending(bolts.get(name).get(taskId));
 									} else {
+										tuple.crushRecyclable(1);
 										//log.debug("blocked");
 									}
 								}
 								networkTask.getTaskIds().removeAll(doneTaskIds);
 								if(networkTask.getTaskIds().size()==0) {
 									queue.poll();
+									networkTask.crushRecyclable(1);
 								} else {
 									outputPending(queue);
 								}
