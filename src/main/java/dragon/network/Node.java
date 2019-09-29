@@ -187,7 +187,7 @@ public class Node {
 		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
 		try {
-			Thread.sleep(1000); // pause a bit before calling the garbage collector
+			Thread.sleep(2000); // pause a bit before calling the garbage collector
 		} catch (InterruptedException e) {
 			log.info("interrupted while pausing prior to garbage collector");
 		}
