@@ -17,7 +17,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import dragon.network.NodeDescriptor;
 
-public class Config extends HashMap<String, Object>{
+public class Config extends HashMap<String, Object> {
 	/**
 	 * 
 	 */
@@ -63,12 +63,22 @@ public class Config extends HashMap<String, Object>{
 	public static final String DRAGON_EMBEDDING_ALGORITHM="dragon.embedding.algorithm";
 	public static final String DRAGON_EMBEDDING_CUSTOM_FILE="dragon.embedding.custom.file";
 	
+	public static final String DRAGON_RECYCLER_TUPLE_CAPACITY="dragon.recycler.tuple.capacity";
+	public static final String DRAGON_RECYCLER_TUPLE_EXPANSION="dragon.recycler.tuple.expansion";
+	public static final String DRAGON_RECYCLER_TUPLE_COMPACT="dragon.recycler.tuple.compact";
+	public static final String DRAGON_RECYCLER_TASK_CAPACITY="dragon.recycler.task.capacity";
+	public static final String DRAGON_RECYCLER_TASK_EXPANSION="dragon.recycler.task.expansion";
+	public static final String DRAGON_RECYCLER_TASK_COMPACT="dragon.recycler.task.compact";
+	public static final String DRAGON_COMMS_RESET_COUNT="dragon.comms.reset.count";
+	public static final String DRAGON_COMMS_INCOMING_BUFFER_SIZE="dragon.comms.incoming.buffer.size";
+	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
 	
 	public Config() {
 		super();
 		defaults();
+		drop();
 	}
 	
 	public Config(String file) throws IOException {
@@ -129,16 +139,16 @@ public class Config extends HashMap<String, Object>{
     }
 	
 	public void defaults() {
-		put(DRAGON_OUTPUT_BUFFER_SIZE,1024);
-		put(DRAGON_INPUT_BUFFER_SIZE,1024);
+		put(DRAGON_OUTPUT_BUFFER_SIZE,16);
+		put(DRAGON_INPUT_BUFFER_SIZE,16);
 		put(DRAGON_BASE_DIR,"/tmp/dragon");
 		put(DRAGON_PERSISTANCE_DIR,"persistance");
 		put(DRAGON_JAR_DIR,"jars");
-		put(DRAGON_LOCALCLUSTER_THREADS,10);
-		put(DRAGON_ROUTER_INPUT_THREADS,10);
-		put(DRAGON_ROUTER_OUTPUT_THREADS,10);
-		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,1024);
-		put(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,1024);
+		put(DRAGON_LOCALCLUSTER_THREADS,5);
+		put(DRAGON_ROUTER_INPUT_THREADS,1);
+		put(DRAGON_ROUTER_OUTPUT_THREADS,1);
+		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,16);
+		put(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,16);
 		put(DRAGON_COMMS_RETRY_MS,10*1000);
 		put(DRAGON_COMMS_RETRY_ATTEMPTS,30);
 		put(DRAGON_NETWORK_LOCAL_HOST,"localhost");
@@ -152,6 +162,35 @@ public class Config extends HashMap<String, Object>{
 		put(DRAGON_NETWORK_HOSTS,new ArrayList<HashMap<String,ArrayList<Integer>>>());
 		put(DRAGON_EMBEDDING_ALGORITHM, "dragon.topology.RoundRobinEmbedding");
 		put(DRAGON_EMBEDDING_CUSTOM_FILE, "embedding.yaml");
+		put(DRAGON_RECYCLER_TUPLE_CAPACITY,1024);
+		put(DRAGON_RECYCLER_TUPLE_EXPANSION,1024);
+		put(DRAGON_RECYCLER_TUPLE_COMPACT,0.20);
+		put(DRAGON_RECYCLER_TASK_CAPACITY,1024);
+		put(DRAGON_RECYCLER_TASK_EXPANSION,1024);
+		put(DRAGON_RECYCLER_TASK_COMPACT,0.20);
+		put(DRAGON_COMMS_RESET_COUNT,128);
+		put(DRAGON_COMMS_INCOMING_BUFFER_SIZE,1024);
+	}
+	
+	public void drop() {
+		remove(DRAGON_OUTPUT_BUFFER_SIZE);
+		remove(DRAGON_INPUT_BUFFER_SIZE);
+		remove(DRAGON_BASE_DIR,"/tmp/dragon");
+		remove(DRAGON_PERSISTANCE_DIR,"persistance");
+		remove(DRAGON_JAR_DIR,"jars");
+		remove(DRAGON_LOCALCLUSTER_THREADS,5);
+		remove(DRAGON_ROUTER_INPUT_THREADS,1);
+		remove(DRAGON_ROUTER_OUTPUT_THREADS,1);
+		remove(DRAGON_ROUTER_INPUT_BUFFER_SIZE,16);
+		remove(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,16);
+		remove(DRAGON_METRICS_ENABLED,true);
+		remove(DRAGON_METRICS_SAMPLE_PERIOD_MS,60*1000);
+		remove(DRAGON_RECYCLER_TUPLE_CAPACITY,1024);
+		remove(DRAGON_RECYCLER_TUPLE_EXPANSION,1024);
+		remove(DRAGON_RECYCLER_TUPLE_COMPACT,0.20);
+		remove(DRAGON_RECYCLER_TASK_CAPACITY,1024);
+		remove(DRAGON_RECYCLER_TASK_EXPANSION,1024);
+		remove(DRAGON_RECYCLER_TASK_COMPACT,0.20);
 	}
 
 	public void setNumWorkers(int numWorkers) {
@@ -269,6 +308,38 @@ public class Config extends HashMap<String, Object>{
 	
 	public String getDragonEmbeddingCustomFile() {
 		return (String)get(DRAGON_EMBEDDING_CUSTOM_FILE);
+	}
+	
+	public int getDragonRecyclerTupleCapacity() {
+		return (Integer)get(DRAGON_RECYCLER_TUPLE_CAPACITY);
+	}
+	
+	public int getDragonRecyclerTupleExpansion() {
+		return (Integer)get(DRAGON_RECYCLER_TUPLE_EXPANSION);
+	}
+	
+	public double getDragonRecyclerTupleCompact() {
+		return (Double)get(DRAGON_RECYCLER_TUPLE_COMPACT);
+	}
+	
+	public int getDragonRecyclerTaskCapacity() {
+		return (Integer)get(DRAGON_RECYCLER_TASK_CAPACITY);
+	}
+	
+	public int getDragonRecyclerTaskExpansion() {
+		return (Integer)get(DRAGON_RECYCLER_TASK_EXPANSION);
+	}
+	
+	public double getDragonRecyclerTaskCompact() {
+		return (Double)get(DRAGON_RECYCLER_TASK_COMPACT);
+	}
+	
+	public int getDragonCommsResetCount() {
+		return (Integer)get(DRAGON_COMMS_RESET_COUNT);
+	}
+	
+	public int getDragonCommsIncomingBufferSize() {
+		return (Integer)get(DRAGON_COMMS_INCOMING_BUFFER_SIZE);
 	}
 	
  	//

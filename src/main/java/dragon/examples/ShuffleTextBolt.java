@@ -27,6 +27,22 @@ public class ShuffleTextBolt extends BaseRichBolt {
 		seen++;
 		//System.out.println("shuffeBolt["+myId+"] seen "+seen);
 		
+		if(collector==null) {
+			System.out.println("collector is null");
+			System.exit(-1);
+		}
+		if(tuple==null) {
+			System.out.println("tuple is null");
+			System.exit(-1);
+		}
+		if(tuple.getFields()==null) {
+			System.out.println("getfields is null");
+			System.exit(-1);
+		}
+		if(tuple.getFields().getValues()==null) {
+			System.out.println("getvalues is null");
+			System.exit(-1);
+		}
 		collector.emit("uuid",new Values(tuple.getFields().getValues()));
 		
 	}

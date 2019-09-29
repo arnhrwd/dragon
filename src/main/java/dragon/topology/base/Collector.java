@@ -104,6 +104,7 @@ public class Collector {
 					receivingTaskIds.addAll(taskIds);
 					component.incTransferred(receivingTaskIds.size()); // for metrics
 					HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
+					//RTaskSet remoteTaskIds=RecycleStation.getInstance().getTaskSetRecycler().newObject();
 					for(Integer taskId : taskIds){
 						if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){
 							remoteTaskIds.add(taskId);
@@ -122,6 +123,8 @@ public class Collector {
 						
 					}
 					HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
+					//RTaskSet localTaskIds = RecycleStation.getInstance().getTaskSetRecycler().newObject();
+				
 					localTaskIds.removeAll(remoteTaskIds);
 					if(!localTaskIds.isEmpty()){
 						try {
@@ -135,6 +138,8 @@ public class Collector {
 							log.error("failed to emit tuple: "+e.toString());
 						}
 					}
+//					localTaskIds.crushRecyclable(1);
+//					remoteTaskIds.crushRecyclable(1);
 				}
 			}
 			
@@ -170,12 +175,12 @@ public class Collector {
 			//StreamMap toComponent = localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
 			List<Integer> taskIds = new ArrayList<Integer>();
 			receivingTaskIds.add(taskId);
-			try {
-				getQueue(componentId,streamId).put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId,localCluster.getTopologyId()));
-				localCluster.outputPending(getQueue(componentId,streamId));
-			} catch (InterruptedException e) {
-				log.error("failed to emit tuple: "+e.toString());
-			}
+//			try {
+//				getQueue(componentId,streamId).put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId,localCluster.getTopologyId()));
+//				localCluster.outputPending(getQueue(componentId,streamId));
+//			} catch (InterruptedException e) {
+//				log.error("failed to emit tuple: "+e.toString());
+//			}
 		}
 		setEmit();
 	}

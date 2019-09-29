@@ -89,6 +89,7 @@ public class SocketManager {
 				}
 			}
 		};
+		thread.setName("data socket");
 		thread.start();
 	} 
 	

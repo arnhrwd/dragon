@@ -42,6 +42,8 @@ public class TcpComms implements IComms {
 	private SocketManager socketManager;
 	
 	private Long id=0L;
+	private int resetCount=0;
+	private int resetMax=1;
 	
 	private HashSet<Thread> nodeInputsThreads;
 	private HashSet<Thread> taskInputsThreads;
@@ -62,10 +64,10 @@ public class TcpComms implements IComms {
 		this.conf=conf;
 		incomingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
 		incomingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
-		incomingTaskQueue = new LinkedBlockingQueue<NetworkTask>();
+		incomingTaskQueue = new LinkedBlockingQueue<NetworkTask>(1024);
 		nodeInputsThreads = new HashSet<Thread>();
 		taskInputsThreads = new HashSet<Thread>();
-		
+		resetMax=conf.getDragonCommsResetCount();
 	}
 	
 	/**
@@ -99,6 +101,7 @@ public class TcpComms implements IComms {
 				log.debug("service done");
 			}
 		};
+		serviceThread.setName("service");
 		serviceThread.start();
 	}
 
@@ -161,6 +164,7 @@ public class TcpComms implements IComms {
 								}
 							}
 						};
+						servlet.setName("servlet");
 						servlet.start();
 						
 					} catch (IOException e) {
@@ -169,6 +173,7 @@ public class TcpComms implements IComms {
 				}
 			}
 		};
+		serviceThread.setName("service");
 		serviceThread.start();
 		
 		nodeThread = new Thread() {
@@ -199,6 +204,7 @@ public class TcpComms implements IComms {
 								}
 							}
 						};
+						t.setName("node input "+nodeInputsThreads.size());
 						nodeInputsThreads.add(t);
 						t.start();
 					} catch (InterruptedException e) {
@@ -208,6 +214,7 @@ public class TcpComms implements IComms {
 				}
 			}
 		};
+		nodeThread.setName("node");
 		nodeThread.start();
 		
 		taskThread = new Thread() {
@@ -219,10 +226,11 @@ public class TcpComms implements IComms {
 						Thread t = new Thread() {
 							@Override
 							public void run() {
+								ObjectInputStream in = socketManager.getInputStream("task", desc);
 								while(!isInterrupted()) {
 									try {
 										//NetworkTask message = (NetworkTask) socketManager.getInputStream("task", desc).readObject();
-										NetworkTask message = (NetworkTask) NetworkTask.readFromStream(socketManager.getInputStream("task", desc));
+										NetworkTask message = (NetworkTask) NetworkTask.readFromStream(in);
 										incomingTaskQueue.put(message);
 									} catch (IOException e) {
 										log.error("ioexception on task stream from +["+desc+"]: "+e.toString());
@@ -239,6 +247,7 @@ public class TcpComms implements IComms {
 								}
 							}
 						};
+						t.setName("task input "+taskInputsThreads.size());
 						taskInputsThreads.add(t);
 						t.start();
 					} catch (InterruptedException e) {
@@ -248,6 +257,7 @@ public class TcpComms implements IComms {
 				}
 			}
 		};
+		taskThread.setName("task");
 		taskThread.start();
 		
 		
@@ -284,6 +294,7 @@ public class TcpComms implements IComms {
 				synchronized(serviceOutputStreams){
 					serviceOutputStreams.get(response.getMessageId()).writeObject(response);
 					serviceOutputStreams.get(response.getMessageId()).flush();
+					serviceOutputStreams.get(response.getMessageId()).reset();
 				}
 			}
 			return;
@@ -312,6 +323,7 @@ public class TcpComms implements IComms {
 				log.debug("sending ["+command.getType().name()+"] to ["+desc+"]");
 				socketManager.getOutputStream("node",desc).writeObject(command);
 				socketManager.getOutputStream("node",desc).flush();
+				socketManager.getOutputStream("node",desc).reset();
 				return;
 			} catch (IOException e) {
 				tries++;
@@ -346,6 +358,11 @@ public class TcpComms implements IComms {
 					//socketManager.getOutputStream("task",desc).writeObject(task);
 					task.sendToStream(socketManager.getOutputStream("task",desc));
 					socketManager.getOutputStream("task", desc).flush();
+					resetCount++;
+					if(resetCount==resetMax) {
+						socketManager.getOutputStream("task",desc).reset();
+						resetCount=0;
+					}
 				}
 				return;
 			} catch (IOException e) {

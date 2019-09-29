@@ -1,9 +1,8 @@
 package dragon.network;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.commons.logging.Log;
@@ -18,32 +17,35 @@ import dragon.utils.NetworkTaskBuffer;
 
 public class Router {
 	private static Log log = LogFactory.getLog(Router.class);
-	private Node node;
-	private ExecutorService outgoingExecutorService;
-	private ExecutorService incomingExecutorService;
-	private TopologyQueueMap inputQueues;
-	private TopologyQueueMap outputQueues;
+	private final Node node;
+	private final ArrayList<Thread> outgoingThreads;
+	private final ArrayList<Thread> incomingThreads;
+	private final TopologyQueueMap inputQueues;
+	private final TopologyQueueMap outputQueues;
 	private boolean shouldTerminate=false;
-	private Config conf;
-	private LinkedBlockingQueue<NetworkTaskBuffer> outputsPending;
+	private final Config conf;
+	private final LinkedBlockingQueue<NetworkTaskBuffer> outputsPending;
 	public Router(Node node, Config conf) {
 		this.node=node;
 		this.conf=conf;
 		inputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterInputBufferSize());
 		outputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterOutputBufferSize());
-		outgoingExecutorService = Executors.newFixedThreadPool((Integer)conf.getDragonRouterOutputThreads());
-		incomingExecutorService = Executors.newFixedThreadPool((Integer)conf.getDragonRouterInputThreads());
+		outgoingThreads = new ArrayList<Thread>();
+		incomingThreads = new ArrayList<Thread>();
 		outputsPending=new LinkedBlockingQueue<NetworkTaskBuffer>();
 		runExecutors();
 	}
 	
 	private void runExecutors() {
 		for(int i=0;i<(Integer)conf.getDragonRouterOutputThreads();i++) {
-			outgoingExecutorService.execute(new Runnable() {
+			outgoingThreads.add(new Thread() {
+				@Override
 				public void run() {
 					while(!shouldTerminate) {
 						try {
 							NetworkTaskBuffer buffer = outputsPending.take();
+							HashMap<NodeDescriptor,HashSet<Integer>> destinations = 
+									new HashMap<NodeDescriptor,HashSet<Integer>>();
 							synchronized(buffer.lock){
 								NetworkTask task = buffer.poll();
 								if(task!=null){
@@ -54,8 +56,7 @@ public class Router {
 											.getTopology()
 											.getEmbedding()
 											.get(task.getComponentId());
-									HashMap<NodeDescriptor,HashSet<Integer>> destinations = 
-											new HashMap<NodeDescriptor,HashSet<Integer>>();
+									destinations.clear();
 									for(Integer taskId : taskIds) {
 										NodeDescriptor desc = taskMap.get(taskId);
 										if(!destinations.containsKey(desc)) {
@@ -65,10 +66,6 @@ public class Router {
 										tasks.add(taskId);
 									}
 									for(NodeDescriptor desc : destinations.keySet()) {
-//										NetworkTask nt = new NetworkTask(task.getTuple(),
-//												destinations.get(desc),
-//												task.getComponentId(),
-//												task.getTopologyId());
 										NetworkTask nt = RecycleStation.getInstance()
 												.getNetworkTaskRecycler().newObject();
 										nt.init(task.getTuple(),
@@ -92,9 +89,12 @@ public class Router {
 					}
 				}
 			});
+			outgoingThreads.get(i).setName("router outgoing "+i);
+			outgoingThreads.get(i).start();
 		}
 		for(int i=0;i<(Integer)conf.getDragonRouterInputThreads();i++) {
-			incomingExecutorService.execute(new Runnable() {
+			incomingThreads.add(new Thread() {
+				@Override
 				public void run() {
 					while(!shouldTerminate) {
 						NetworkTask task;
@@ -120,6 +120,8 @@ public class Router {
 					}
 				}
 			});
+			incomingThreads.get(i).setName("router incoming "+i);
+			incomingThreads.get(i).start();
 		}
 	}
 	
@@ -137,8 +139,10 @@ public class Router {
 	
 	public void put(NetworkTask task) throws InterruptedException {
 		//log.debug("putting on queue "+task.getTopologyId()+","+task.getTuple().getSourceStreamId());
+		task.shareRecyclable(1);
 		outputQueues.getBuffer(task).put(task);
 		outputsPending.put(outputQueues.getBuffer(task));
+		task.crushRecyclable(1);
 	}
 
 	public void submitTopology(String topologyName, DragonTopology topology) {

@@ -4,11 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -37,7 +33,6 @@ import dragon.topology.base.Component;
 import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
 import dragon.tuple.NetworkTask;
-import dragon.tuple.Recycler;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 import dragon.utils.NetworkTaskBuffer;
@@ -49,12 +44,12 @@ public class LocalCluster {
 	private HashMap<String,HashMap<Integer,Spout>> spouts;
 	private HashMap<String,Config> spoutConfs;
 	private HashMap<String,Config> boltConfs;
-	private ThreadPoolExecutor componentExecutorService;
-	private ArrayList<Future> componentExecutorThreads;
-	private ThreadPoolExecutor networkExecutorService;
-	private ArrayList<Future> networkExecutorThreads;
-	private int totalComponents=0;
+	//private ThreadPoolExecutor componentExecutorService;
+	private ArrayList<Thread> componentExecutorThreads;
+	//private ThreadPoolExecutor networkExecutorService;
+	private ArrayList<Thread> networkExecutorThreads;
 	
+	@SuppressWarnings("rawtypes")
 	private HashMap<Class,HashSet<GroupOperation>> groupOperations;
 	
 	private AtomicLong totalComponentWork=new AtomicLong(0L);
@@ -109,10 +104,12 @@ public class LocalCluster {
 	
 	private ArrayList<SpoutOpen> spoutOpenList;
 	
+	@SuppressWarnings("rawtypes")
 	public LocalCluster(){
 		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
 	}
 	
+	@SuppressWarnings("rawtypes")
 	public LocalCluster(Node node) {
 		this.node=node;
 		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
@@ -128,8 +125,8 @@ public class LocalCluster {
 		this.dragonTopology=dragonTopology;
 		outputsPending = new LinkedBlockingQueue<NetworkTaskBuffer>();
 		componentsPending = new LinkedBlockingQueue<Component>();
-		networkExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool((Integer)conf.getDragonLocalclusterThreads());
-		networkExecutorThreads = new ArrayList<Future>();
+		//networkExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool((Integer)conf.getDragonLocalclusterThreads());
+		networkExecutorThreads = new ArrayList<Thread>();
 		if(!start) {
 			spoutOpenList = new ArrayList<SpoutOpen>();
 			boltPrepareList = new ArrayList<BoltPrepare>();
@@ -153,11 +150,9 @@ public class LocalCluster {
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				taskIds.add(i);
 			}
-			int numAllocated=0;
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				if(dragonTopology.getReverseEmbedding()!=null &&
 						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId,i)) continue;
-				numAllocated++;
 				try {
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
 					hm.put(i, spout);
@@ -179,7 +174,7 @@ public class LocalCluster {
 				}
 			}
 			// TODO: make use of parallelism hint from topology to possibly reduce threads
-			totalParallelismHint+=numAllocated;
+			totalParallelismHint+=spoutDeclarer.getParallelismHint();
 		}
 		
 		// allocate bolts and prepare them
@@ -200,11 +195,9 @@ public class LocalCluster {
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 				taskIds.add(i);
 			}
-			int numAllocated=0;
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 				if(dragonTopology.getReverseEmbedding()!=null &&
 						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId,i)) continue;
-				numAllocated++;
 				try {
 					Bolt bolt=(Bolt) boltDeclarer.getBolt().clone();
 					hm.put(i, bolt);
@@ -227,7 +220,7 @@ public class LocalCluster {
 					log.error("could not clone object: "+e.toString());
 				}
 			}
-			totalParallelismHint+=numAllocated;
+			totalParallelismHint+=boltDeclarer.getParallelismHint();
 		}
 		
 		// prepare groupings
@@ -344,16 +337,17 @@ public class LocalCluster {
 
 		outputsScheduler();
 		
-		log.debug("starting a component executor with "+totalParallelismHint+" threads");
-		componentExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool((Integer)totalParallelismHint);
-		componentExecutorThreads = new ArrayList<Future>();
+		
+		//componentExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool((Integer)totalParallelismHint);
+		componentExecutorThreads = new ArrayList<Thread>();
 		if(start) {
 			scheduleSpouts();
+			
 		}
 		
 
 		
-		runComponentThreads();
+		
 		
 	}
 	
@@ -366,6 +360,7 @@ public class LocalCluster {
 				componentPending(spout);
 			}
 		}
+		runComponentThreads();
 	}
 	
 	private void prepareLater(Bolt bolt, TopologyContext context, OutputCollector collector) {
@@ -377,12 +372,16 @@ public class LocalCluster {
 	}
 	
 	public void openAll() {
+		log.info("opening bolts");
 		for(BoltPrepare boltPrepare : boltPrepareList) {
+			//log.debug("calling prepare on bolt "+boltPrepare+" with collector "+boltPrepare.collector);
 			boltPrepare.bolt.prepare(conf, boltPrepare.context, boltPrepare.collector);
 		}
 		for(SpoutOpen spoutOpen : spoutOpenList) {
+			//log.debug("calling open on spout "+spoutOpen.spout+" with collector "+spoutOpen.collector);
 			spoutOpen.spout.open(conf, spoutOpen.context, spoutOpen.collector);
 		}
+		log.debug("scheduling spouts");
 		scheduleSpouts();
 	}
 
@@ -404,8 +403,7 @@ public class LocalCluster {
 		Thread shutdownThread = new Thread() {
 			@Override
 			public void run() {
-				this.setName("shutdown");
-				log.debug("waiting for all work to finish");
+				log.info("waiting for all work to finish");
 				while(true) {
 					long ctw=totalComponentWork.longValue();
 					long ntw=totalNetworkWork.longValue();
@@ -439,10 +437,10 @@ public class LocalCluster {
 				}
 				log.debug("interrupting all threads");
 				for(int i=0;i<totalParallelismHint;i++) {
-					componentExecutorThreads.get(i).cancel(true);
+					componentExecutorThreads.get(i).interrupt();
 				}
 				for(int i=0;i<conf.getDragonLocalclusterThreads();i++) {
-					networkExecutorThreads.get(i).cancel(true);
+					networkExecutorThreads.get(i).interrupt();
 				}
 				
 				
@@ -453,20 +451,26 @@ public class LocalCluster {
 					}
 				}
 				// shutdown the executors and other threads
-				componentExecutorService.shutdownNow();
-				networkExecutorService.shutdownNow();
+//				componentExecutorService.shutdownNow();
+//				networkExecutorService.shutdownNow();
 				try {
-					while (!componentExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
-						  log.info("Awaiting completion of component executor threads.");
-						}
-					while (!networkExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
-						  log.info("Awaiting completion of network executor threads.");
-						}
+					for(Thread thread : componentExecutorThreads) {
+						thread.join();
+					}
+					for(Thread thread : networkExecutorThreads) {
+						thread.join();
+					}
+//					while (!componentExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
+//						  log.info("Awaiting completion of component executor threads.");
+//						}
+//					while (!networkExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
+//						  log.info("Awaiting completion of network executor threads.");
+//						}
 				} catch (InterruptedException e) {
 					log.warn("threads may not have terminated");
 				}
-				componentExecutorService.purge();
-				networkExecutorService.purge();
+//				componentExecutorService.purge();
+//				networkExecutorService.purge();
 				
 				tickThread.interrupt();
 				tickCounterThread.interrupt();
@@ -487,13 +491,16 @@ public class LocalCluster {
 				
 			}
 		};
+		shutdownThread.setName("shutdown");
 		shutdownThread.start();
 	}
 	
 	private void runComponentThreads() {
+		log.info("starting component executor threads with "+totalParallelismHint+" threads");
 		for(int i=0;i<totalParallelismHint;i++){
 			//final int thread_id=i;
-			componentExecutorThreads.add(componentExecutorService.submit(new Runnable(){
+			componentExecutorThreads.add(new Thread(){
+				@Override
 				public void run(){
 					Component component;
 					while(true){
@@ -517,15 +524,18 @@ public class LocalCluster {
 						componentThreadsBusy.decrementAndGet();
 					}
 				}
-			}));
+			});
+			componentExecutorThreads.get(i).setName("component executor "+i);
+			componentExecutorThreads.get(i).start();
 		}
 	}
 
 	
 	private void outputsScheduler(){
-		log.debug("starting the outputs scheduler with "+(Integer)conf.getDragonLocalclusterThreads()+" threads");
-		for(int i=0;i<(Integer)conf.getDragonLocalclusterThreads();i++) {
-			networkExecutorThreads.add(networkExecutorService.submit(new Runnable() {
+		log.debug("starting the outputs scheduler with "+conf.getDragonLocalclusterThreads()+" threads");
+		for(int i=0;i<conf.getDragonLocalclusterThreads();i++) {
+			networkExecutorThreads.add(new Thread() {
+				@Override
 				public void run(){
 					HashSet<Integer> doneTaskIds=new HashSet<Integer>();
 					NetworkTaskBuffer queue;
@@ -562,13 +572,15 @@ public class LocalCluster {
 									outputPending(queue);
 								}
 							} else {
-								//log.debug("queue empty!");
+								log.error("queue empty!");
 							}	
 						}
 						networkThreadsBusy.decrementAndGet();
 					}
 				}
-			}));
+			});
+			networkExecutorThreads.get(i).setName("network executor "+i);
+			networkExecutorThreads.get(i).start();
 		}
 		
 	}

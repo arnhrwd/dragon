@@ -16,9 +16,9 @@ public class Topology1 {
 		
 		topologyBuilder.setSpout("numberSpout", (Spout)new NumberSpout(), 1).setNumTasks(1);
 		topologyBuilder.setSpout("textSpout", (Spout)new TextSpout(), 1).setNumTasks(1);
-		topologyBuilder.setBolt("shuffleBolt", (Bolt)new ShuffleBolt(), 100)
+		topologyBuilder.setBolt("shuffleBolt", (Bolt)new ShuffleBolt(), 10).setNumTasks(100)
 			.shuffleGrouping("numberSpout");
-		topologyBuilder.setBolt("shuffleTextBolt", (Bolt)new ShuffleTextBolt(), 100)
+		topologyBuilder.setBolt("shuffleTextBolt", (Bolt)new ShuffleTextBolt(), 20).setNumTasks(100)
 			.shuffleGrouping("textSpout");
 		topologyBuilder.setBolt("numberBolt", (Bolt)new NumberBolt(), 1).setNumTasks(1)
 			.allGrouping("shuffleBolt","even")

@@ -20,6 +20,7 @@ import org.apache.commons.logging.LogFactory;
 
 
 import dragon.network.Node;
+import dragon.tuple.RecycleStation;
 
 public class Run {
 	private static Log log = LogFactory.getLog(Run.class);
@@ -74,6 +75,7 @@ public class Run {
             } else {
             	conf = new Config(Constants.DRAGON_PROPERTIES);
             }
+            RecycleStation.instanceInit(conf);
             if(cmd.hasOption("metrics")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {

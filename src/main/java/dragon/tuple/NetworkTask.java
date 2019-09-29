@@ -18,7 +18,7 @@ public class NetworkTask extends RecyclableObject implements Serializable {
 	private String topologyId;
 
 	public NetworkTask() {
-		taskIds=new HashSet<Integer>();
+	
 	}
 	
 	public NetworkTask(Tuple tuple,HashSet<Integer> taskIds,String componentId, String topologyId) {

@@ -10,17 +10,19 @@ import java.util.HashMap;
 public class Fields implements Serializable, Cloneable {
 	private static final long serialVersionUID = -134149710944581963L;
 	private Object[] values;
-	private HashMap<String,Integer> fieldMap;
+	private transient HashMap<String,Integer> fieldMap;  // save a little bit on network bandwidth
 	private String[] fieldNames;
+	private transient String name; // save a little bit more
 
 	public Fields(String...fieldNames) {
 		this.fieldNames=fieldNames;
-		fieldMap = new HashMap<String,Integer>();
+		fieldMap = new HashMap<String,Integer>(fieldNames.length);
 		values = new Object[fieldNames.length];
 		for(int i=0;i<fieldNames.length;i++) {
 			values[i] = null;
 			fieldMap.put(fieldNames[i], i);
 		}
+		name=buildName();
 	}
 
 	public Object get(int i) {
@@ -43,6 +45,7 @@ public class Fields implements Serializable, Cloneable {
 
 	public Fields copy() {
 		Fields f = new Fields(this.fieldNames);
+		name=buildName();
 		return f;
 	}
 
@@ -53,13 +56,17 @@ public class Fields implements Serializable, Cloneable {
 	public String[] getFieldNames() {
 		return fieldNames;
 	}
-
-	public String getFieldNamesAsString() {
+	
+	private String buildName() {
 		String names="<";
 		for(String name : fieldNames) {
 			names+=name+",";
 		}
 		return names+">";
+	}
+
+	public String getFieldNamesAsString() {
+		return name;
 	}
 
 	public int size(){

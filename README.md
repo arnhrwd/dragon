@@ -85,26 +85,28 @@ The available parameters and their defaults are listed below.
 
 ### General parameters
 
-- `dragon.output.buffer.size: 1024` **Integer** - the size of the buffers on Spout and Bolt outputs
-- `dragon.input.buffer.size: 1024` **Integer** - the size of the buffers on Spout and Bolt inputs
+- `dragon.output.buffer.size: 16` **Integer** - the size of the buffers on Spout and Bolt outputs
+- `dragon.input.buffer.size: 16` **Integer** - the size of the buffers on Spout and Bolt inputs
 - `dragon.base.dir: /tmp/dragon` **String** - the base directory where Dragon can store files such as submitted jar files and check point data
 - `dragon.jar.dir: jars` **String** - the sub-directory to store jars files within
-- `dragon.localcluster.threads: 10` **Integer** - the size of the thread pool that transfers tuples within a local cluster
+- `dragon.localcluster.threads: 2 ` **Integer** - the size of the thread pool that transfers tuples within a local cluster
 - `dragon.embedding.algorithm: dragon.topology.RoundRobinEmbedding` **String** - the embedding algorithm that maps a task in the topology to a host node
 
 ### Network mode parameters
 
 Buffer and thread resources:
 
-- `dragon.router.input.threads: 10` **Integer** - the size of the thread pool that transfers tuples into the local cluster from the network
-- `dragon.router.output.threads: 10` **Integer** - the size of the thread pool that transfers tuples out of the local cluster to the network
-- `dragon.router.input.buffer.size: 1024` **Integer** - the size of the buffers for tuples transferring into the local cluster from the network
-- `dragon.router.output.buffer.size: 1024` **Integer** - the size of the buffers for tuples transferring out of the local cluster to the network
+- `dragon.router.input.threads: 1` **Integer** - the size of the thread pool that transfers tuples into the local cluster from the network (note that values larger than 1 result in tuple reordering on streams)
+- `dragon.router.output.threads: 1` **Integer** - the size of the thread pool that transfers tuples out of the local cluster to the network (note that values large than 1 result in tuple reordering on streams)
+- `dragon.router.input.buffer.size: 16` **Integer** - the size of the buffers for tuples transferring into the local cluster from the network
+- `dragon.router.output.buffer.size: 16` **Integer** - the size of the buffers for tuples transferring out of the local cluster to the network
 
 Comms details:
 
 - `dragon.comms.retry.ms: 10000` **Integer** - the number of milliseconds to wait between retries when attempting to make a connection
-- `dragon.comms.retry.attempts: 500` **Integer** - the number of retries to make before suspending retry attempts
+- `dragon.comms.retry.attempts: 30` **Integer** - the number of retries to make before suspending retry attempts
+- `dragon.comms.reset.count: 128` **Integer** - (advanced) the number of network tasks transmitted over object stream before reseting the object stream handle table
+- `dragon.comms.incoming.buffer.size: 1024` **Integer** - the size of the buffer for incoming network tasks, shared over all sockets
 
 Network details:
 
@@ -129,6 +131,16 @@ Parameters concerning metrics:
 - `dragon.metrics.sample.history: 1` **Integer** - how much sample history to record
 - `dragon.metrics.sample.period.ms: 60000` **Integer** - the sample period in milliseconds
 
+Parameters concerning object recycling (advanced):
+
+- `dragon.recycler.tuple.capacity: 1024` **Integer** - number of tuple objects to allocate in advance
+- `dragon.recycler.tuple.expansion: 1024` **Integer** - number of tuple objects to increase the tuple pool by when/if the tuple pool capacity is reached
+- `dragon.recycler.tuple.compact: 0.2` **Double** - fraction of capacity the tuple pool size must reach to trigger compaction of the pool
+- `dragon.recycler.task.capacity: 1024` **Integer** - number of network task objects to allocate in advance
+- `dragon.recycler.task.expansion: 1024` **Integer** - number of network task objects to increase the network task pool by when/if the tuple pool capacity is reached
+- `dragon.recycler.task.compact: 0.2` **Double** - fraction of capacity the network task pool size must reach to trigger compaction of the pool
+
+
 # Network mode
 
 Running in Network mode requires starting Dragon daemons on a number of hosts that are all visible to each other on the network. Multiple daemons can be started on a single host, but the service and data ports must be configured to be non-conflicting for all instances, i.e. each daemon must have its own `dragon.yaml` configuration file with `dragon.network.local.data.port` and `dragon.network.local.service.port` set appropriately. Command line options can be used to override the configuration parameters, if a single `dragon.yaml` is preferred. Each daemon is a single JVM.
@@ -148,6 +160,10 @@ Submitting a topology to a Dragon daemon requires providing the host name and op
     dragon -h HOST_NAME -s SERVICE_PORT -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
 
 The topology JAR will be uploaded and stored at all Dragon daemons that the topology maps to, according to the embedding algorithm used (explained later). It will commence running immediately.
+
+## Config settings
+
+The Config settings on a daemon are first set using the defaults, then what is found in `dragon.yaml` and finally what is supplied by the submitted topology. 
 
 ## Terminating a topology
 

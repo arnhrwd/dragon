@@ -24,6 +24,7 @@ import dragon.network.messages.node.JoinRequestMessage;
 import dragon.network.operations.GroupOperation;
 import dragon.network.operations.TerminateTopologyGroupOperation;
 import dragon.topology.DragonTopology;
+import dragon.tuple.RecycleStation;
 
 
 
@@ -53,6 +54,7 @@ public class Node {
 	
 	public Node(Config conf) throws IOException {
 		this.conf=conf;
+		
 		groupOperations=new HashMap<Long,GroupOperation>();
 		localClusters = new HashMap<String,LocalCluster>();
 		startupTopology = new HashMap<String,HashSet<NodeDescriptor>>();
@@ -157,7 +159,10 @@ public class Node {
 	
 	public void prepareTopology(String topologyId, Config conf, DragonTopology topology, boolean start) {
 		LocalCluster cluster=new LocalCluster(this);
-		cluster.submitTopology(topologyId, conf, topology, start);
+		Config lconf = new Config();
+		lconf.putAll(this.conf);
+		lconf.putAll(conf);
+		cluster.submitTopology(topologyId, lconf, topology, start);
 		getRouter().submitTopology(topologyId,topology);
 		getLocalClusters().put(topologyId, cluster);
 	}
@@ -181,6 +186,12 @@ public class Node {
 	public void localClusterTerminated(String topologyId, TerminateTopologyGroupOperation ttgo) {
 		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
+		try {
+			Thread.sleep(1000); // pause a bit before calling the garbage collector
+		} catch (InterruptedException e) {
+			log.info("interrupted while pausing prior to garbage collector");
+		}
+		System.gc();
 		ttgo.sendSuccess(comms);
 	}
 

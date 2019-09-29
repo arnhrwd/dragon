@@ -36,7 +36,7 @@ public class Metrics extends Thread {
 			}
 			synchronized(samples){
 				for(String topologyId : node.getLocalClusters().keySet()){
-					log.debug("sampling topology ["+topologyId+"]");
+					log.info("sampling topology ["+topologyId+"]");
 					LocalCluster localCluster = node.getLocalClusters().get(topologyId);
 					for(String componentId : localCluster.getSpouts().keySet()){
 						for(Integer taskId : localCluster.getSpouts().get(componentId).keySet()){

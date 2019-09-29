@@ -9,7 +9,6 @@ import org.apache.commons.logging.LogFactory;
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.base.BaseRichBolt;
-import dragon.tuple.NetworkTask;
 import dragon.tuple.Tuple;
 
 public class NumberBolt extends BaseRichBolt {
@@ -35,11 +34,21 @@ public class NumberBolt extends BaseRichBolt {
 			}
 			//System.out.println("received "+number+" from task id "+tuple.getSourceTaskId());
 			numbers.add(number);
-			if(numbers.size()==1000000) log.info("received "+numbers.size()+" numbers");
+			if(numbers.size()==10000000)
+				log.info("received "+numbers.size()+" numbers");
 		} else {
 			String uuid = (String)tuple.getValueByField("uuid");
+			if(text==null) {
+				System.out.println("text is null");
+				System.exit(-1);
+			}
+			if(uuid==null) {
+				System.out.println("uuid is null");
+				System.exit(-1);
+			}
 			text.add(uuid);
-			if(text.size()==1000000)log.info("recieved "+text.size()+" uuids");
+			if(text.size()==10000000)
+				log.info("recieved "+text.size()+" uuids");
 		}
 	}
 }

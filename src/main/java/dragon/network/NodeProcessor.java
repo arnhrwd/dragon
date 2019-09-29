@@ -150,6 +150,7 @@ public class NodeProcessor extends Thread {
 				JarReadyMessage jrm = (JarReadyMessage) message;
 				node.getGroupOperation(jrm.getGroupOperation()
 						.getId()).receiveSuccess(node.getComms(), jrm.getSender());
+				node.removeGroupOperation(jrm.getGroupOperation().getId());
 				break;
 			}
 			case PREPARE_TOPOLOGY:{
@@ -161,6 +162,7 @@ public class NodeProcessor extends Thread {
 			case TOPOLOGY_READY:{
 				TopologyReadyMessage tr = (TopologyReadyMessage) message;
 				node.getGroupOperation(tr.getGroupOperation().getId()).receiveSuccess(node.getComms(), tr.getSender());
+				node.removeGroupOperation(tr.getGroupOperation().getId());
 				break;
 			}
 			case START_TOPOLOGY:{
@@ -172,6 +174,7 @@ public class NodeProcessor extends Thread {
 			case TOPOLOGY_STARTED:{
 				TopologyStartedMessage tsm = (TopologyStartedMessage) message;
 				node.getGroupOperation(tsm.getGroupOperation().getId()).receiveSuccess(node.getComms(), tsm.getSender());
+				node.removeGroupOperation(tsm.getGroupOperation().getId());
 				break;
 			}
 			case STOP_TOPOLOGY:{
@@ -190,6 +193,7 @@ public class NodeProcessor extends Thread {
 						.getGroupOperation()
 						.getId())
 						.receiveSuccess(node.getComms(),tsm.getSender());
+				node.removeGroupOperation(tsm.getGroupOperation().getId());
 				break;
 			}
 			case STOP_TOPOLOGY_ERROR:{
