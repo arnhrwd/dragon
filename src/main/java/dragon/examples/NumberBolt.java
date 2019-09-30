@@ -12,10 +12,7 @@ import dragon.topology.base.BaseRichBolt;
 import dragon.tuple.Tuple;
 
 public class NumberBolt extends BaseRichBolt {
-	private static Log log = LogFactory.getLog(NumberBolt.class);
-	/**
-	 * 
-	 */
+	private static final Log log = LogFactory.getLog(NumberBolt.class);
 	private static final long serialVersionUID = -3957233181035456948L;
 	HashSet<Integer> numbers;
 	HashSet<String> text;

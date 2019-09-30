@@ -24,8 +24,7 @@ import dragon.utils.NetworkTaskBuffer;
 
 
 public class Collector {
-	private Log log = LogFactory.getLog(Collector.class);
-	//private NetworkTaskBuffer outputQueue;
+	private static final Log log = LogFactory.getLog(Collector.class);
 	private final ComponentTaskBuffer outputQueues;
 	private final LocalCluster localCluster;
 	private final Component component;
@@ -71,7 +70,7 @@ public class Collector {
 	public synchronized List<Integer> emit(String streamId,Values values){
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
 		if(component.isClosed()) {
-			log.error("spontaneous tuple emission after close, topology may not terminate properly");
+			log.error("spontaneous tuple emission after close, topology may not terminate properly ["+component.getComponentId()+":"+component.getTaskId()+"]");
 			return receivingTaskIds;
 		}
 		Fields fields = component.getOutputFieldsDeclarer().getFields(streamId);
@@ -168,12 +167,6 @@ public class Collector {
 			//StreamMap toComponent = localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
 			List<Integer> taskIds = new ArrayList<Integer>();
 			receivingTaskIds.add(taskId);
-//			try {
-//				getQueue(componentId,streamId).put(new NetworkTask(tuple,new HashSet<Integer>(taskIds),componentId,localCluster.getTopologyId()));
-//				localCluster.outputPending(getQueue(componentId,streamId));
-//			} catch (InterruptedException e) {
-//				log.error("failed to emit tuple: "+e.toString());
-//			}
 		}
 		setEmit();
 	}
@@ -193,6 +186,60 @@ public class Collector {
 	
 	public void setEmit() {
 		emitted=true;
+	}
+
+	public void emitTerminateTuple() {
+		if(localCluster.getTopology().getTopology().get(component.getComponentId())==null) return;
+		for(String componentId : localCluster.getTopology().getTopology().get(component.getComponentId()).keySet()) {
+			StreamMap streamMap = localCluster.getTopology().getTopology().get(component.getComponentId()).get(componentId);
+			for(String streamId : streamMap.keySet()) {
+				GroupingsSet groupingsSet = streamMap.get(Constants.SYSTEM_STREAM_ID);
+				Tuple tuple = RecycleStation.getInstance()
+						.getTupleRecycler(new Fields(Constants.SYSTEM_TUPLE_FIELDS).getFieldNamesAsString())
+						.newObject();
+				tuple.setSourceComponent(component.getComponentId());
+				tuple.setSourceStreamId(streamId);
+				tuple.setSourceTaskId(component.getTaskId());
+				tuple.setType(Tuple.Type.TERMINATE);
+				for(AbstractGrouping grouping : groupingsSet) {
+					//log.debug("using grouping "+grouping.getClass().getName());
+					List<Integer> taskIds = grouping.chooseTasks(0, null);
+					HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
+					for(Integer taskId : taskIds){
+						if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){
+							remoteTaskIds.add(taskId);
+						}
+					}
+					if(!remoteTaskIds.isEmpty()){
+						NetworkTask task = RecycleStation.getInstance()
+								.getNetworkTaskRecycler().newObject();
+						task.init(tuple, remoteTaskIds, componentId, localCluster.getTopologyId());
+						try {
+							localCluster.getNode().getRouter().put(task);
+						} catch (InterruptedException e) {
+							log.error("failed to emit tuple: "+e.toString());
+						} 
+						
+					}
+					HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
+					
+					localTaskIds.removeAll(remoteTaskIds);
+					if(!localTaskIds.isEmpty()){
+						try {
+							NetworkTask task = RecycleStation.getInstance()
+									.getNetworkTaskRecycler().newObject();
+							
+							task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
+							getQueue(componentId,streamId).put(task);
+							localCluster.outputPending(getQueue(componentId,streamId));
+						} catch (InterruptedException e) {
+							log.error("failed to emit tuple: "+e.toString());
+						}
+					}
+				}
+				RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
+			}
+		}
 	}
 	
 }

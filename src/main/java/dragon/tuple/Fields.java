@@ -9,9 +9,9 @@ import java.util.HashMap;
 
 public class Fields implements Serializable, Cloneable {
 	private static final long serialVersionUID = -134149710944581963L;
-	private Object[] values;
+	private final Object[] values;
 	private transient HashMap<String,Integer> fieldMap;  // save a little bit on network bandwidth
-	private String[] fieldNames;
+	private final String[] fieldNames;
 	private transient String name; // save a little bit more
 
 	public Fields(String...fieldNames) {

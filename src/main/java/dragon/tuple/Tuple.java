@@ -9,22 +9,35 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 public class Tuple implements IRecyclable, Serializable {
-	private static Log log = LogFactory.getLog(Tuple.class);
+	@SuppressWarnings("unused")
+	private final static Log log = LogFactory.getLog(Tuple.class);
 	private static final long serialVersionUID = -8616313770722910200L;
 	private String sourceComponent;
 	private String sourceStreamId;
 	private Integer sourceTaskId;
 	private Fields fields;
 	
+	public static enum Type {
+		APPLICATION,
+		TERMINATE,
+		FREEZE,
+		CHECKPOINT
+	}
+	
+	private Type type;
+	
 	public Tuple() {
+		type=Type.APPLICATION;
 		fields=new Fields();
 	}
 	
 	public Tuple(Fields fields) {
+		type=Type.APPLICATION;
 		this.fields=fields.copy();
 	}
 	
 	public Tuple(Fields fields,Values values) {
+		type=Type.APPLICATION;
 		this.fields=fields.copy();
 		setValues(values);
 	}
@@ -33,6 +46,14 @@ public class Tuple implements IRecyclable, Serializable {
 		for(int i=0;i<values.size();i++) {
 			fields.set(i, values.get(i));
 		}
+	}
+	
+	public void setType(Type type) {
+		this.type=type;
+	}
+	
+	public Type getType() {
+		return type;
 	}
 	
 	public void clearValues() {
@@ -96,6 +117,7 @@ public class Tuple implements IRecyclable, Serializable {
 		sourceComponent=null;
 		sourceStreamId=null;
 		sourceTaskId=null;
+		type=Tuple.Type.APPLICATION;
 	}
 
 	@Override
@@ -107,6 +129,7 @@ public class Tuple implements IRecyclable, Serializable {
 		out.writeObject(sourceComponent);
 		out.writeObject(sourceStreamId);
 		out.writeObject(sourceTaskId);
+		out.writeObject(type);
 		fields.sendToStream(out);
 	}
 	
@@ -114,12 +137,14 @@ public class Tuple implements IRecyclable, Serializable {
 		String sourceComponent = (String)in.readObject();
 		String sourceStreamId = (String)in.readObject();
 		Integer sourceTaskId = (Integer)in.readObject();
+		Type type = (Type)in.readObject();
 		Fields fields = Fields.readFromStream(in);
 		Tuple t = RecycleStation.getInstance().getTupleRecycler(fields.getFieldNamesAsString()).newObject();
 		t.setSourceComponent(sourceComponent);
 		t.setSourceStreamId(sourceStreamId);
 		t.setSourceTaskId(sourceTaskId);
 		t.setFields(fields);
+		t.setType(type);
 		return t;
 	}
 

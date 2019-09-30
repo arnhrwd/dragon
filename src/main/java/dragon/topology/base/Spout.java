@@ -7,16 +7,13 @@ import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
 public class Spout extends Component {
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -2734635234747476875L;
 
 	@Override
 	public final void run() {
 		if(isClosing()) {
 			close();
+			getOutputCollector().emitTerminateTuple();
 			setClosed();
 			return;
 		}
@@ -25,13 +22,13 @@ public class Spout extends Component {
 		if(getOutputCollector().didEmit()) {
 			getLocalCluster().componentPending(this);
 		} else {
-			try {
-				Thread.sleep(1);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			getLocalCluster().componentPending(this);
+//			try {
+//				Thread.sleep(1);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//			getLocalCluster().componentPending(this);
 		}
 	}
 

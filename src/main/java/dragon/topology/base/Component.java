@@ -9,9 +9,6 @@ import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
 public class Component implements Runnable, Cloneable, Serializable{
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -3296255524018955053L;
 	private TopologyContext context;
 	private LocalCluster localCluster;
@@ -39,6 +36,10 @@ public class Component implements Runnable, Cloneable, Serializable{
 	}
 	
 	public final void setOutputCollector(Collector collector) {
+		closing=false;
+		closed=false;
+		emitted=0;
+		transferred=0;
 		this.collector=collector;
 	}
 	

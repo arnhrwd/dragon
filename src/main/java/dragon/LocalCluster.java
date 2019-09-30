@@ -41,23 +41,16 @@ import dragon.utils.NetworkTaskBuffer;
 
 
 public class LocalCluster {
-	private static Log log = LogFactory.getLog(LocalCluster.class);
+	private final static Log log = LogFactory.getLog(LocalCluster.class);
 	private HashMap<String,HashMap<Integer,Bolt>> bolts;
 	private HashMap<String,HashMap<Integer,Spout>> spouts;
 	private HashMap<String,Config> spoutConfs;
 	private HashMap<String,Config> boltConfs;
-	//private ThreadPoolExecutor componentExecutorService;
 	private ArrayList<Thread> componentExecutorThreads;
-	//private ThreadPoolExecutor networkExecutorService;
 	private ArrayList<Thread> networkExecutorThreads;
 	
 	@SuppressWarnings("rawtypes")
 	private HashMap<Class,HashSet<GroupOperation>> groupOperations;
-	
-	private AtomicLong totalComponentWork=new AtomicLong(0L);
-	private AtomicLong totalNetworkWork=new AtomicLong(0L);
-	private AtomicInteger componentThreadsBusy=new AtomicInteger(0);
-	private AtomicInteger networkThreadsBusy=new AtomicInteger(0);
 	
 	private String topologyName;
 	private Config conf;
@@ -77,7 +70,9 @@ public class LocalCluster {
 	
 	private volatile boolean shouldTerminate=false;
 	
-	private Node node;
+	private final Node node;
+	
+	private final Fields tickFields=new Fields("tick");
 	
 
 	private class BoltPrepare {
@@ -108,6 +103,7 @@ public class LocalCluster {
 	
 	@SuppressWarnings("rawtypes")
 	public LocalCluster(){
+		this.node=null;
 		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
 	}
 	
@@ -141,6 +137,8 @@ public class LocalCluster {
 			spoutOpenList = new ArrayList<SpoutOpen>();
 			boltPrepareList = new ArrayList<BoltPrepare>();
 		}
+		
+		RecycleStation.getInstance().createTupleRecycler(new Tuple(tickFields));
 		
 		// allocate spouts and open them
 		spouts = new HashMap<String,HashMap<Integer,Spout>>();
@@ -400,16 +398,18 @@ public class LocalCluster {
 	}
 
 	private void issueTickTuple(String boltId) {
-		Tuple tuple=new Tuple(new Fields("tick"));
+		Tuple tuple=RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).newObject();;
 		tuple.setValues(new Values("0"));
 		tuple.setSourceComponent(Constants.SYSTEM_COMPONENT_ID);
 		tuple.setSourceStreamId(Constants.SYSTEM_TICK_STREAM_ID);
 		for(Bolt bolt : bolts.get(boltId).values()) {
 			synchronized(bolt) {
+				RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).shareRecyclable(tuple, 1);
 				bolt.setTickTuple(tuple);
 				componentPending(bolt);
 			}
 		}
+		RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).crushRecyclable(tuple, 1);
 	}
 	
 	private void checkCloseCondition() {
@@ -417,37 +417,27 @@ public class LocalCluster {
 		Thread shutdownThread = new Thread() {
 			@Override
 			public void run() {
-				log.info("waiting for all work to finish");
 				while(true) {
-					long ctw=totalComponentWork.longValue();
-					long ntw=totalNetworkWork.longValue();
+					boolean alldone=true;
+					for(HashMap<Integer,Bolt> boltInstances : bolts.values()) {
+						for(Bolt bolt : boltInstances.values()) {
+							if(!bolt.isClosed()) {
+								alldone=false;
+								break;
+							}
+						}
+						if(alldone==false) {
+							break;
+						}
+					}
+					if(alldone) break;
+					log.info("waiting for work to complete...");
 					try {
 						Thread.sleep(1000);
 					} catch (InterruptedException e) {
 						log.warn("interrupted while waiting for work to complete");
 						break;
 					}
-					synchronized(totalComponentWork) {
-						synchronized(totalNetworkWork) {
-							synchronized(componentThreadsBusy) {
-								synchronized(networkThreadsBusy) {
-									if(ctw==totalComponentWork.longValue() && ntw==totalNetworkWork.longValue() &&
-											outputsPending.size()==0 && componentsPending.size()==0 &&
-											componentThreadsBusy.get()==0 && networkThreadsBusy.get()==0) {
-										break;
-									} else {
-										log.debug("totalComponentWork="+totalComponentWork);
-										log.debug("totalNetworkWork="+totalNetworkWork);
-										log.debug("output pending="+outputsPending.size());
-										log.debug("components pending="+componentsPending.size());
-										log.debug("componentThreadsBusy="+componentThreadsBusy);
-										log.debug("networkThreadsBusy="+networkThreadsBusy);
-									}
-								}
-							}
-						}
-					}
-					log.debug("waiting for work to complete");
 				}
 				log.debug("interrupting all threads");
 				for(int i=0;i<totalParallelismHint;i++) {
@@ -459,14 +449,12 @@ public class LocalCluster {
 				
 				
 				// call close on bolts
-				for(HashMap<Integer,Bolt> bolts : bolts.values()) {
-					for(Bolt bolt : bolts.values()) {
-						bolt.close();
-					}
-				}
-				// shutdown the executors and other threads
-//				componentExecutorService.shutdownNow();
-//				networkExecutorService.shutdownNow();
+//				for(HashMap<Integer,Bolt> bolts : bolts.values()) {
+//					for(Bolt bolt : bolts.values()) {
+//						bolt.close();
+//					}
+//				}
+				
 				try {
 					for(Thread thread : componentExecutorThreads) {
 						thread.join();
@@ -474,17 +462,9 @@ public class LocalCluster {
 					for(Thread thread : networkExecutorThreads) {
 						thread.join();
 					}
-//					while (!componentExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
-//						  log.info("Awaiting completion of component executor threads.");
-//						}
-//					while (!networkExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
-//						  log.info("Awaiting completion of network executor threads.");
-//						}
 				} catch (InterruptedException e) {
 					log.warn("threads may not have terminated");
 				}
-//				componentExecutorService.purge();
-//				networkExecutorService.purge();
 				
 				tickThread.interrupt();
 				tickCounterThread.interrupt();
@@ -524,8 +504,6 @@ public class LocalCluster {
 							log.info("component thread interrupted");
 							break;
 						}
-						totalComponentWork.incrementAndGet();
-						componentThreadsBusy.incrementAndGet();
 						// TODO:the synchronization can be switched if the component's
 						// execute/nextTuple is thread safe
 						synchronized(component) {
@@ -535,7 +513,6 @@ public class LocalCluster {
 							}
 							component.run();
 						}	
-						componentThreadsBusy.decrementAndGet();
 					}
 				}
 			});
@@ -560,8 +537,6 @@ public class LocalCluster {
 							log.info("network thread interrupted");
 							break;
 						}
-						totalNetworkWork.incrementAndGet();
-						networkThreadsBusy.incrementAndGet();
 						synchronized(queue.lock) {
 							NetworkTask networkTask = (NetworkTask) queue.peek();
 							if(networkTask!=null) {
@@ -593,7 +568,6 @@ public class LocalCluster {
 								log.error("queue empty!");
 							}	
 						}
-						networkThreadsBusy.decrementAndGet();
 					}
 				}
 			});
@@ -607,7 +581,7 @@ public class LocalCluster {
 		try {
 			componentsPending.put(component);
 		} catch (InterruptedException e){
-			log.error("interrupted while adding component pending");
+			log.error("interrupted while adding component pending ["+component.getComponentId()+":"+component.getTaskId()+"]");
 		}
 	}
 	

@@ -10,6 +10,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 public class NetworkTask implements IRecyclable, Serializable {
+	@SuppressWarnings("unused")
 	private static Log log = LogFactory.getLog(NetworkTask.class);
 	private static final long serialVersionUID = 6164101511657361631L;
 	private Tuple tuple;

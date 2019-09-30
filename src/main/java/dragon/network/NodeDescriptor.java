@@ -28,13 +28,6 @@ public class NodeDescriptor implements Serializable {
 		this.fullName=toString();
 	}
 	
-//	public NodeDescriptor (String hostName,int dataPort) throws UnknownHostException {
-//		this.host=InetAddress.getByName(hostName);
-//		this.dataPort=dataPort;
-//		this.hostName=hostName;
-//		this.fullName=toString();
-//	}
-	
 	public String toString() {
 		return hostName+":"+dataPort;
 	}

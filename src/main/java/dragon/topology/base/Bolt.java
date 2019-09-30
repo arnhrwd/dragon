@@ -1,5 +1,6 @@
 package dragon.topology.base;
 
+import java.util.HashSet;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
@@ -13,14 +14,12 @@ import dragon.tuple.RecycleStation;
 import dragon.tuple.Tuple;
 
 public class Bolt extends Component {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 6696004781292813419L;
-	private Log log = LogFactory.getLog(Bolt.class);
+	private static final Log log = LogFactory.getLog(Bolt.class);
 	private Tuple tickTuple=null;
 	private long processed=0;
 	private InputCollector inputCollector;
+	private HashSet<String> upstreamComponents;
 	
 	public final void setTickTuple(Tuple tuple) {
 		tickTuple=tuple;
@@ -41,11 +40,57 @@ public class Bolt extends Component {
 			tuple = getInputCollector().getQueue().poll();
 		}
 		if(tuple!=null){
-			getOutputCollector().resetEmit();
-			execute(tuple);
+			switch(tuple.getType()) {
+			case APPLICATION:{
+				getOutputCollector().resetEmit();
+				execute(tuple);
+				processed++;
+				break;
+			}
+			case CHECKPOINT:{
+				break;
+			}
+			case FREEZE:
+				break;
+			case TERMINATE:{
+				if(upstreamComponents.isEmpty()) {
+				
+					for(String componentId : getLocalCluster()
+							.getTopology().getBoltMap()
+							.get(getComponentId()).groupings.keySet()) {
+						int numTasks=0;
+						if(getLocalCluster().getTopology().getSpoutMap().containsKey(componentId)) {
+							numTasks=getLocalCluster().getTopology().getSpoutMap().get(componentId).getNumTasks();
+						} else {
+							numTasks=getLocalCluster().getTopology().getBoltMap().get(componentId).getNumTasks();
+						}
+						
+						for(Integer taskId = 0;taskId<numTasks;taskId++) {
+							for(String streamId : getLocalCluster()
+									.getTopology().getBoltMap()
+									.get(getComponentId()).groupings.get(componentId).keySet()){
+								
+								upstreamComponents.add(componentId+","+taskId+","+streamId);
+							}
+						}
+					}				
+				}
+			
+				upstreamComponents.remove(tuple.getSourceComponent()+","+tuple.getSourceTaskId()+","+tuple.getSourceStreamId());
+				if(upstreamComponents.isEmpty()) {
+					//log.debug("closed");
+					close();
+					getOutputCollector().emitTerminateTuple(); //TODO: see how to call this safely _after_ calling setClosed()
+					setClosed();
+					
+				}
+				break;
+			}
+			default:
+				break;
+				
+			}
 			RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
-			processed++;
-
 		} else {
 			log.error("nothing on the queue!");
 		}
@@ -69,6 +114,9 @@ public class Bolt extends Component {
 	}
 
 	public final void setInputCollector(InputCollector inputCollector) {
+		upstreamComponents=new HashSet<String>();
+		processed=0;
+		tickTuple=null;
 		this.inputCollector = inputCollector;
 	}
 	
