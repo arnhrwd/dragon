@@ -11,6 +11,7 @@ public class RecycleStation {
 	private Log log = LogFactory.getLog(RecycleStation.class);
 	private static RecycleStation recycleStation=null;
 	private Config conf;
+	
 	public static void instanceInit(Config conf) {
 		recycleStation=new RecycleStation(conf);
 	}
@@ -51,9 +52,6 @@ public class RecycleStation {
 	
 	public Recycler<NetworkTask> getNetworkTaskRecycler(){
 		return networkTaskRecycler;
-	}
-	
-//	public Recycler<RTaskSet> getTaskSetRecycler(){
-//		return taskSetRecycler;
-//	}
+	}	
+
 }

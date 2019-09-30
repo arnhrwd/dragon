@@ -9,7 +9,7 @@ import java.util.HashSet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class NetworkTask extends RecyclableObject implements Serializable {
+public class NetworkTask implements IRecyclable, Serializable {
 	private static Log log = LogFactory.getLog(NetworkTask.class);
 	private static final long serialVersionUID = 6164101511657361631L;
 	private Tuple tuple;
@@ -27,7 +27,7 @@ public class NetworkTask extends RecyclableObject implements Serializable {
 	
 	public void init(Tuple tuple,HashSet<Integer> taskIds,String componentId, String topologyId) {
 		this.tuple=tuple;
-		tuple.shareRecyclable(1);
+		RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).shareRecyclable(tuple, 1);
 		this.taskIds=taskIds;
 		this.componentId=componentId;
 		this.topologyId=topologyId;
@@ -56,7 +56,7 @@ public class NetworkTask extends RecyclableObject implements Serializable {
 
 	@Override
 	public void recycle() {
-		tuple.crushRecyclable(1); 
+		RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
 		tuple=null;
 		taskIds=null;
 		componentId=null;
@@ -83,7 +83,7 @@ public class NetworkTask extends RecyclableObject implements Serializable {
 		String topologyId = (String) in.readObject();
 		NetworkTask nt = RecycleStation.getInstance().getNetworkTaskRecycler().newObject();
 		nt.init(t, taskIds, componentId, topologyId);
-		t.crushRecyclable(1);
+		RecycleStation.getInstance().getTupleRecycler(t.getFields().getFieldNamesAsString()).crushRecyclable(t, 1);
 		return nt;
 	}
 }

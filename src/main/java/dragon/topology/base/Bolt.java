@@ -9,6 +9,7 @@ import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
+import dragon.tuple.RecycleStation;
 import dragon.tuple.Tuple;
 
 public class Bolt extends Component {
@@ -42,7 +43,7 @@ public class Bolt extends Component {
 		if(tuple!=null){
 			getOutputCollector().resetEmit();
 			execute(tuple);
-			tuple.crushRecyclable(1);
+			RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
 			processed++;
 
 		} else {

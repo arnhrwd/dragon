@@ -186,11 +186,6 @@ public class Node {
 	public void localClusterTerminated(String topologyId, TerminateTopologyGroupOperation ttgo) {
 		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
-		try {
-			Thread.sleep(2000); // pause a bit before calling the garbage collector
-		} catch (InterruptedException e) {
-			log.info("interrupted while pausing prior to garbage collector");
-		}
 		System.gc();
 		ttgo.sendSuccess(comms);
 	}

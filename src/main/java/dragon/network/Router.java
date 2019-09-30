@@ -78,9 +78,9 @@ public class Router {
 										} catch (DragonCommsException e) {
 											log.error("failed to send network task to ["+desc+"]");
 										}
-										nt.crushRecyclable(1);
+										RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(nt, 1);
 									}
-									task.crushRecyclable(1);
+									RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 								}
 							}
 						} catch (InterruptedException e) {
@@ -106,10 +106,10 @@ public class Router {
 						}
 						try {
 							if(node.getLocalClusters().containsKey(task.getTopologyId())) {
-								task.shareRecyclable(1);
+								RecycleStation.getInstance().getNetworkTaskRecycler().shareRecyclable(task, 1);
 								inputQueues.put(task);
 								node.getLocalClusters().get(task.getTopologyId()).outputPending(inputQueues.getBuffer(task));
-								task.crushRecyclable(1);
+								RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 							} else {
 								log.error("received a network task for a non-existant topology ["+task.getTopologyId()+"]");
 							}
@@ -139,10 +139,10 @@ public class Router {
 	
 	public void put(NetworkTask task) throws InterruptedException {
 		//log.debug("putting on queue "+task.getTopologyId()+","+task.getTuple().getSourceStreamId());
-		task.shareRecyclable(1);
+		RecycleStation.getInstance().getNetworkTaskRecycler().shareRecyclable(task, 1);
 		outputQueues.getBuffer(task).put(task);
 		outputsPending.put(outputQueues.getBuffer(task));
-		task.crushRecyclable(1);
+		RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 	}
 
 	public void submitTopology(String topologyName, DragonTopology topology) {

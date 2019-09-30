@@ -8,7 +8,7 @@ import java.io.Serializable;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class Tuple extends RecyclableObject implements Serializable {
+public class Tuple implements IRecyclable, Serializable {
 	private static Log log = LogFactory.getLog(Tuple.class);
 	private static final long serialVersionUID = -8616313770722910200L;
 	private String sourceComponent;
@@ -92,7 +92,6 @@ public class Tuple extends RecyclableObject implements Serializable {
 
 	@Override
 	public void recycle() {
-		//log.debug("recycling tuple "+toString());
 		clearValues();
 		sourceComponent=null;
 		sourceStreamId=null;

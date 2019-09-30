@@ -2,24 +2,27 @@ package dragon.tuple;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 public class Recycler<T> {
-	private static Log log = LogFactory.getLog(Recycler.class);
+	private final static Log log = LogFactory.getLog(Recycler.class);
 	private int capacity;
 	private final int expansion;
 	private final ArrayList<T> objects;
 	private int next;
 	private final HashMap<T,Integer> map;
 	private final T obj;
-	private double compact;
+	private final double compact;
+	private final HashMap<T,AtomicInteger> refCount;
 		
 	@SuppressWarnings("unchecked")
 	public Recycler(T obj,int capacity,int expansion, double compact) {
 		next=0;
 		objects = new ArrayList<T>(capacity);
+		refCount = new HashMap<T,AtomicInteger>(capacity);
 		this.capacity=capacity;
 		this.expansion=expansion;
 		this.obj=obj;
@@ -28,8 +31,8 @@ public class Recycler<T> {
 		for(int i=0;i<capacity;i++) {
 			T t = (T) ((IRecyclable)obj).newRecyclable();
 			objects.add(t);
+			refCount.put(objects.get(i),new AtomicInteger(0));
 			map.put(objects.get(i), i);
-			((IRecyclable)objects.get(i)).setRecycler(this);
 		}
 	}
 	
@@ -49,6 +52,7 @@ public class Recycler<T> {
 				int newCapacity=capacity/2;
 				for(int i=newCapacity;i<capacity;i++) {
 					map.remove(objects.get(newCapacity));
+					refCount.remove(objects.get(newCapacity));
 					objects.remove(newCapacity);
 				}
 				objects.trimToSize();
@@ -56,7 +60,6 @@ public class Recycler<T> {
 			}
 		}
 	}
-	
 	
 	@SuppressWarnings("unchecked")
 	public T newObject() {
@@ -67,14 +70,29 @@ public class Recycler<T> {
 				for(int i=capacity;i<capacity+expansion;i++) {
 					objects.add(i, (T) ((IRecyclable)obj).newRecyclable());
 					map.put(objects.get(i),i);
-					((IRecyclable)objects.get(i)).setRecycler(this);
+					refCount.put(objects.get(i),new AtomicInteger(0));
 				}
 				capacity+=expansion;
 			}
 			T t = objects.get(next);
 			next++;
-			((IRecyclable)t).shareRecyclable(1);
+			shareRecyclable(t,1);
 			return t;
+		}
+	}
+
+	public void shareRecyclable(T t,int n) {
+		synchronized(map) {
+			refCount.get(t).addAndGet(n);
+		}
+	}
+
+	public void crushRecyclable(T t,int n) {
+		synchronized(map) {
+			long c = refCount.get(t).addAndGet(-n);
+			if(c==0) {
+				recycleObject(t);
+			}
 		}
 	}
 }

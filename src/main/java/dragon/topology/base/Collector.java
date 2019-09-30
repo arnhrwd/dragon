@@ -85,11 +85,9 @@ public class Collector {
 					"] does not match the number of fields ["+
 					fields.getFieldNamesAsString()+"]");
 		}
-		//Tuple tuple = new Tuple(fields,values);
 		Tuple tuple = RecycleStation.getInstance()
 				.getTupleRecycler(fields.getFieldNamesAsString())
 				.newObject();
-		//tuple.setFields(fields);
 		tuple.setValues(values);
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
@@ -104,14 +102,12 @@ public class Collector {
 					receivingTaskIds.addAll(taskIds);
 					component.incTransferred(receivingTaskIds.size()); // for metrics
 					HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
-					//RTaskSet remoteTaskIds=RecycleStation.getInstance().getTaskSetRecycler().newObject();
 					for(Integer taskId : taskIds){
 						if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){
 							remoteTaskIds.add(taskId);
 						}
 					}
 					if(!remoteTaskIds.isEmpty()){
-						//NetworkTask task = new NetworkTask(tuple,remoteTaskIds,componentId,localCluster.getTopologyId());
 						NetworkTask task = RecycleStation.getInstance()
 								.getNetworkTaskRecycler().newObject();
 						task.init(tuple, remoteTaskIds, componentId, localCluster.getTopologyId());
@@ -123,8 +119,7 @@ public class Collector {
 						
 					}
 					HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
-					//RTaskSet localTaskIds = RecycleStation.getInstance().getTaskSetRecycler().newObject();
-				
+					
 					localTaskIds.removeAll(remoteTaskIds);
 					if(!localTaskIds.isEmpty()){
 						try {
@@ -138,13 +133,11 @@ public class Collector {
 							log.error("failed to emit tuple: "+e.toString());
 						}
 					}
-//					localTaskIds.crushRecyclable(1);
-//					remoteTaskIds.crushRecyclable(1);
 				}
 			}
 			
 		}
-		tuple.crushRecyclable(1);
+		RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
 		setEmit();
 		return receivingTaskIds;
 	}
