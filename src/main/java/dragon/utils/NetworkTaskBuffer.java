@@ -2,7 +2,7 @@ package dragon.utils;
 
 import dragon.tuple.NetworkTask;
 
-public class NetworkTaskBuffer extends CircularBuffer<NetworkTask> {
+public class NetworkTaskBuffer extends CircularBlockingQueue<NetworkTask> {
 
 	public NetworkTaskBuffer() {
 		super();

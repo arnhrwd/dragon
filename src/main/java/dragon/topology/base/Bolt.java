@@ -73,7 +73,8 @@ public class Bolt extends Component {
 								upstreamComponents.add(componentId+","+taskId+","+streamId);
 							}
 						}
-					}				
+					}	
+					log.debug("waiting for "+upstreamComponents);
 				}
 			
 				upstreamComponents.remove(tuple.getSourceComponent()+","+tuple.getSourceTaskId()+","+tuple.getSourceStreamId());

@@ -417,6 +417,13 @@ public class LocalCluster {
 		Thread shutdownThread = new Thread() {
 			@Override
 			public void run() {
+				for(String componentId : spouts.keySet()) {
+					HashMap<Integer,Spout> component = spouts.get(componentId);
+					for(Integer taskId : component.keySet()) {
+						Spout spout = component.get(taskId);
+						componentPending(spout);
+					}
+				}
 				while(true) {
 					boolean alldone=true;
 					for(HashMap<Integer,Bolt> boltInstances : bolts.values()) {
@@ -508,6 +515,7 @@ public class LocalCluster {
 						// execute/nextTuple is thread safe
 						synchronized(component) {
 							if(shouldTerminate && component instanceof Spout) {
+								if(component.isClosed()) continue;
 								component.setClosing();
 								// a closed component will not reschedule itself
 							}
@@ -538,8 +546,10 @@ public class LocalCluster {
 							break;
 						}
 						synchronized(queue.lock) {
+							//if(shouldTerminate) System.out.println("count "+queue.size());
 							NetworkTask networkTask = (NetworkTask) queue.peek();
 							if(networkTask!=null) {
+								//System.out.println("processing task");
 								Tuple tuple = networkTask.getTuple();
 								String name = networkTask.getComponentId();
 								doneTaskIds.clear();

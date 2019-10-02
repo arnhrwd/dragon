@@ -215,6 +215,7 @@ public class Collector {
 								.getNetworkTaskRecycler().newObject();
 						task.init(tuple, remoteTaskIds, componentId, localCluster.getTopologyId());
 						try {
+							
 							localCluster.getNode().getRouter().put(task);
 						} catch (InterruptedException e) {
 							log.error("failed to emit tuple: "+e.toString());
@@ -231,6 +232,7 @@ public class Collector {
 							
 							task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
 							getQueue(componentId,streamId).put(task);
+							
 							localCluster.outputPending(getQueue(componentId,streamId));
 						} catch (InterruptedException e) {
 							log.error("failed to emit tuple: "+e.toString());
