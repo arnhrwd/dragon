@@ -41,6 +41,10 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		}
 	}
 	
+	public int getCapacity() {
+		return capacity;
+	}
+	
 	private void signalNotEmpty() {
 		final ReentrantLock takeLock = this.takeLock;
 		takeLock.lock();
