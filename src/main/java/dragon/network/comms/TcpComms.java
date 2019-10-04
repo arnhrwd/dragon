@@ -20,6 +20,7 @@ import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceDoneMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.tuple.NetworkTask;
+import dragon.utils.CircularBlockingQueue;
 
 /**
  * An initial implementation of the IComms interface. Based on simple TCP sockets.
@@ -38,7 +39,7 @@ public class TcpComms implements IComms {
 	private LinkedBlockingQueue<ServiceMessage> incomingServiceQueue;
 	//LinkedBlockingQueue<ServiceMessage> outgoingServiceQueue;
 	private LinkedBlockingQueue<NodeMessage> incomingNodeQueue;
-	private LinkedBlockingQueue<NetworkTask> incomingTaskQueue;
+	private CircularBlockingQueue<NetworkTask> incomingTaskQueue;
 	private SocketManager socketManager;
 	
 	private Long id=0L;
@@ -64,7 +65,7 @@ public class TcpComms implements IComms {
 		this.conf=conf;
 		incomingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
 		incomingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
-		incomingTaskQueue = new LinkedBlockingQueue<NetworkTask>(1024);
+		incomingTaskQueue = new CircularBlockingQueue<NetworkTask>(1024);
 		nodeInputsThreads = new HashSet<Thread>();
 		taskInputsThreads = new HashSet<Thread>();
 		resetMax=conf.getDragonCommsResetCount();

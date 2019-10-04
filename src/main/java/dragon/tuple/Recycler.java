@@ -71,22 +71,6 @@ public class Recycler<T> {
 		} finally {
 			lock.unlock();
 		}
-		
-//			final int c=capacity.get();
-//			if(next>expansion && next<c*compact) {
-//				log.warn(obj.getClass().getName()+" excess capacity "+((float)next/c));
-//				final int newCapacity=c/2;
-//				AtomicReferenceArray<T> newObjects = new AtomicReferenceArray<T>(newCapacity);
-//				for(int i=0;i<newCapacity;i++) {
-//					newObjects.set(i, objects.get(i));
-//				}
-//				for(int i=newCapacity;i<c;i++) {
-//					map.remove(objects.get(newCapacity));
-//					refCount.remove(objects.get(newCapacity));
-//				}
-//				this.objects=newObjects;
-//				capacity.set(newCapacity);
-//			}
 
 	}
 	

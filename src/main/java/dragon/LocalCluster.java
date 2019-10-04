@@ -6,8 +6,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -160,12 +158,12 @@ public class LocalCluster {
 			}
 			int numAllocated=0;
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
-				if(dragonTopology.getReverseEmbedding()!=null &&
-						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId,i)) continue;
+				boolean local = !(dragonTopology.getReverseEmbedding()!=null &&
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId,i));
 				try {
-					numAllocated++;
+					if(local) numAllocated++;
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
-					hm.put(i, spout);
+					if(local) hm.put(i, spout);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					spout.declareOutputFields(declarer);
 					spout.setOutputFieldsDeclarer(declarer);
@@ -174,10 +172,12 @@ public class LocalCluster {
 					spout.setLocalCluster(this);
 					SpoutOutputCollector collector = new SpoutOutputCollector(this,spout);
 					spout.setOutputCollector(collector);
-					if(start) {
-						spout.open(conf, context, collector);
-					} else {
-						openLater(spout,context,collector);
+					if(local) {
+						if(start) {
+							spout.open(conf, context, collector);
+						} else {
+							openLater(spout,context,collector);
+						}
 					}
 				} catch (CloneNotSupportedException e) {
 					setShouldTerminate("could not clone object: "+e.toString());
@@ -207,12 +207,12 @@ public class LocalCluster {
 			}
 			int numAllocated=0;
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
-				if(dragonTopology.getReverseEmbedding()!=null &&
-						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId,i)) continue;
+				boolean local = !(dragonTopology.getReverseEmbedding()!=null &&
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId,i));
 				try {
-					numAllocated++;
+					if(local) numAllocated++;
 					Bolt bolt=(Bolt) boltDeclarer.getBolt().clone();
-					hm.put(i, bolt);
+					if(local) hm.put(i, bolt);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					bolt.declareOutputFields(declarer);
 					bolt.setOutputFieldsDeclarer(declarer);
@@ -223,10 +223,12 @@ public class LocalCluster {
 					bolt.setLocalCluster(this);
 					OutputCollector collector = new OutputCollector(this,bolt);
 					bolt.setOutputCollector(collector);
-					if(start) {
-						bolt.prepare(conf, context, collector);
-					} else {
-						prepareLater(bolt,context,collector);
+					if(local) {
+						if(start) {
+							bolt.prepare(conf, context, collector);
+						} else {
+							prepareLater(bolt,context,collector);
+						}
 					}
 				} catch (CloneNotSupportedException e) {
 					log.error("could not clone object: "+e.toString());
