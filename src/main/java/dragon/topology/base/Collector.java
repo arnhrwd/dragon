@@ -21,8 +21,6 @@ import dragon.tuple.Values;
 import dragon.utils.ComponentTaskBuffer;
 import dragon.utils.NetworkTaskBuffer;
 
-
-
 public class Collector {
 	private static final Log log = LogFactory.getLog(Collector.class);
 	private final ComponentTaskBuffer outputQueues;
@@ -61,12 +59,12 @@ public class Collector {
 	}
 	
 	@Deprecated
-	public synchronized List<Integer> emit(Tuple anchorTuple, Values values){
+	public synchronized List<Integer> emit(Tuple anchorTuple, Values values) {
 		return emit(values);
 	}
 	
 	@Deprecated
-	public synchronized List<Integer> emit(String streamId,Tuple anchorTuple, Values values){
+	public synchronized List<Integer> emit(String streamId,Tuple anchorTuple, Values values) {
 		return emit(streamId,values);
 	}
 	
@@ -74,7 +72,46 @@ public class Collector {
 		return emit(Constants.DEFAULT_STREAM,values);
 	}
 	
-	public synchronized List<Integer> emit(String streamId,Values values){
+	private void transmit(AbstractGrouping grouping, 
+			Tuple tuple,
+			List<Integer> taskIds,
+			String componentId,
+			String streamId) {
+		HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
+		for(Integer taskId : taskIds){
+			if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){
+				remoteTaskIds.add(taskId);
+			}
+		}
+		if(!remoteTaskIds.isEmpty()){
+			NetworkTask task = RecycleStation.getInstance()
+					.getNetworkTaskRecycler().newObject();
+			task.init(tuple, remoteTaskIds, componentId, localCluster.getTopologyId());
+			try {
+				localCluster.getNode().getRouter().put(task);
+			} catch (InterruptedException e) {
+				log.error("failed to emit tuple: "+e.toString());
+			} 
+			
+		}
+		HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
+		
+		localTaskIds.removeAll(remoteTaskIds);
+		if(!localTaskIds.isEmpty()){
+			try {
+				NetworkTask task = RecycleStation.getInstance()
+						.getNetworkTaskRecycler().newObject();
+				
+				task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
+				getQueue(componentId,streamId).put(task);
+				localCluster.outputPending(getQueue(componentId,streamId));
+			} catch (InterruptedException e) {
+				log.error("failed to emit tuple: "+e.toString());
+			}
+		}
+	}
+	
+	public synchronized List<Integer> emit(String streamId,Values values) {
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
 		if(component.isClosed()) {
 			log.error("spontaneous tuple emission after close, topology may not terminate properly ["+component.getComponentId()+":"+component.getTaskId()+"]");
@@ -82,12 +119,12 @@ public class Collector {
 		}
 		Fields fields = component.getOutputFieldsDeclarer().getFields(streamId);
 		if(fields==null) {
-			localCluster.setShouldTerminate("no fields have been declared for ["+
+			throw new DragonEmitRuntimeException("no fields have been declared for ["+
 					component.getComponentId()+"] on stream ["+streamId+
 					"] however it is attempting to emit on that stream");
 		}
 		if(values.size()!=fields.getFieldNames().length) {
-			localCluster.setShouldTerminate("the number of values in ["+values+
+			throw new DragonEmitRuntimeException("the number of values in ["+values+
 					"] does not match the number of fields ["+
 					fields.getFieldNamesAsString()+"]");
 		}
@@ -107,38 +144,11 @@ public class Collector {
 					List<Integer> taskIds = grouping.chooseTasks(0, values);
 					receivingTaskIds.addAll(taskIds);
 					component.incTransferred(receivingTaskIds.size()); // for metrics
-					HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
-					for(Integer taskId : taskIds){
-						if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){
-							remoteTaskIds.add(taskId);
-						}
-					}
-					if(!remoteTaskIds.isEmpty()){
-						NetworkTask task = RecycleStation.getInstance()
-								.getNetworkTaskRecycler().newObject();
-						task.init(tuple, remoteTaskIds, componentId, localCluster.getTopologyId());
-						try {
-							localCluster.getNode().getRouter().put(task);
-						} catch (InterruptedException e) {
-							log.error("failed to emit tuple: "+e.toString());
-						} 
-						
-					}
-					HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
-					
-					localTaskIds.removeAll(remoteTaskIds);
-					if(!localTaskIds.isEmpty()){
-						try {
-							NetworkTask task = RecycleStation.getInstance()
-									.getNetworkTaskRecycler().newObject();
-							
-							task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
-							getQueue(componentId,streamId).put(task);
-							localCluster.outputPending(getQueue(componentId,streamId));
-						} catch (InterruptedException e) {
-							log.error("failed to emit tuple: "+e.toString());
-						}
-					}
+					transmit(grouping, 
+							tuple,
+							taskIds,
+							componentId,
+							streamId); 
 				}
 			}
 			
@@ -156,16 +166,16 @@ public class Collector {
 	public synchronized void emitDirect(int taskId, String streamId, Values values){
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
 		Fields fields = component.getOutputFieldsDeclarer().getFieldsDirect(streamId);
-		if(fields==null) {
-			localCluster.setShouldTerminate("no fields have been declared for ["+
-					component.getComponentId()+"] on direct stream ["+streamId+
-					"] however it is attempting to emit on that stream");
-		}
-		if(values.size()!=fields.getFieldNames().length) {
-			localCluster.setShouldTerminate("the number of values in ["+values+
-					"] does not match the number of fields ["+
-					fields.getFieldNamesAsString()+"]");
-		}
+//		if(fields==null) {
+//			localCluster.setShouldTerminate("no fields have been declared for ["+
+//					component.getComponentId()+"] on direct stream ["+streamId+
+//					"] however it is attempting to emit on that stream");
+//		}
+//		if(values.size()!=fields.getFieldNames().length) {
+//			localCluster.setShouldTerminate("the number of values in ["+values+
+//					"] does not match the number of fields ["+
+//					fields.getFieldNamesAsString()+"]");
+//		}
 		Tuple tuple = new Tuple(fields,values);
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
@@ -209,42 +219,12 @@ public class Collector {
 				tuple.setSourceTaskId(component.getTaskId());
 				tuple.setType(Tuple.Type.TERMINATE);
 				for(AbstractGrouping grouping : groupingsSet) {
-					//log.debug("using grouping "+grouping.getClass().getName());
 					List<Integer> taskIds = grouping.chooseTasks(0, null);
-					HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
-					for(Integer taskId : taskIds){
-						if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){
-							remoteTaskIds.add(taskId);
-						}
-					}
-					if(!remoteTaskIds.isEmpty()){
-						NetworkTask task = RecycleStation.getInstance()
-								.getNetworkTaskRecycler().newObject();
-						task.init(tuple, remoteTaskIds, componentId, localCluster.getTopologyId());
-						try {
-							
-							localCluster.getNode().getRouter().put(task);
-						} catch (InterruptedException e) {
-							log.error("failed to emit tuple: "+e.toString());
-						} 
-						
-					}
-					HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
-					
-					localTaskIds.removeAll(remoteTaskIds);
-					if(!localTaskIds.isEmpty()){
-						try {
-							NetworkTask task = RecycleStation.getInstance()
-									.getNetworkTaskRecycler().newObject();
-							
-							task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
-							getQueue(componentId,streamId).put(task);
-							
-							localCluster.outputPending(getQueue(componentId,streamId));
-						} catch (InterruptedException e) {
-							log.error("failed to emit tuple: "+e.toString());
-						}
-					}
+					transmit(grouping, 
+							tuple,
+							taskIds,
+							componentId,
+							streamId); 
 				}
 				RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
 			}

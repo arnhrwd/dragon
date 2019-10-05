@@ -92,12 +92,6 @@ public class ServiceProcessor extends Thread {
 					}
 					node.register(rtgc);
 					rtgc.initiate(node.getComms());
-					
-//					LocalCluster cluster=new LocalCluster(node);
-//					cluster.submitTopology(scommand.topologyName, scommand.conf, scommand.dragonTopology, false);
-//					node.getRouter().submitTopology(scommand.topologyName, scommand.dragonTopology);
-//					node.getLocalClusters().put(scommand.topologyName, cluster);
-					// the jar is already prepared for this node
 					rtgc.receiveSuccess(node.getComms(), node.getComms().getMyNodeDescriptor());
 				}
 				break;	
@@ -157,6 +151,10 @@ public class ServiceProcessor extends Thread {
 					node.stopTopology(tt.topologyId, ttgo);
 					
 				}
+				break;
+			}
+			case LIST_TOPOLOGIES:{
+				
 				break;
 			}
 			default:

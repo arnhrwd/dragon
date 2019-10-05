@@ -43,7 +43,11 @@ public class Bolt extends Component {
 			switch(tuple.getType()) {
 			case APPLICATION:{
 				getOutputCollector().resetEmit();
-				execute(tuple);
+				try {
+					execute(tuple);
+				} catch (DragonEmitRuntimeException e) {
+					log.fatal("bolt ["+getComponentId()+"]: "+e.getMessage());
+				}
 				processed++;
 				break;
 			}

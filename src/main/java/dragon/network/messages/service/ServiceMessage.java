@@ -3,9 +3,6 @@ package dragon.network.messages.service;
 import dragon.network.messages.Message;
 
 public class ServiceMessage extends Message {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -682715214185176661L;
 	
 	public static enum ServiceMessageType {
@@ -24,7 +21,10 @@ public class ServiceMessage extends Message {
 		TERMINATE_TOPOLOGY,
 		UPLOAD_JAR_FAILED,
 		TERMINATE_TOPOLOGY_ERROR,
-		TOPOLOGY_TERMINATED
+		TOPOLOGY_TERMINATED,
+		LIST_TOPOLOGIES,
+		LIST_TOPOLOGIES_ERROR,
+		TOPOLOGY_LIST
 	}
 	
 	private ServiceMessageType type;

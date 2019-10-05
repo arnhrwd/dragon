@@ -1,5 +1,6 @@
 package dragon.network.operations;
 
+import dragon.DragonRequiresClonableException;
 import dragon.network.Node;
 import dragon.network.NodeDescriptor;
 import dragon.network.comms.IComms;
@@ -62,8 +63,13 @@ public class RunTopologyGroupOperation extends GroupOperation {
 		}
 		node.register(ptgo);
 		ptgo.initiate(comms);
-		node.prepareTopology(rtm.topologyName, rtm.conf, dragonTopology, false);
-		ptgo.receiveSuccess(comms,comms.getMyNodeDescriptor());
+		try {
+			node.prepareTopology(rtm.topologyName, rtm.conf, dragonTopology, false);
+			ptgo.receiveSuccess(comms,comms.getMyNodeDescriptor());
+		} catch (DragonRequiresClonableException e) {
+			ptgo.receiveError(comms, comms.getMyNodeDescriptor(), e.getMessage());
+		}
+		
 	}
 
 }

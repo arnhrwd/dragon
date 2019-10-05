@@ -4,10 +4,6 @@ import dragon.network.NodeDescriptor;
 import dragon.network.messages.Message;
 
 public class NodeMessage extends Message {
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -1656333391539097974L;
 
 	public static enum NodeMessageType {
@@ -25,11 +21,14 @@ public class NodeMessage extends Message {
 		TOPOLOGY_STARTED,
 		TOPOLOGY_STOPPED,
 		STOP_TOPOLOGY_ERROR,
-		START_TOPOLOGY_ERROR
-		
+		START_TOPOLOGY_ERROR,
+		HALT_TOPOLOGY,
+		GET_TOPOLOGY_INFORMATION,
+		GET_TOPOLOGY_INFORMATION_ERROR,
+		TOPOLOGY_INFORMATION
 	}
 	
-	private NodeMessageType type;
+	private final NodeMessageType type;
 	private NodeDescriptor sender;
 	
 	public NodeMessage(NodeMessageType type) {

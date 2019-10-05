@@ -2,12 +2,16 @@ package dragon.topology.base;
 
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import dragon.spout.SpoutOutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
 public class Spout extends Component {
 	private static final long serialVersionUID = -2734635234747476875L;
+	private static final Log log = LogFactory.getLog(Spout.class);
 
 	@Override
 	public final void run() {
@@ -18,7 +22,12 @@ public class Spout extends Component {
 			return;
 		}
 		getOutputCollector().resetEmit();
-		nextTuple();
+		try {
+			nextTuple();
+		} catch (DragonEmitRuntimeException e) {
+			log.fatal("spout ["+getComponentId()+"]: "+e.getMessage());
+			getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
+		}
 		if(getOutputCollector().didEmit()) {
 			getLocalCluster().componentPending(this);
 		} else {

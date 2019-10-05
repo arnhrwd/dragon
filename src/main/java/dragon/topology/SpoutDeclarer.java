@@ -12,12 +12,12 @@ public class SpoutDeclarer extends Declarer {
 	private static Log log = LogFactory.getLog(SpoutDeclarer.class);
 	private Spout spout;
 	
-	public SpoutDeclarer(String name, int parallelismHint) {
-		super(name, parallelismHint);
+	public SpoutDeclarer(int parallelismHint) {
+		super(parallelismHint);
 	}
 
-	public SpoutDeclarer(String name, Spout spout, int parallelismHint) {
-		super(name, parallelismHint);
+	public SpoutDeclarer(Spout spout, int parallelismHint) {
+		super(parallelismHint);
 		this.spout=spout;
 	}
 	

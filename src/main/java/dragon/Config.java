@@ -72,6 +72,8 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_COMMS_RESET_COUNT="dragon.comms.reset.count";
 	public static final String DRAGON_COMMS_INCOMING_BUFFER_SIZE="dragon.comms.incoming.buffer.size";
 	
+	public static final String DRAGON_FAULTS_COMPONENT_TOLERANCE="dragon.faults.component.tolerance";
+	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
 	
@@ -170,6 +172,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_RECYCLER_TASK_COMPACT,0.20);
 		put(DRAGON_COMMS_RESET_COUNT,128);
 		put(DRAGON_COMMS_INCOMING_BUFFER_SIZE,1024);
+		put(DRAGON_FAULTS_COMPONENT_TOLERANCE,3);
 	}
 	
 	public void drop() {
@@ -340,6 +343,10 @@ public class Config extends HashMap<String, Object> {
 	
 	public int getDragonCommsIncomingBufferSize() {
 		return (Integer)get(DRAGON_COMMS_INCOMING_BUFFER_SIZE);
+	}
+	
+	public int getDragonFaultsComponentTolerance() {
+		return (Integer)get(DRAGON_FAULTS_COMPONENT_TOLERANCE);
 	}
 	
  	//

@@ -6,11 +6,12 @@ import java.util.HashSet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import dragon.LocalCluster;
+import dragon.DragonRequiresClonableException;
 import dragon.network.Node.NodeState;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.node.AcceptingJoinMessage;
 import dragon.network.messages.node.ContextUpdateMessage;
+import dragon.network.messages.node.HaltTopologyMessage;
 import dragon.network.messages.node.JarReadyMessage;
 import dragon.network.messages.node.JoinCompleteMessage;
 import dragon.network.messages.node.NodeMessage;
@@ -155,8 +156,12 @@ public class NodeProcessor extends Thread {
 			}
 			case PREPARE_TOPOLOGY:{
 				PrepareTopologyMessage pt = (PrepareTopologyMessage) message;
-				node.prepareTopology(pt.topologyName, pt.conf, pt.topology, false);
-				pt.getGroupOperation().sendSuccess(node.getComms());
+				try {
+					node.prepareTopology(pt.topologyName, pt.conf, pt.topology, false);
+					pt.getGroupOperation().sendSuccess(node.getComms());
+				} catch (DragonRequiresClonableException e) {
+					pt.getGroupOperation().sendError(node.getComms(),e.getMessage());
+				}
 				break;
 			}
 			case TOPOLOGY_READY:{
@@ -202,6 +207,11 @@ public class NodeProcessor extends Thread {
 						.getGroupOperation()
 						.getId())
 						.receiveError(node.getComms(),stem.getSender(),stem.error);
+				break;
+			}
+			case HALT_TOPOLOGY:{
+				HaltTopologyMessage htm = (HaltTopologyMessage) message;
+				node.haltTopology(htm.topologyId);
 				break;
 			}
 			default:

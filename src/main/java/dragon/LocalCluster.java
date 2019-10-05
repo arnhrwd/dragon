@@ -46,6 +46,17 @@ public class LocalCluster {
 	private HashMap<String,Config> boltConfs;
 	private ArrayList<Thread> componentExecutorThreads;
 	private ArrayList<Thread> networkExecutorThreads;
+	private HashMap<Component,ArrayList<ComponentError>> componentErrors;
+	
+	public static enum State {
+		ALLOCATED,
+		SUBMITTED,
+		RUNNING,
+		TERMINATING,
+		HALTED
+	}
+	
+	private volatile State state;
 	
 	@SuppressWarnings("rawtypes")
 	private HashMap<Class,HashSet<GroupOperation>> groupOperations;
@@ -66,7 +77,7 @@ public class LocalCluster {
 	
 	private int totalParallelismHint=0;
 	
-	private volatile boolean shouldTerminate=false;
+	//private volatile boolean shouldTerminate=false;
 	
 	private final Node node;
 	
@@ -102,13 +113,17 @@ public class LocalCluster {
 	@SuppressWarnings("rawtypes")
 	public LocalCluster(){
 		this.node=null;
+		state=State.ALLOCATED;
 		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
+		componentErrors = new  HashMap<Component,ArrayList<ComponentError>>();
 	}
 	
 	@SuppressWarnings("rawtypes")
 	public LocalCluster(Node node) {
 		this.node=node;
+		state=State.ALLOCATED;
 		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
+		componentErrors = new  HashMap<Component,ArrayList<ComponentError>>();
 	}
 	
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
@@ -120,10 +135,15 @@ public class LocalCluster {
 			e.printStackTrace();
 		}
 		lconf.putAll(conf);
-		submitTopology(topologyName, lconf, dragonTopology, true);
+		try {
+			submitTopology(topologyName, lconf, dragonTopology, true);
+		} catch (DragonRequiresClonableException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
-	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) {
+	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) throws DragonRequiresClonableException {
 		this.topologyName=topologyName;
 		this.conf=conf;
 		this.dragonTopology=dragonTopology;
@@ -187,7 +207,7 @@ public class LocalCluster {
 						}
 					}
 				} catch (CloneNotSupportedException e) {
-					setShouldTerminate("could not clone object: "+e.toString());
+					throw new DragonRequiresClonableException("bolts and spouts must be cloneable: "+spoutDeclarer.getSpout().getComponentId());
 				}
 			}
 			// for spouts we should have one thread per instance since nextTuple() can block if the spout is waiting for more data
@@ -319,7 +339,7 @@ public class LocalCluster {
 		tickCounterThread = new Thread() {
 			public void run() {
 				this.setName("tick counter");
-				while(!shouldTerminate && !isInterrupted()) {
+				while(state==LocalCluster.State.RUNNING && !isInterrupted()) {
 					if(tickCounterTime==tickTime) {
 						synchronized(tickCounterThread){
 							try {
@@ -350,7 +370,7 @@ public class LocalCluster {
 		tickThread = new Thread() {
 			public void run() {
 				this.setName("tick");
-				while(!shouldTerminate && !isInterrupted()) {
+				while(state==LocalCluster.State.RUNNING && !isInterrupted()) {
 					try {
 						Thread.sleep(1000);
 					} catch (InterruptedException e) {
@@ -370,6 +390,7 @@ public class LocalCluster {
 		outputsScheduler();
 		
 		componentExecutorThreads = new ArrayList<Thread>();
+		state=State.SUBMITTED;
 		if(start) {
 			scheduleSpouts();	
 		}
@@ -385,6 +406,7 @@ public class LocalCluster {
 			}
 		}
 		runComponentThreads();
+		state=State.RUNNING;
 	}
 	
 	private void prepareLater(Bolt bolt, TopologyContext context, OutputCollector collector) {
@@ -466,14 +488,6 @@ public class LocalCluster {
 					networkExecutorThreads.get(i).interrupt();
 				}
 				
-				
-				// call close on bolts
-//				for(HashMap<Integer,Bolt> bolts : bolts.values()) {
-//					for(Bolt bolt : bolts.values()) {
-//						bolt.close();
-//					}
-//				}
-				
 				try {
 					for(Thread thread : componentExecutorThreads) {
 						thread.join();
@@ -516,7 +530,7 @@ public class LocalCluster {
 				@Override
 				public void run(){
 					Component component;
-					while(true){
+					while(!isInterrupted()){
 						try {
 							component = componentsPending.take();
 						} catch (InterruptedException e) {
@@ -526,7 +540,7 @@ public class LocalCluster {
 						// TODO:the synchronization can be switched if the component's
 						// execute/nextTuple is thread safe
 						synchronized(component) {
-							if(shouldTerminate && component instanceof Spout) {
+							if(state==LocalCluster.State.TERMINATING && component instanceof Spout) {
 								if(component.isClosed()) continue;
 								component.setClosing();
 								// a closed component will not reschedule itself
@@ -550,7 +564,7 @@ public class LocalCluster {
 				public void run(){
 					HashSet<Integer> doneTaskIds=new HashSet<Integer>();
 					NetworkTaskBuffer queue;
-					while(true) {
+					while(!isInterrupted()) {
 						try {
 							queue = outputsPending.take();
 						} catch (InterruptedException e) {
@@ -633,13 +647,22 @@ public class LocalCluster {
 	}
 
 	public void setShouldTerminate() {
-		shouldTerminate=true;
+		if(state==State.TERMINATING) return;
+		state=State.TERMINATING;
 		checkCloseCondition();
 	}
 	
-	public void setShouldTerminate(String error) {
-		setShouldTerminate();
-		throw new RuntimeException(error);
+	public void haltTopology() {
+		log.info("halting topology");
+		for(int i=0;i<totalParallelismHint;i++) {
+			componentExecutorThreads.get(i).interrupt();
+		}
+		for(int i=0;i<conf.getDragonLocalclusterThreads();i++) {
+			networkExecutorThreads.get(i).interrupt();
+		}
+		tickThread.interrupt();
+		tickCounterThread.interrupt();
+		state=State.HALTED;
 	}
 	
 	public HashMap<String,HashMap<Integer,Bolt>> getBolts(){
@@ -661,6 +684,29 @@ public class LocalCluster {
 			}
 			HashSet<GroupOperation> gos = groupOperations.get(go.getClass());
 			gos.add(go);
+		}
+	}
+
+	public void componentException(Component component, String message, StackTraceElement[] stackTrace) {
+		ComponentError ce = new ComponentError(message,stackTrace);
+		if(!componentErrors.containsKey(component)) {
+			componentErrors.put(component,new ArrayList<ComponentError>());
+		}
+		componentErrors.get(component).add(ce);
+		int tolerance = conf.getDragonFaultsComponentTolerance();
+		if(spoutConfs.containsKey(component.getComponentId())) {
+			if(spoutConfs.get(component.getComponentId()).containsKey(Config.DRAGON_FAULTS_COMPONENT_TOLERANCE)) {
+				tolerance=spoutConfs.get(component.getComponentId()).getDragonFaultsComponentTolerance();
+			}
+		}
+		if(boltConfs.containsKey(component.getComponentId())) {
+			if(boltConfs.get(component.getComponentId()).containsKey(Config.DRAGON_FAULTS_COMPONENT_TOLERANCE)) {
+				tolerance=boltConfs.get(component.getComponentId()).getDragonFaultsComponentTolerance();
+			}
+		}
+		if(componentErrors.get(component).size()>tolerance) {
+			log.fatal("component ["+component.getComponentId()+"] has failed more than ["+tolerance+"] times");
+			node.signalHaltTopology(topologyName);
 		}
 	}
 

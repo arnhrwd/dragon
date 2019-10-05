@@ -14,25 +14,25 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.Agent;
 import dragon.Config;
+import dragon.DragonRequiresClonableException;
 import dragon.LocalCluster;
 import dragon.metrics.ComponentMetricMap;
 import dragon.metrics.Metrics;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
+import dragon.network.messages.node.HaltTopologyMessage;
 import dragon.network.messages.node.JoinRequestMessage;
 import dragon.network.operations.GroupOperation;
 import dragon.network.operations.TerminateTopologyGroupOperation;
 import dragon.topology.DragonTopology;
-import dragon.tuple.RecycleStation;
-
-
 
 public class Node {
 	private static Log log = LogFactory.getLog(Node.class);
 	private IComms comms;
 
 	private HashMap<String,LocalCluster> localClusters;
+	@SuppressWarnings("unused")
 	private ServiceProcessor serviceThread;
 	private NodeProcessor nodeThread;
 	private Config conf;
@@ -50,14 +50,10 @@ public class Node {
 	
 	private NodeState nodeState;
 	
-	private HashMap<String,HashSet<NodeDescriptor>> startupTopology;
-	
 	public Node(Config conf) throws IOException {
 		this.conf=conf;
-		
 		groupOperations=new HashMap<Long,GroupOperation>();
 		localClusters = new HashMap<String,LocalCluster>();
-		startupTopology = new HashMap<String,HashSet<NodeDescriptor>>();
 		comms = new TcpComms(conf);
 		comms.open();
 		nodeState=NodeState.JOINING;
@@ -126,7 +122,7 @@ public class Node {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
-		log.error("failed to store topology jar file for ["+topologyName+"]");
+		log.fatal("failed to store topology jar file for ["+topologyName+"]");
 		return false;
 	}
 	
@@ -139,7 +135,7 @@ public class Node {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		log.error("failed to add topology jar file to the classpath ["+topologyName+"]");
+		log.fatal("failed to add topology jar file to the classpath ["+topologyName+"]");
 		return false;
 	}
 	
@@ -157,7 +153,7 @@ public class Node {
 		
 	}
 	
-	public void prepareTopology(String topologyId, Config conf, DragonTopology topology, boolean start) {
+	public synchronized void prepareTopology(String topologyId, Config conf, DragonTopology topology, boolean start) throws DragonRequiresClonableException {
 		LocalCluster cluster=new LocalCluster(this);
 		Config lconf = new Config();
 		lconf.putAll(this.conf);
@@ -171,7 +167,7 @@ public class Node {
 		localClusters.get(topologyId).openAll();
 	}
 	
-	public void stopTopology(String topologyId,GroupOperation go) {
+	public synchronized void stopTopology(String topologyId,GroupOperation go) {
 		LocalCluster localCluster = getLocalClusters().get(topologyId);
 		localCluster.setGroupOperation(go);
 		localCluster.setShouldTerminate();
@@ -183,7 +179,7 @@ public class Node {
 		} else return null;
 	}
 	
-	public void localClusterTerminated(String topologyId, TerminateTopologyGroupOperation ttgo) {
+	public synchronized void localClusterTerminated(String topologyId, TerminateTopologyGroupOperation ttgo) {
 		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
 		System.gc();
@@ -204,9 +200,30 @@ public class Node {
 		}
 	}
 	
-	public synchronized void removeGroupOperation(Long id) {
+	public void removeGroupOperation(Long id) {
 		synchronized(groupOperations) {
 			groupOperations.remove(id);
+		}
+	}
+	
+	public void signalHaltTopology(String topologyName) {
+		for(NodeDescriptor desc : localClusters.get(topologyName).getTopology().getReverseEmbedding().keySet()) {
+			if(!desc.equals(getComms().getMyNodeDescriptor())) {
+				try {
+					getComms().sendNodeMessage(desc, new HaltTopologyMessage(topologyName));
+				} catch (DragonCommsException e) {
+					log.error("could not signal halt topology");
+				}
+			}
+		}
+		haltTopology(topologyName);
+	}
+
+	public synchronized void haltTopology(String topologyName) {
+		if(localClusters.containsKey(topologyName)) {
+			localClusters.get(topologyName).haltTopology();
+		} else {
+			log.error("cannot halt topology as it does not exist ["+topologyName+"]");
 		}
 	}
 }

@@ -34,13 +34,13 @@ public class BoltDeclarer extends Declarer {
 		return this;
 	}
 	
-	public BoltDeclarer(String name, int parallelismHint) {
-		super(name, parallelismHint);
+	public BoltDeclarer(int parallelismHint) {
+		super(parallelismHint);
 		groupings=new HashMap<String,StreamMap>();
 	}
 	
-	public BoltDeclarer(String name, Bolt bolt, int parallelismHint) {
-		super(name, parallelismHint);
+	public BoltDeclarer(Bolt bolt, int parallelismHint) {
+		super(parallelismHint);
 		groupings=new HashMap<String,StreamMap>();
 		this.bolt=bolt;
 	}

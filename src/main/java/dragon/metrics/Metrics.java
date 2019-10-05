@@ -3,7 +3,6 @@ package dragon.metrics;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import dragon.Config;
 import dragon.LocalCluster;
 import dragon.network.Node;
 
