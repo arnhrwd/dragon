@@ -9,6 +9,13 @@ import java.util.HashSet;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+/**
+ * A container class for a tuple, that provides the destination of the
+ * tuple in terms of topology, component and tasks that the tuple must be delivered
+ * to. This class is recyclable. 
+ * @author aaron
+ *
+ */
 public class NetworkTask implements IRecyclable, Serializable {
 	@SuppressWarnings("unused")
 	private static Log log = LogFactory.getLog(NetworkTask.class);

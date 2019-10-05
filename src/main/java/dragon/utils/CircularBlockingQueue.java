@@ -22,8 +22,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 	private final Condition notEmpty = takeLock.newCondition();
 	private final Condition notFull = putLock.newCondition();
 	
-	
-	public final Object lock = new Object();
+	public final ReentrantLock bufferLock = new ReentrantLock();
 	
 	public CircularBlockingQueue(){
 		capacity=1024;

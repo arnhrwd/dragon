@@ -28,7 +28,7 @@ public class Collector {
 	private final ComponentTaskBuffer outputQueues;
 	private final LocalCluster localCluster;
 	private final Component component;
-	
+	private final int totalBufferSpace;
 	private boolean emitted;
 	
 	public Collector(Component component,LocalCluster localCluster,int bufSize) {
@@ -36,13 +36,20 @@ public class Collector {
 		this.localCluster=localCluster;
 		outputQueues=new ComponentTaskBuffer(bufSize);
 		DestComponentMap destComponentMap = localCluster.getTopology().getDestComponentMap(component.getComponentId());
+		int tbs=0;
 		if(destComponentMap!=null) {
 			for(String destId : destComponentMap.keySet()) {
 				for(String streamId : destComponentMap.get(destId).keySet() ) {
 					outputQueues.create(destId, streamId);
+					tbs+=bufSize;
 				}
 			}
 		}
+		totalBufferSpace=tbs;
+	}
+	
+	public int getTotalBufferSpace() {
+		return totalBufferSpace;
 	}
 	
 	public NetworkTaskBuffer getQueue(String componentId, String streamId){

@@ -6,12 +6,14 @@ import dragon.tuple.Tuple;
 import dragon.utils.CircularBlockingQueue;
 
 public class InputCollector {
-	private CircularBlockingQueue<Tuple> inputQueue;
-	private LocalCluster localCluster;
-	private Bolt bolt;
+	private final CircularBlockingQueue<Tuple> inputQueue;
+	@SuppressWarnings("unused")
+	private final LocalCluster localCluster;
+	@SuppressWarnings("unused")
+	private final Bolt bolt;
 	
 	public InputCollector(LocalCluster localCluster,Bolt bolt){
-		inputQueue=new CircularBlockingQueue<Tuple>((Integer)localCluster.getConf().getDragonOutputBufferSize());
+		inputQueue=new CircularBlockingQueue<Tuple>(localCluster.getConf().getDragonInputBufferSize());
 		this.localCluster = localCluster;
 		this.bolt=bolt;
 		

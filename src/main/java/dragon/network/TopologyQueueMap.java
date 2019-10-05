@@ -7,12 +7,8 @@ import dragon.utils.NetworkTaskBuffer;
 
 
 public class TopologyQueueMap extends HashMap<String,StreamQueueMap> {
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 2633646610735734489L;
-	private int bufferSize;
+	private final int bufferSize;
 	
 	public TopologyQueueMap(int bufferSize){
 		this.bufferSize=bufferSize;

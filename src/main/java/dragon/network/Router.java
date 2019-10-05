@@ -15,8 +15,17 @@ import dragon.tuple.NetworkTask;
 import dragon.tuple.RecycleStation;
 import dragon.utils.NetworkTaskBuffer;
 
+/**
+ * The Router is responsible for taking NetworkTasks from the LocalCluster and duplicating
+ * them as required to be sent to possibly multiple destination machines. A single copy
+ * of the NetworkTask is sent to each machine that requires it. When received from another
+ * machine, the Router is responsible for making the NetworkTask available to the LocalCluster
+ * which in turns copies the enclosed tuple to the relevant bolts receiving the tuple.
+ * @author aaron
+ *
+ */
 public class Router {
-	private static Log log = LogFactory.getLog(Router.class);
+	private final static Log log = LogFactory.getLog(Router.class);
 	private final Node node;
 	private final ArrayList<Thread> outgoingThreads;
 	private final ArrayList<Thread> incomingThreads;
@@ -32,7 +41,14 @@ public class Router {
 		outputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterOutputBufferSize());
 		outgoingThreads = new ArrayList<Thread>();
 		incomingThreads = new ArrayList<Thread>();
+		
+		// A circular blocking queue is not so applicable here because the input and output queues
+		// change in response to topologies being started and stopped. TODO: write a linked 
+		// blocking queue that reuses reference objects from a pool, rather than new'ing and
+		// dereferencing them.
 		outputsPending=new LinkedBlockingQueue<NetworkTaskBuffer>();
+		
+		// Startup the thread
 		runExecutors();
 	}
 	
@@ -46,7 +62,8 @@ public class Router {
 							NetworkTaskBuffer buffer = outputsPending.take();
 							HashMap<NodeDescriptor,HashSet<Integer>> destinations = 
 									new HashMap<NodeDescriptor,HashSet<Integer>>();
-							synchronized(buffer.lock){
+							buffer.bufferLock.lock();
+							try {
 								NetworkTask task = buffer.poll();
 								if(task!=null){
 									HashSet<Integer> taskIds=task.getTaskIds();
@@ -82,6 +99,8 @@ public class Router {
 									}
 									RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 								}
+							} finally {
+								buffer.bufferLock.unlock();
 							}
 						} catch (InterruptedException e) {
 							log.info("interrupted while taking from queue");
