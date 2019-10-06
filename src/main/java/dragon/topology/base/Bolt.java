@@ -47,6 +47,10 @@ public class Bolt extends Component {
 					execute(tuple);
 				} catch (DragonEmitRuntimeException e) {
 					log.fatal("bolt ["+getComponentId()+"]: "+e.getMessage());
+					getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
+				} catch (Exception e) {
+					log.fatal("bolt ["+getComponentId()+"]: "+e.getMessage());
+					getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
 				}
 				processed++;
 				break;

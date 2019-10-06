@@ -33,6 +33,22 @@ public class NumberBolt extends BaseRichBolt {
 			numbers.add(number);
 			if(numbers.size()==10000000)
 				log.info("received "+numbers.size()+" numbers");
+		    if(number==100) {
+		    	number=number/0;
+		    }
+		    
+		    if(number==1000) {
+		    	throw new NullPointerException("testing null pointer");
+		    }
+		    
+		    if(number==10000) {
+		    	throw new RuntimeException("testing runtime");
+		    }
+		    
+		    if(number==100000) {
+		    	number/=0;
+		    }
+		    
 		} else {
 			String uuid = (String)tuple.getValueByField("uuid");
 			if(text==null) {

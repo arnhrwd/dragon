@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -48,6 +50,7 @@ public class LocalCluster {
 	private ArrayList<Thread> networkExecutorThreads;
 	private HashMap<Component,ArrayList<ComponentError>> componentErrors;
 	
+
 	public static enum State {
 		ALLOCATED,
 		SUBMITTED,
@@ -57,6 +60,9 @@ public class LocalCluster {
 	}
 	
 	private volatile State state;
+	
+	private final ReentrantLock haltLock = new ReentrantLock();
+	private final Condition restartCondition = haltLock.newCondition();
 	
 	@SuppressWarnings("rawtypes")
 	private HashMap<Class,HashSet<GroupOperation>> groupOperations;
@@ -76,8 +82,6 @@ public class LocalCluster {
 	private HashMap<String,Integer> boltTickCount;
 	
 	private int totalParallelismHint=0;
-	
-	//private volatile boolean shouldTerminate=false;
 	
 	private final Node node;
 	
@@ -339,7 +343,22 @@ public class LocalCluster {
 		tickCounterThread = new Thread() {
 			public void run() {
 				this.setName("tick counter");
-				while(state==LocalCluster.State.RUNNING && !isInterrupted()) {
+				while(state!=LocalCluster.State.TERMINATING && !isInterrupted()) {
+					if(state==LocalCluster.State.HALTED) {
+						log.info(getName()+" halted");
+						try {
+							haltLock.lock();
+							try {
+								restartCondition.await();
+							} catch (InterruptedException e) {
+								log.info(getName()+" interrupted");
+								break;
+							}
+							log.info(getName()+" resuming");
+						} finally {
+							haltLock.unlock();
+						}
+					}
 					if(tickCounterTime==tickTime) {
 						synchronized(tickCounterThread){
 							try {
@@ -365,12 +384,28 @@ public class LocalCluster {
 				}
 			}
 		};
+		tickCounterThread.setName("tick counter");
 		tickCounterThread.start();
 		
 		tickThread = new Thread() {
 			public void run() {
 				this.setName("tick");
-				while(state==LocalCluster.State.RUNNING && !isInterrupted()) {
+				while(state!=LocalCluster.State.TERMINATING && !isInterrupted()) {
+					if(state==LocalCluster.State.HALTED) {
+						log.info(getName()+" halted");
+						try {
+							haltLock.lock();
+							try {
+								restartCondition.await();
+							} catch (InterruptedException e) {
+								log.info(getName()+" interrupted");
+								break;
+							}
+							log.info(getName()+" resuming");
+						} finally {
+							haltLock.unlock();
+						}
+					}
 					try {
 						Thread.sleep(1000);
 					} catch (InterruptedException e) {
@@ -384,6 +419,7 @@ public class LocalCluster {
 				}
 			}
 		};
+		tickThread.setName("tick");
 		tickThread.start();
 
 
@@ -531,10 +567,26 @@ public class LocalCluster {
 				public void run(){
 					Component component;
 					while(!isInterrupted()){
+						if(state==LocalCluster.State.HALTED) {
+							log.info(getName()+" halted");
+							try {
+								haltLock.lock();
+								try {
+									restartCondition.await();
+								} catch (InterruptedException e) {
+									log.info(getName()+" interrupted");
+									break;
+								}
+								log.info(getName()+" resuming");
+							} finally {
+								haltLock.unlock();
+							}
+							continue;
+						}
 						try {
 							component = componentsPending.take();
 						} catch (InterruptedException e) {
-							log.info("component thread interrupted");
+							log.info(getName()+" interrupted");
 							break;
 						}
 						// TODO:the synchronization can be switched if the component's
@@ -548,6 +600,7 @@ public class LocalCluster {
 							component.run();
 						}	
 					}
+					log.info(getName()+" done");
 				}
 			});
 			componentExecutorThreads.get(i).setName("component executor "+i);
@@ -565,10 +618,26 @@ public class LocalCluster {
 					HashSet<Integer> doneTaskIds=new HashSet<Integer>();
 					NetworkTaskBuffer queue;
 					while(!isInterrupted()) {
+						if(state==LocalCluster.State.HALTED) {
+							log.info(getName()+" halted");
+							try {
+								haltLock.lock();
+								try {
+									restartCondition.await();
+								} catch (InterruptedException e) {
+									log.info(getName()+" interrupted");
+									break;
+								}
+								log.info(getName()+" resuming");
+							} finally {
+								haltLock.unlock();
+							}
+							continue;
+						}
 						try {
 							queue = outputsPending.take();
 						} catch (InterruptedException e) {
-							log.info("network thread interrupted");
+							log.info(getName()+" interrupted");
 							break;
 						}
 						// while the queue is thread safe, we lock on it because of the use of peek
@@ -603,12 +672,13 @@ public class LocalCluster {
 									outputPending(queue);
 								}
 							} else {
-								log.error("queue empty!");
+								log.error(getName()+" queue empty!");
 							}	
 						} finally {
 							queue.bufferLock.unlock();
 						}
 					}
+					log.info(getName()+" done");
 				}
 			});
 			networkExecutorThreads.get(i).setName("network executor "+i);
@@ -648,21 +718,35 @@ public class LocalCluster {
 
 	public void setShouldTerminate() {
 		if(state==State.TERMINATING) return;
+		if(state==State.HALTED) {
+			state=State.TERMINATING;
+			try {
+				haltLock.lock();
+				restartCondition.signalAll();
+			} finally {
+				haltLock.unlock();
+			}
+		}
 		state=State.TERMINATING;
 		checkCloseCondition();
 	}
 	
 	public void haltTopology() {
 		log.info("halting topology");
-		for(int i=0;i<totalParallelismHint;i++) {
-			componentExecutorThreads.get(i).interrupt();
-		}
-		for(int i=0;i<conf.getDragonLocalclusterThreads();i++) {
-			networkExecutorThreads.get(i).interrupt();
-		}
-		tickThread.interrupt();
-		tickCounterThread.interrupt();
 		state=State.HALTED;
+	}
+	
+	public void resumeTopology() {
+		log.info("resuming topology");
+		if(state==State.HALTED) {
+			state=State.RUNNING;
+			try {
+				haltLock.lock();
+				restartCondition.signalAll();
+			} finally {
+				haltLock.unlock();
+			}
+		}
 	}
 	
 	public HashMap<String,HashMap<Integer,Bolt>> getBolts(){
@@ -706,8 +790,17 @@ public class LocalCluster {
 		}
 		if(componentErrors.get(component).size()>tolerance) {
 			log.fatal("component ["+component.getComponentId()+"] has failed more than ["+tolerance+"] times");
-			node.signalHaltTopology(topologyName);
+			if(state==LocalCluster.State.RUNNING)node.signalHaltTopology(topologyName);
 		}
 	}
+	
+	public HashMap<Component, ArrayList<ComponentError>> getComponentErrors() {
+		return componentErrors;
+	}
+
+	public State getState() {
+		return state;
+	}
+
 
 }

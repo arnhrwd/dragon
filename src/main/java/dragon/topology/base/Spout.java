@@ -27,7 +27,10 @@ public class Spout extends Component {
 		} catch (DragonEmitRuntimeException e) {
 			log.fatal("spout ["+getComponentId()+"]: "+e.getMessage());
 			getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
-		}
+		} catch (Exception e) {
+			log.fatal("spout ["+getComponentId()+"]: "+e.getMessage());
+			getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
+		} 
 		if(getOutputCollector().didEmit()) {
 			getLocalCluster().componentPending(this);
 		} else {

@@ -14,6 +14,7 @@ import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.service.GetMetricsMessage;
 import dragon.network.messages.service.UploadJarMessage;
 import dragon.network.messages.service.UploadJarSuccessMessage;
+import dragon.network.operations.ListTopologiesGroupOperation;
 import dragon.network.operations.RunTopologyGroupOperation;
 import dragon.network.operations.TerminateTopologyGroupOperation;
 import dragon.topology.DragonTopology;
@@ -154,6 +155,15 @@ public class ServiceProcessor extends Thread {
 				break;
 			}
 			case LIST_TOPOLOGIES:{
+				ListTopologiesGroupOperation ltgo = new ListTopologiesGroupOperation(command);
+				for(NodeDescriptor desc : node.getNodeProcessor().getContext().values()) {
+					ltgo.add(desc);
+				}
+				node.register(ltgo);
+				node.listTopologies(ltgo);
+				ltgo.initiate(node.getComms());
+				ltgo.aggregate(node.getComms().getMyNodeDescriptor(),
+						ltgo.state,ltgo.errors);
 				
 				break;
 			}

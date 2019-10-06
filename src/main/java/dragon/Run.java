@@ -59,6 +59,8 @@ public class Run {
 		options.addOption(topologyOption);
 		Option terminateOption = new Option("x","terminate",false,"terminate a topology");
 		options.addOption(terminateOption);
+		Option listOption = new Option("l","list",false,"list topology information");
+		options.addOption(listOption);
 		Option confOption = new Option("C","conf",true,"specify the dragon conf file");
 		options.addOption(confOption);
 		
@@ -106,6 +108,18 @@ public class Run {
     				throw new ParseException("must provide a topology name with -t option");
     			}
     			DragonSubmitter.terminateTopology(conf,cmd.getOptionValue("topology"));
+            } else if(cmd.hasOption("list")){
+            	DragonSubmitter.node = conf.getLocalHost();
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
+    			if(cmd.hasOption("port")) {
+    				log.warn("the -p option was given but list does not use that option");
+    			}
+    			DragonSubmitter.listTopologies(conf);
             } else if(!cmd.hasOption("daemon")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {

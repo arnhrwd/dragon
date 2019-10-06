@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -13,6 +14,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.Agent;
+import dragon.ComponentError;
 import dragon.Config;
 import dragon.DragonRequiresClonableException;
 import dragon.LocalCluster;
@@ -24,8 +26,10 @@ import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.HaltTopologyMessage;
 import dragon.network.messages.node.JoinRequestMessage;
 import dragon.network.operations.GroupOperation;
+import dragon.network.operations.ListTopologiesGroupOperation;
 import dragon.network.operations.TerminateTopologyGroupOperation;
 import dragon.topology.DragonTopology;
+import dragon.topology.base.Component;
 
 public class Node {
 	private static Log log = LogFactory.getLog(Node.class);
@@ -226,4 +230,22 @@ public class Node {
 			log.error("cannot halt topology as it does not exist ["+topologyName+"]");
 		}
 	}
+
+	public synchronized void listTopologies(ListTopologiesGroupOperation ltgo) {
+		HashMap<String,String> state = new HashMap<String,String>();
+		HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors = 
+				new HashMap<String,HashMap<String,ArrayList<ComponentError>>>();
+		for(String topologyId : localClusters.keySet()) {
+			state.put(topologyId,localClusters.get(topologyId).getState().name());
+			errors.put(topologyId,new HashMap<String,ArrayList<ComponentError>>());
+			for(Component component : localClusters.get(topologyId).getComponentErrors().keySet()) {
+				String name=component.getComponentId()+":"+component.getTaskId();
+				errors.get(topologyId).put(name,localClusters.get(topologyId).getComponentErrors().get(component));
+			}
+		}
+		ltgo.state=state;
+		ltgo.errors=errors;
+		ltgo.sendSuccess(getComms());
+	}
+	
 }

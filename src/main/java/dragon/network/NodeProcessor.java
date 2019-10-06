@@ -11,6 +11,7 @@ import dragon.network.Node.NodeState;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.node.AcceptingJoinMessage;
 import dragon.network.messages.node.ContextUpdateMessage;
+import dragon.network.messages.node.GetTopologyInformationMessage;
 import dragon.network.messages.node.HaltTopologyMessage;
 import dragon.network.messages.node.JarReadyMessage;
 import dragon.network.messages.node.JoinCompleteMessage;
@@ -21,9 +22,11 @@ import dragon.network.messages.node.PrepareTopologyMessage;
 import dragon.network.messages.node.StartTopologyMessage;
 import dragon.network.messages.node.StopTopologyErrorMessage;
 import dragon.network.messages.node.StopTopologyMessage;
+import dragon.network.messages.node.TopologyInformationMessage;
 import dragon.network.messages.node.TopologyReadyMessage;
 import dragon.network.messages.node.TopologyStartedMessage;
 import dragon.network.messages.node.TopologyStoppedMessage;
+import dragon.network.operations.ListTopologiesGroupOperation;
 
 public class NodeProcessor extends Thread {
 	private static Log log = LogFactory.getLog(NodeProcessor.class);
@@ -151,7 +154,7 @@ public class NodeProcessor extends Thread {
 				JarReadyMessage jrm = (JarReadyMessage) message;
 				node.getGroupOperation(jrm.getGroupOperation()
 						.getId()).receiveSuccess(node.getComms(), jrm.getSender());
-				node.removeGroupOperation(jrm.getGroupOperation().getId());
+				//node.removeGroupOperation(jrm.getGroupOperation().getId());
 				break;
 			}
 			case PREPARE_TOPOLOGY:{
@@ -167,7 +170,7 @@ public class NodeProcessor extends Thread {
 			case TOPOLOGY_READY:{
 				TopologyReadyMessage tr = (TopologyReadyMessage) message;
 				node.getGroupOperation(tr.getGroupOperation().getId()).receiveSuccess(node.getComms(), tr.getSender());
-				node.removeGroupOperation(tr.getGroupOperation().getId());
+				//node.removeGroupOperation(tr.getGroupOperation().getId());
 				break;
 			}
 			case START_TOPOLOGY:{
@@ -179,7 +182,7 @@ public class NodeProcessor extends Thread {
 			case TOPOLOGY_STARTED:{
 				TopologyStartedMessage tsm = (TopologyStartedMessage) message;
 				node.getGroupOperation(tsm.getGroupOperation().getId()).receiveSuccess(node.getComms(), tsm.getSender());
-				node.removeGroupOperation(tsm.getGroupOperation().getId());
+				//node.removeGroupOperation(tsm.getGroupOperation().getId());
 				break;
 			}
 			case STOP_TOPOLOGY:{
@@ -198,7 +201,7 @@ public class NodeProcessor extends Thread {
 						.getGroupOperation()
 						.getId())
 						.receiveSuccess(node.getComms(),tsm.getSender());
-				node.removeGroupOperation(tsm.getGroupOperation().getId());
+				//node.removeGroupOperation(tsm.getGroupOperation().getId());
 				break;
 			}
 			case STOP_TOPOLOGY_ERROR:{
@@ -212,6 +215,19 @@ public class NodeProcessor extends Thread {
 			case HALT_TOPOLOGY:{
 				HaltTopologyMessage htm = (HaltTopologyMessage) message;
 				node.haltTopology(htm.topologyId);
+				break;
+			}
+			case GET_TOPOLOGY_INFORMATION:{
+				GetTopologyInformationMessage gtim = (GetTopologyInformationMessage) message;
+				node.listTopologies((ListTopologiesGroupOperation)gtim.getGroupOperation());
+				break;
+			}
+			case TOPOLOGY_INFORMATION:{
+				TopologyInformationMessage tim = (TopologyInformationMessage) message;
+				((ListTopologiesGroupOperation)(node.getGroupOperation(tim.getGroupOperation().getId()))).aggregate(tim.getSender(),
+						tim.state,tim.errors);
+				node.getGroupOperation(tim.getGroupOperation().getId()).receiveSuccess(node.getComms(),
+						tim.getSender());
 				break;
 			}
 			default:
