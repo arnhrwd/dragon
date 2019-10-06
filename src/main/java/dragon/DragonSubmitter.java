@@ -16,11 +16,15 @@ import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.GetMetricsMessage;
 import dragon.network.messages.service.GetNodeContextMessage;
+import dragon.network.messages.service.HaltTopologyErrorMessage;
+import dragon.network.messages.service.HaltTopologyMessage;
 import dragon.network.messages.service.ListTopologiesMessage;
 import dragon.network.messages.service.UploadJarMessage;
 import dragon.network.messages.service.GetMetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
+import dragon.network.messages.service.ResumeTopologyErrorMessage;
+import dragon.network.messages.service.ResumeTopologyMessage;
 import dragon.network.messages.service.RunTopologyErrorMessage;
 import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceDoneMessage;
@@ -190,6 +194,48 @@ public class DragonSubmitter {
 			System.out.println("terminate topology error ["+topologyId+"] "+tte.error);
 		case TOPOLOGY_TERMINATED:
 			System.out.println("topology terminated ["+topologyId+"]");
+			break;
+		default:
+			System.out.println("unexpected response: "+message.getType().name());
+			comms.close();
+			System.exit(-1);
+		}
+		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.close();
+	}
+	
+	public static void resumeTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
+		initComms(conf);
+		comms.sendServiceMessage(new ResumeTopologyMessage(topologyId));
+		ServiceMessage message = comms.receiveServiceMessage();
+		ResumeTopologyErrorMessage tte;
+		switch(message.getType()) {
+		case RESUME_TOPOLOGY_ERROR:
+			tte = (ResumeTopologyErrorMessage) message;
+			System.out.println("resume topology error ["+topologyId+"] "+tte.error);
+		case TOPOLOGY_RESUMED:
+			System.out.println("topology resumed ["+topologyId+"]");
+			break;
+		default:
+			System.out.println("unexpected response: "+message.getType().name());
+			comms.close();
+			System.exit(-1);
+		}
+		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.close();
+	}
+	
+	public static void haltTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
+		initComms(conf);
+		comms.sendServiceMessage(new HaltTopologyMessage(topologyId));
+		ServiceMessage message = comms.receiveServiceMessage();
+		HaltTopologyErrorMessage tte;
+		switch(message.getType()) {
+		case HALT_TOPOLOGY_ERROR:
+			tte = (HaltTopologyErrorMessage) message;
+			System.out.println("halt topology error ["+topologyId+"] "+tte.error);
+		case TOPOLOGY_HALTED:
+			System.out.println("topology halted ["+topologyId+"]");
 			break;
 		default:
 			System.out.println("unexpected response: "+message.getType().name());

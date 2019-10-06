@@ -45,9 +45,9 @@ public class NumberBolt extends BaseRichBolt {
 		    	throw new RuntimeException("testing runtime");
 		    }
 		    
-		    if(number==100000) {
-		    	number/=0;
-		    }
+//		    if(number==100000) {
+//		    	number/=0;
+//		    }
 		    
 		} else {
 			String uuid = (String)tuple.getValueByField("uuid");

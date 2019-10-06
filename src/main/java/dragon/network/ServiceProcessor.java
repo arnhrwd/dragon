@@ -12,15 +12,21 @@ import dragon.network.messages.service.UploadJarFailedMessage;
 import dragon.network.messages.service.RunTopologyErrorMessage;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.service.GetMetricsMessage;
+import dragon.network.messages.service.HaltTopologyErrorMessage;
+import dragon.network.messages.service.HaltTopologyMessage;
 import dragon.network.messages.service.UploadJarMessage;
 import dragon.network.messages.service.UploadJarSuccessMessage;
+import dragon.network.operations.HaltTopologyGroupOperation;
 import dragon.network.operations.ListTopologiesGroupOperation;
+import dragon.network.operations.ResumeTopologyGroupOperation;
 import dragon.network.operations.RunTopologyGroupOperation;
 import dragon.network.operations.TerminateTopologyGroupOperation;
 import dragon.topology.DragonTopology;
 import dragon.network.messages.service.GetMetricsErrorMessage;
 import dragon.network.messages.service.MetricsMessage;
 import dragon.network.messages.service.NodeContextMessage;
+import dragon.network.messages.service.ResumeTopologyErrorMessage;
+import dragon.network.messages.service.ResumeTopologyMessage;
 
 public class ServiceProcessor extends Thread {
 	private static Log log = LogFactory.getLog(ServiceProcessor.class);
@@ -167,6 +173,50 @@ public class ServiceProcessor extends Thread {
 				
 				break;
 			}
+			case HALT_TOPOLOGY:{
+				HaltTopologyMessage htm = (HaltTopologyMessage) command;
+				if(!node.getLocalClusters().containsKey(htm.topologyId)){
+					try {
+						node.getComms().sendServiceMessage(new HaltTopologyErrorMessage(htm.topologyId,"topology does not exist"),command);
+					} catch (DragonCommsException e) {
+						// ignore
+					}
+				} else {
+					DragonTopology dragonTopology = node.getLocalClusters().get(htm.topologyId).getTopology();
+					HaltTopologyGroupOperation htgo = new HaltTopologyGroupOperation(htm);
+					for(NodeDescriptor desc : dragonTopology.getReverseEmbedding().keySet()) {
+						htgo.add(desc);
+					}
+					node.register(htgo);
+					htgo.initiate(node.getComms());
+					node.haltTopology(htm.topologyId);
+					htgo.receiveSuccess(node.getComms(), node.getComms().getMyNodeDescriptor());
+				}
+				break;
+			}
+			case RESUME_TOPOLOGY:{
+				ResumeTopologyMessage htm = (ResumeTopologyMessage) command;
+				if(!node.getLocalClusters().containsKey(htm.topologyId)){
+					try {
+						node.getComms().sendServiceMessage(new ResumeTopologyErrorMessage(htm.topologyId,"topology does not exist"),command);
+					} catch (DragonCommsException e) {
+						// ignore
+					}
+				} else {
+					DragonTopology dragonTopology = node.getLocalClusters().get(htm.topologyId).getTopology();
+					ResumeTopologyGroupOperation htgo = new ResumeTopologyGroupOperation(htm);
+					for(NodeDescriptor desc : dragonTopology.getReverseEmbedding().keySet()) {
+						htgo.add(desc);
+					}
+					node.register(htgo);
+					htgo.initiate(node.getComms());
+					node.resumeTopology(htm.topologyId);
+					htgo.receiveSuccess(node.getComms(), node.getComms().getMyNodeDescriptor());
+				}
+				break;
+			}
+			
+				
 			default:
 			}
 		}

@@ -57,8 +57,12 @@ public class Run {
 		options.addOption(metricsOption);
 		Option topologyOption = new Option("t","topology",true,"name of the topology");
 		options.addOption(topologyOption);
-		Option terminateOption = new Option("x","terminate",false,"terminate a topology");
+		Option terminateOption = new Option("X","terminate",false,"terminate a topology");
 		options.addOption(terminateOption);
+		Option resumeOption = new Option("r","resume",false,"resume a topology");
+		options.addOption(resumeOption);
+		Option haltOption = new Option("x","halt",false,"halt a topology");
+		options.addOption(haltOption);
 		Option listOption = new Option("l","list",false,"list topology information");
 		options.addOption(listOption);
 		Option confOption = new Option("C","conf",true,"specify the dragon conf file");
@@ -108,6 +112,36 @@ public class Run {
     				throw new ParseException("must provide a topology name with -t option");
     			}
     			DragonSubmitter.terminateTopology(conf,cmd.getOptionValue("topology"));
+            } else if(cmd.hasOption("resume")){
+            	DragonSubmitter.node = conf.getLocalHost();
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
+    			if(cmd.hasOption("port")) {
+    				log.warn("the -p option was given but resume does not use that option");
+    			}
+    			if(!cmd.hasOption("topology")){
+    				throw new ParseException("must provide a topology name with -r option");
+    			}
+    			DragonSubmitter.resumeTopology(conf,cmd.getOptionValue("topology"));
+            } else if(cmd.hasOption("halt")){
+            	DragonSubmitter.node = conf.getLocalHost();
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
+    			if(cmd.hasOption("port")) {
+    				log.warn("the -p option was given but halt does not use that option");
+    			}
+    			if(!cmd.hasOption("topology")){
+    				throw new ParseException("must provide a topology name with -x option");
+    			}
+    			DragonSubmitter.haltTopology(conf,cmd.getOptionValue("topology"));
             } else if(cmd.hasOption("list")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {

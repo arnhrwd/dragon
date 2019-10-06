@@ -247,5 +247,14 @@ public class Node {
 		ltgo.errors=errors;
 		ltgo.sendSuccess(getComms());
 	}
+
+	public synchronized void resumeTopology(String topologyId) {
+		if(localClusters.containsKey(topologyId)) {
+			localClusters.get(topologyId).resumeTopology();
+		} else {
+			log.error("cannot resume topology as it does not exist ["+topologyId+"]");
+		}
+		
+	}
 	
 }

@@ -12,6 +12,7 @@ import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.node.AcceptingJoinMessage;
 import dragon.network.messages.node.ContextUpdateMessage;
 import dragon.network.messages.node.GetTopologyInformationMessage;
+import dragon.network.messages.node.HaltTopologyErrorMessage;
 import dragon.network.messages.node.HaltTopologyMessage;
 import dragon.network.messages.node.JarReadyMessage;
 import dragon.network.messages.node.JoinCompleteMessage;
@@ -19,13 +20,17 @@ import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.PrepareJarErrorMessage;
 import dragon.network.messages.node.PrepareJarMessage;
 import dragon.network.messages.node.PrepareTopologyMessage;
+import dragon.network.messages.node.ResumeTopologyErrorMessage;
+import dragon.network.messages.node.ResumeTopologyMessage;
 import dragon.network.messages.node.StartTopologyMessage;
 import dragon.network.messages.node.StopTopologyErrorMessage;
 import dragon.network.messages.node.StopTopologyMessage;
 import dragon.network.messages.node.TopologyInformationMessage;
 import dragon.network.messages.node.TopologyReadyMessage;
+import dragon.network.messages.node.TopologyResumedMessage;
 import dragon.network.messages.node.TopologyStartedMessage;
 import dragon.network.messages.node.TopologyStoppedMessage;
+import dragon.network.messages.node.TopologyHaltedMessage;
 import dragon.network.operations.ListTopologiesGroupOperation;
 
 public class NodeProcessor extends Thread {
@@ -215,6 +220,43 @@ public class NodeProcessor extends Thread {
 			case HALT_TOPOLOGY:{
 				HaltTopologyMessage htm = (HaltTopologyMessage) message;
 				node.haltTopology(htm.topologyId);
+				if(htm.getGroupOperation()!=null) {
+					htm.getGroupOperation().sendSuccess(node.getComms());
+				}
+				break;
+			}
+			case TOPOLOGY_HALTED:{
+				TopologyHaltedMessage thm = (TopologyHaltedMessage) message;
+				node.getGroupOperation(thm.getGroupOperation().getId()).receiveSuccess(node.getComms(), thm.getSender());
+				break;
+			}
+			case HALT_TOPOLOGY_ERROR:{
+				HaltTopologyErrorMessage htem = (HaltTopologyErrorMessage) message;
+				node.getGroupOperation(htem
+						.getGroupOperation()
+						.getId())
+						.receiveError(node.getComms(), htem.getSender(), htem.error);
+				break;
+			}
+			case RESUME_TOPOLOGY:{
+				ResumeTopologyMessage htm = (ResumeTopologyMessage) message;
+				node.resumeTopology(htm.topologyId);
+				if(htm.getGroupOperation()!=null) {
+					htm.getGroupOperation().sendSuccess(node.getComms());
+				}
+				break;
+			}
+			case TOPOLOGY_RESUMED:{
+				TopologyResumedMessage thm = (TopologyResumedMessage) message;
+				node.getGroupOperation(thm.getGroupOperation().getId()).receiveSuccess(node.getComms(), thm.getSender());
+				break;
+			}
+			case RESUME_TOPOLOGY_ERROR:{
+				ResumeTopologyErrorMessage htem = (ResumeTopologyErrorMessage) message;
+				node.getGroupOperation(htem
+						.getGroupOperation()
+						.getId())
+						.receiveError(node.getComms(), htem.getSender(), htem.error);
 				break;
 			}
 			case GET_TOPOLOGY_INFORMATION:{
