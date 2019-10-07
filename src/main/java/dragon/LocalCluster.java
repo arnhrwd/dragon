@@ -487,6 +487,15 @@ public class LocalCluster {
 		Thread shutdownThread = new Thread() {
 			@Override
 			public void run() {
+				// give the spouts one more run cycle
+				for(String componentId : spouts.keySet()) {
+					HashMap<Integer,Spout> component = spouts.get(componentId);
+					for(Integer taskId : component.keySet()) {
+						Spout spout = component.get(taskId);
+						componentPending(spout);
+					}
+				}
+				
 				// wait for spouts to close
 				while(true) {
 					boolean spoutsClosed=true;
