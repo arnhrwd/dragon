@@ -487,13 +487,45 @@ public class LocalCluster {
 		Thread shutdownThread = new Thread() {
 			@Override
 			public void run() {
+				// wait for spouts to close
+				while(true) {
+					boolean spoutsClosed=true;
+					for(String componentId : spouts.keySet()) {
+						HashMap<Integer,Spout> component = spouts.get(componentId);
+						for(Integer taskId : component.keySet()) {
+							Spout spout = component.get(taskId);
+							if(!spout.isClosed()) {
+								spoutsClosed=false;
+								break;
+							}
+						}
+						if(spoutsClosed==false) {
+							break;
+						}
+					}
+					if(spoutsClosed) break;
+					log.info("waiting for spouts to close...");
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						log.warn("interrupted while waiting for spouts to close");
+						break;
+					}
+					
+				}
+				
+				// emit the terminate tuples
 				for(String componentId : spouts.keySet()) {
 					HashMap<Integer,Spout> component = spouts.get(componentId);
 					for(Integer taskId : component.keySet()) {
 						Spout spout = component.get(taskId);
-						componentPending(spout);
+						spout.getOutputCollector().emitTerminateTuple();
 					}
 				}
+				
+				// wait for bolts to close (they only close when they receive the
+				// terminate tuple on all of their input streams, from all tasks on
+				// those streams).
 				while(true) {
 					boolean alldone=true;
 					for(HashMap<Integer,Bolt> boltInstances : bolts.values()) {
@@ -516,6 +548,8 @@ public class LocalCluster {
 						break;
 					}
 				}
+				
+				// interrupt all the threads 
 				log.debug("interrupting all threads");
 				for(int i=0;i<totalParallelismHint;i++) {
 					componentExecutorThreads.get(i).interrupt();
