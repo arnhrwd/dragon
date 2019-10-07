@@ -21,6 +21,7 @@ public class Spout extends Component {
 			setClosed();
 			return;
 		}
+		if(isClosed()) return;
 		getOutputCollector().resetEmit();
 		try {
 			nextTuple();
