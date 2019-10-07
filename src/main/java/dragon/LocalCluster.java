@@ -492,6 +492,9 @@ public class LocalCluster {
 					HashMap<Integer,Spout> component = spouts.get(componentId);
 					for(Integer taskId : component.keySet()) {
 						Spout spout = component.get(taskId);
+						log.debug("putting spout on queue one last time: "
+								+spout.getComponentId()+":"+spout.getTaskId()
+								+" has closing="+spout.isClosing());
 						componentPending(spout);
 					}
 				}
@@ -632,16 +635,9 @@ public class LocalCluster {
 							log.info(getName()+" interrupted");
 							break;
 						}
-						// TODO:the synchronization can be switched if the component's
-						// execute/nextTuple is thread safe
-						//synchronized(component) {
-//							if(state==LocalCluster.State.TERMINATING && component instanceof Spout) {
-//								if(component.isClosed()) continue;
-//								component.setClosing();
-//								// a closed component will not reschedule itself
-//							}
-							component.run();
-						//}	
+						
+						component.run();
+							
 					}
 					log.info(getName()+" done");
 				}

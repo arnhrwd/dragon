@@ -19,19 +19,19 @@ public class Component implements Runnable, Cloneable, Serializable{
 	private volatile boolean closing=false;
 	private volatile boolean closed=false;
 	
-	public final void setClosing() {
+	public synchronized final void setClosing() {
 		closing=true;
 	}
 	
-	public final boolean isClosing() {
+	public synchronized final boolean isClosing() {
 		return closing;
 	}
 	
-	public final void setClosed() {
+	public synchronized final void setClosed() {
 		closed=true;
 	}
 	
-	public final boolean isClosed() {
+	public synchronized final boolean isClosed() {
 		return closed;
 	}
 	

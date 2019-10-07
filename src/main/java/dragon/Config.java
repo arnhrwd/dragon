@@ -122,6 +122,10 @@ public class Config extends HashMap<String, Object> {
 				return;
 			}
 		}
+		if(inputStream==null){
+			log.warn("cannot find "+file+"- using default");
+			return;
+		}
 		Map<String,Object> map = config.load(inputStream);
 		if(map!=null) {
 			log.debug(map);
