@@ -14,7 +14,7 @@ public class Spout extends Component {
 	private static final Log log = LogFactory.getLog(Spout.class);
 
 	@Override
-	public final void run() {
+	public final synchronized void run() {
 		if(isClosing()) {
 			close();
 			//getOutputCollector().emitTerminateTuple();

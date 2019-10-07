@@ -634,14 +634,14 @@ public class LocalCluster {
 						}
 						// TODO:the synchronization can be switched if the component's
 						// execute/nextTuple is thread safe
-						synchronized(component) {
-							if(state==LocalCluster.State.TERMINATING && component instanceof Spout) {
-								if(component.isClosed()) continue;
-								component.setClosing();
-								// a closed component will not reschedule itself
-							}
+						//synchronized(component) {
+//							if(state==LocalCluster.State.TERMINATING && component instanceof Spout) {
+//								if(component.isClosed()) continue;
+//								component.setClosing();
+//								// a closed component will not reschedule itself
+//							}
 							component.run();
-						}	
+						//}	
 					}
 					log.info(getName()+" done");
 				}
@@ -771,6 +771,13 @@ public class LocalCluster {
 			}
 		}
 		state=State.TERMINATING;
+		for(String componentId : spouts.keySet()) {
+			HashMap<Integer,Spout> component = spouts.get(componentId);
+			for(Integer taskId : component.keySet()) {
+				Spout spout = component.get(taskId);
+				spout.setClosing();
+			}
+		}
 		checkCloseCondition();
 	}
 	

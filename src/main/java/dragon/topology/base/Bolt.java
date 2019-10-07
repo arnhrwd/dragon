@@ -26,7 +26,7 @@ public class Bolt extends Component {
 	}
 	
 	@Override
-	public final void run() {
+	public final synchronized void run() {
 		Tuple tuple;
 		if(isClosing()) {
 			close();
