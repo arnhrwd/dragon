@@ -14,8 +14,8 @@ public class Component implements Runnable, Cloneable, Serializable{
 	private LocalCluster localCluster;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	private Collector collector;
-	private long emitted=0;
-	private long transferred=0;
+	private volatile long emitted=0;
+	private volatile long transferred=0;
 	private volatile boolean closing=false;
 	private volatile boolean closed=false;
 	

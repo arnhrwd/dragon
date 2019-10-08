@@ -17,7 +17,6 @@ public class Spout extends Component {
 	public final synchronized void run() {
 		if(isClosing()) {
 			close();
-			//getOutputCollector().emitTerminateTuple();
 			setClosed();
 			return;
 		}
