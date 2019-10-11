@@ -2,6 +2,13 @@ package dragon;
 
 import java.io.Serializable;
 
+/**
+ * A container class to keep track of exceptions thrown by components.
+ * Such things are reported back to the client when e.g. listing the
+ * topologies.
+ * @author aaron
+ *
+ */
 public class ComponentError implements Serializable {
 	private static final long serialVersionUID = -7196582332156656626L;
 	public final String message;

@@ -54,6 +54,7 @@ public class LocalCluster {
 	public static enum State {
 		ALLOCATED,
 		SUBMITTED,
+		PREPROCESSING,
 		RUNNING,
 		TERMINATING,
 		HALTED

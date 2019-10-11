@@ -33,13 +33,20 @@ import dragon.network.messages.node.TopologyStoppedMessage;
 import dragon.network.messages.node.TopologyHaltedMessage;
 import dragon.network.operations.ListTopologiesGroupOperation;
 
+/**
+ * Process node message, which are messages that can only originate from
+ * other nodes (daemons). Reads nodes messages from the Comms layer, one
+ * at a time.
+ * @author aaron
+ *
+ */
 public class NodeProcessor extends Thread {
-	private static Log log = LogFactory.getLog(NodeProcessor.class);
+	private final static Log log = LogFactory.getLog(NodeProcessor.class);
 	private boolean shouldTerminate=false;
-	private Node node;
-	private HashSet<NodeMessage> pendingJoinRequests;
+	private final Node node;
+	private final HashSet<NodeMessage> pendingJoinRequests;
 	private NodeDescriptor nextNode=null;
-	private NodeContext context;
+	private final NodeContext context;
 	public NodeProcessor(Node node) {
 		this.node=node;
 		context=new NodeContext();

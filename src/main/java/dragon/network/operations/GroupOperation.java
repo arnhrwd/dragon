@@ -13,6 +13,13 @@ import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceMessage;
 
+/**
+ * A group operation is one which sends a number of daemons messages and waits
+ * for them all to respond, either as success or error. A single error generates
+ * a failure outcome, while all in success generates a success outcome.
+ * @author aaron
+ *
+ */
 public class GroupOperation implements Serializable {
 	private static final long serialVersionUID = 7500196228211761411L;
 	private static Log log = LogFactory.getLog(GroupOperation.class);
@@ -20,9 +27,18 @@ public class GroupOperation implements Serializable {
 	private long id;
 	private NodeDescriptor sourceDesc;
 	private Message orig;
+	private IOperationSuccess success;
+	private IOperationFailure failure;
 	
 	public GroupOperation(Message orig) {
 		this.orig = orig;
+		group = new HashSet<NodeDescriptor>();
+	}
+	
+	public GroupOperation(Message orig,IOperationSuccess success,IOperationFailure failure) {
+		this.orig = orig;
+		this.success=success;
+		this.failure=failure;
 		group = new HashSet<NodeDescriptor>();
 	}
 	
@@ -59,7 +75,10 @@ public class GroupOperation implements Serializable {
 				try {
 					sendGroupNodeMessage(comms,desc, initiateNodeMessage() ,orig);
 				} catch (DragonCommsException e) {
-					fail(comms,"network errors prevented group operation");
+					if(failure!=null)
+						failure.fail("network errors prevented group operation");
+					else
+						fail(comms,"network errors prevented group operation");
 				}
 			}
 		}
@@ -88,13 +107,17 @@ public class GroupOperation implements Serializable {
 	
 	public void receiveSuccess(IComms comms, NodeDescriptor desc) {
 		if(remove(desc)) {
-			success(comms);
+			if(success!=null) success.success();
+			else success(comms);
 		}
 	}
 	
 	public void receiveError(IComms comms, NodeDescriptor desc,String error) {
 		remove(desc);
-		fail(comms,error);
+		if(failure!=null)
+			failure.fail(error);
+		else
+			fail(comms,error);
 	}
 	
 	public void success(IComms comms) {

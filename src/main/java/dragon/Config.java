@@ -17,12 +17,14 @@ import org.yaml.snakeyaml.Yaml;
 
 import dragon.network.NodeDescriptor;
 
+/**
+ * Parameters for Dragon.
+ * @author aaron
+ *
+ */
 public class Config extends HashMap<String, Object> {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -5933157870455074368L;
-	private static Log log = LogFactory.getLog(Config.class);
+	private static final Log log = LogFactory.getLog(Config.class);
 
 	public static final String TOPOLOGY_WORKERS="topology.workers";
 	public static final String TOPOLOGY_TRIDENT_BATCH_EMIT_INTERVAL_MILLIS="topology.trident.batch.emit.interval.millis";
@@ -182,22 +184,22 @@ public class Config extends HashMap<String, Object> {
 	public void drop() {
 		remove(DRAGON_OUTPUT_BUFFER_SIZE);
 		remove(DRAGON_INPUT_BUFFER_SIZE);
-		remove(DRAGON_BASE_DIR,"/tmp/dragon");
-		remove(DRAGON_PERSISTANCE_DIR,"persistance");
-		remove(DRAGON_JAR_DIR,"jars");
-		remove(DRAGON_LOCALCLUSTER_THREADS,5);
-		remove(DRAGON_ROUTER_INPUT_THREADS,1);
-		remove(DRAGON_ROUTER_OUTPUT_THREADS,1);
-		remove(DRAGON_ROUTER_INPUT_BUFFER_SIZE,16);
-		remove(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,16);
-		remove(DRAGON_METRICS_ENABLED,true);
-		remove(DRAGON_METRICS_SAMPLE_PERIOD_MS,60*1000);
-		remove(DRAGON_RECYCLER_TUPLE_CAPACITY,1024);
-		remove(DRAGON_RECYCLER_TUPLE_EXPANSION,1024);
-		remove(DRAGON_RECYCLER_TUPLE_COMPACT,0.20);
-		remove(DRAGON_RECYCLER_TASK_CAPACITY,1024);
-		remove(DRAGON_RECYCLER_TASK_EXPANSION,1024);
-		remove(DRAGON_RECYCLER_TASK_COMPACT,0.20);
+		remove(DRAGON_BASE_DIR);
+		remove(DRAGON_PERSISTANCE_DIR);
+		remove(DRAGON_JAR_DIR);
+		remove(DRAGON_LOCALCLUSTER_THREADS);
+		remove(DRAGON_ROUTER_INPUT_THREADS);
+		remove(DRAGON_ROUTER_OUTPUT_THREADS);
+		remove(DRAGON_ROUTER_INPUT_BUFFER_SIZE);
+		remove(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE);
+		remove(DRAGON_METRICS_ENABLED);
+		remove(DRAGON_METRICS_SAMPLE_PERIOD_MS);
+		remove(DRAGON_RECYCLER_TUPLE_CAPACITY);
+		remove(DRAGON_RECYCLER_TUPLE_EXPANSION);
+		remove(DRAGON_RECYCLER_TUPLE_COMPACT);
+		remove(DRAGON_RECYCLER_TASK_CAPACITY);
+		remove(DRAGON_RECYCLER_TASK_EXPANSION);
+		remove(DRAGON_RECYCLER_TASK_COMPACT);
 	}
 
 	public void setNumWorkers(int numWorkers) {

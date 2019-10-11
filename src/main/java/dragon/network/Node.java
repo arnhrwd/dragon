@@ -184,10 +184,28 @@ public class Node {
 	}
 	
 	public synchronized void localClusterTerminated(String topologyId, TerminateTopologyGroupOperation ttgo) {
-		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
+		//router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
 		System.gc();
 		ttgo.sendSuccess(comms);
+	}
+	
+	public GroupOperation newGroupOperation(GroupOperation go,String topologyId){
+		for(NodeDescriptor desc : localClusters.get(topologyId).getTopology().getReverseEmbedding().keySet()) {
+			go.add(desc);
+		}
+		register(go);
+		go.initiate(comms);
+		return go;
+	}
+	
+	public GroupOperation newGroupOperation(GroupOperation go,DragonTopology topology){
+		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
+			go.add(desc);
+		}
+		register(go);
+		go.initiate(comms);
+		return go;
 	}
 
 	public void register(GroupOperation groupOperation) {
