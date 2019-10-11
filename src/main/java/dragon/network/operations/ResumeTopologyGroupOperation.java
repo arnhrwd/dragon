@@ -11,8 +11,8 @@ import dragon.network.messages.service.ServiceMessage;
 public class ResumeTopologyGroupOperation extends GroupOperation {
 	private static final long serialVersionUID = -8685556477082460093L;
 	private final String topologyId;
-	public ResumeTopologyGroupOperation(Message orig) {
-		super(orig);
+	public ResumeTopologyGroupOperation(Message orig,IOperationSuccess success,IOperationFailure failure) {
+		super(orig,success,failure);
 		topologyId = ((dragon.network.messages.service.ResumeTopologyMessage)orig).topologyId;
 		
 	}
@@ -30,16 +30,5 @@ public class ResumeTopologyGroupOperation extends GroupOperation {
 	@Override 
 	protected NodeMessage errorNodeMessage(String error) {
 		return new ResumeTopologyErrorMessage(topologyId,error);
-	}
-	
-	@Override
-	protected ServiceMessage successServiceMessage() {
-		return new dragon.network.messages.service.TopologyResumedMessage(topologyId);
-	}
-	
-	@Override
-	protected ServiceMessage failServiceMessage(String error) {
-		return new dragon.network.messages.service.ResumeTopologyErrorMessage(topologyId,error);
-		
 	}
 }

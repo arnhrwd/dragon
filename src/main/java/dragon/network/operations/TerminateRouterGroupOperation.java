@@ -10,10 +10,6 @@ import dragon.network.messages.node.TerminateRouterMessage;
 public class TerminateRouterGroupOperation extends GroupOperation {
 	private static final long serialVersionUID = 7871246034104368201L;
 	public final String topologyId;
-	public TerminateRouterGroupOperation(Message orig,String topologyId) {
-		super(orig);
-		this.topologyId=topologyId;
-	}
 	
 	public TerminateRouterGroupOperation(Message orig,String topologyId,IOperationSuccess success,IOperationFailure failure) {
 		super(orig,success,failure);

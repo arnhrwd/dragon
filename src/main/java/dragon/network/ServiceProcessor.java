@@ -9,6 +9,9 @@ import dragon.network.messages.service.RunTopologyMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.TerminateTopologyErrorMessage;
 import dragon.network.messages.service.TerminateTopologyMessage;
+import dragon.network.messages.service.TopologyHaltedMessage;
+import dragon.network.messages.service.TopologyListMessage;
+import dragon.network.messages.service.TopologyResumedMessage;
 import dragon.network.messages.service.TopologyRunningMessage;
 import dragon.network.messages.service.TopologyTerminatedMessage;
 import dragon.network.messages.service.UploadJarFailedMessage;
@@ -263,12 +266,22 @@ public class ServiceProcessor extends Thread {
 	 */
 	private void processListTopologies(ServiceMessage command){
 		ListTopologiesGroupOperation ltgo = new ListTopologiesGroupOperation(command);
+		ltgo.onSuccess(()->{
+				try {
+					node.getComms().sendServiceMessage(new TopologyListMessage(ltgo.descState,ltgo.descErrors),command);
+				} catch (DragonCommsException e) {
+					log.fatal("can't communicate with client: "+e.getMessage());
+				}
+			});
+		ltgo.onFailure((error)->{
+				log.fatal(error);
+			});
 		for(NodeDescriptor desc : node.getNodeProcessor().getContext().values()) {
 			ltgo.add(desc);
 		}
 		node.register(ltgo);
-		node.listTopologies(ltgo);
 		ltgo.initiate(node.getComms());
+		node.listTopologies(ltgo);
 		ltgo.aggregate(node.getComms().getMyNodeDescriptor(),
 				ltgo.state,ltgo.errors);
 	}
@@ -287,7 +300,21 @@ public class ServiceProcessor extends Thread {
 			}
 		} else {
 			HaltTopologyGroupOperation htgo = (HaltTopologyGroupOperation)
-					node.newGroupOperation(new HaltTopologyGroupOperation(htm),htm.topologyId);
+				node.newGroupOperation(new HaltTopologyGroupOperation(htm,
+					()->{
+						try {
+							node.getComms().sendServiceMessage(new TopologyHaltedMessage(htm.topologyId),command);
+						} catch (DragonCommsException e) {
+							log.fatal("can't communicate with client: "+e.getMessage());
+						}
+					},
+					(error)->{
+						try {
+							node.getComms().sendServiceMessage(new HaltTopologyErrorMessage(htm.topologyId,error),command);
+						} catch (DragonCommsException e) {
+							log.fatal("can't communicate with client: "+e.getMessage());
+						}
+					}),htm.topologyId);
 			node.haltTopology(htm.topologyId);
 			htgo.receiveSuccess(node.getComms(), node.getComms().getMyNodeDescriptor());
 		}
@@ -307,7 +334,21 @@ public class ServiceProcessor extends Thread {
 			}
 		} else {
 			ResumeTopologyGroupOperation htgo = (ResumeTopologyGroupOperation)
-					node.newGroupOperation(new ResumeTopologyGroupOperation(htm),htm.topologyId);
+				node.newGroupOperation(new ResumeTopologyGroupOperation(htm,
+					()->{
+						try {
+							node.getComms().sendServiceMessage(new TopologyResumedMessage(htm.topologyId),command);
+						} catch (DragonCommsException e) {
+							log.fatal("can't communicate with client: "+e.getMessage());
+						}
+					},
+					(error)->{
+						try {
+							node.getComms().sendServiceMessage(new ResumeTopologyErrorMessage(htm.topologyId,error),command);
+						} catch (DragonCommsException e) {
+							log.fatal("can't communicate with client: "+e.getMessage());
+						}
+					}),htm.topologyId);
 			node.resumeTopology(htm.topologyId);
 			htgo.receiveSuccess(node.getComms(), node.getComms().getMyNodeDescriptor());
 		}

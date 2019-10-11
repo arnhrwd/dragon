@@ -20,25 +20,17 @@ import dragon.network.messages.service.ServiceMessage;
  * @author aaron
  *
  */
-public class GroupOperation implements Serializable {
+public class GroupOperation extends Operation implements Serializable {
 	private static final long serialVersionUID = 7500196228211761411L;
 	private static Log log = LogFactory.getLog(GroupOperation.class);
 	protected transient HashSet<NodeDescriptor> group;
 	private long id;
 	private NodeDescriptor sourceDesc;
 	private Message orig;
-	private IOperationSuccess success;
-	private IOperationFailure failure;
-	
-	public GroupOperation(Message orig) {
-		this.orig = orig;
-		group = new HashSet<NodeDescriptor>();
-	}
 	
 	public GroupOperation(Message orig,IOperationSuccess success,IOperationFailure failure) {
+		super(success,failure);
 		this.orig = orig;
-		this.success=success;
-		this.failure=failure;
 		group = new HashSet<NodeDescriptor>();
 	}
 	
@@ -64,21 +56,19 @@ public class GroupOperation implements Serializable {
 		return this.sourceDesc;
 	}
 	
-	protected void sendGroupNodeMessage(IComms comms,NodeDescriptor desc, NodeMessage message, Message to) throws DragonCommsException {
+	private void sendGroupNodeMessage(IComms comms,NodeDescriptor desc, NodeMessage message, Message to) throws DragonCommsException {
 		message.setGroupOperation(this);
 		comms.sendNodeMessage(desc,message,to);
 	}
 
 	public void initiate(IComms comms) {
+		super.start();
 		for(NodeDescriptor desc : group) {
 			if(!desc.equals(sourceDesc)) {
 				try {
 					sendGroupNodeMessage(comms,desc, initiateNodeMessage() ,orig);
 				} catch (DragonCommsException e) {
-					if(failure!=null)
-						failure.fail("network errors prevented group operation");
-					else
-						fail(comms,"network errors prevented group operation");
+					fail("network errors prevented group operation");
 				}
 			}
 		}
@@ -107,34 +97,13 @@ public class GroupOperation implements Serializable {
 	
 	public void receiveSuccess(IComms comms, NodeDescriptor desc) {
 		if(remove(desc)) {
-			if(success!=null) success.success();
-			else success(comms);
+			success();
 		}
 	}
 	
 	public void receiveError(IComms comms, NodeDescriptor desc,String error) {
 		remove(desc);
-		if(failure!=null)
-			failure.fail(error);
-		else
-			fail(comms,error);
-	}
-	
-	public void success(IComms comms) {
-		try {
-			comms.sendServiceMessage(successServiceMessage(),orig);
-		} catch (DragonCommsException e1) {
-			// TODO: cleanup
-		}
-	}
-	
-	public void fail(IComms comms, String error) {
-		log.fatal(error);
-		try {
-			comms.sendServiceMessage(failServiceMessage(error),orig);
-		} catch (DragonCommsException e1) {
-			// TODO: cleanup
-		}
+		fail(error);
 	}
 	
 	/*
@@ -148,12 +117,6 @@ public class GroupOperation implements Serializable {
 		return null;
 	}
 	protected NodeMessage errorNodeMessage(String error) {
-		return null;
-	}
-	protected ServiceMessage successServiceMessage() {
-		return null;
-	}
-	protected ServiceMessage failServiceMessage(String error) {
 		return null;
 	}
 

@@ -40,13 +40,5 @@ public class RunTopologyGroupOperation extends GroupOperation {
 	protected NodeMessage errorNodeMessage(String error) {
 		return new PrepareJarErrorMessage(rtm.topologyName,error);
 	}
-	@Override
-	protected ServiceMessage successServiceMessage() {
-		return new TopologyRunningMessage(rtm.topologyName);
-	}
-	@Override
-	protected ServiceMessage failServiceMessage(String error) {
-		return new RunTopologyErrorMessage(rtm.topologyName,error);
-	}
 
 }
