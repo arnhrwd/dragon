@@ -17,7 +17,7 @@ public class TermTopoGroupOp extends GroupOp {
 	private final String topologyId;
 	
 	public TermTopoGroupOp(TermTopoSMsg ttm,IOpSuccess success, IOpFailure failure) {
-		super(ttm,success,failure);
+		super(success,failure);
 		this.topologyId=ttm.topologyId;
 	}
 	

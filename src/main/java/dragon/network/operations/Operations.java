@@ -62,14 +62,14 @@ public class Operations extends Thread {
 			DragonTopology topology,
 			IOpSuccess success,
 			IOpFailure failure) {
-		TermRouterGroupOp trgo = new TermRouterGroupOp(ttm,ttm.topologyId,success,failure);
+		TermRouterGroupOp trgo = new TermRouterGroupOp(ttm.topologyId,success,failure);
 		return (TermRouterGroupOp) newGroupOperation(trgo,topology);
 	}
 	
-	public ListToposGroupOp newListToposGroupOp(ListToposSMsg ltm,
+	public ListToposGroupOp newListToposGroupOp(
 			IOpSuccess success,
 			IOpFailure failure) {
-		ListToposGroupOp ltgo = new ListToposGroupOp(ltm);
+		ListToposGroupOp ltgo = new ListToposGroupOp();
 		ltgo.onSuccess(success);
 		ltgo.onFailure(failure);
 		for(NodeDescriptor desc : node.getNodeProcessor().getContext().values()) {

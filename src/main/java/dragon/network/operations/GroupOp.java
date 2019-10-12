@@ -9,7 +9,6 @@ import org.apache.commons.logging.LogFactory;
 import dragon.network.NodeDescriptor;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
-import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
 
 /**
@@ -24,11 +23,8 @@ public class GroupOp extends Op implements Serializable {
 	private static Log log = LogFactory.getLog(GroupOp.class);
 	protected transient HashSet<NodeDescriptor> group;
 	
-	private Message orig;
-	
-	public GroupOp(Message orig,IOpSuccess success,IOpFailure failure) {
+	public GroupOp(IOpSuccess success,IOpFailure failure) {
 		super(success,failure);
-		this.orig = orig;
 		group = new HashSet<NodeDescriptor>();
 	}
 	
@@ -41,9 +37,9 @@ public class GroupOp extends Op implements Serializable {
 		return group.isEmpty();
 	}
 
-	private void sendGroupNodeMessage(IComms comms,NodeDescriptor desc, NodeMessage message, Message to) throws DragonCommsException {
-		message.setGroupOperation(this);
-		comms.sendNodeMessage(desc,message,to);
+	private void sendGroupNodeMessage(IComms comms,NodeDescriptor desc, NodeMessage message) throws DragonCommsException {
+		message.setGroupOp(this);
+		comms.sendNodeMessage(desc,message);
 	}
 
 	public void initiate(IComms comms) {
@@ -51,7 +47,7 @@ public class GroupOp extends Op implements Serializable {
 		for(NodeDescriptor desc : group) {
 			if(!desc.equals(getSourceDesc())) {
 				try {
-					sendGroupNodeMessage(comms,desc, initiateNodeMessage() ,orig);
+					sendGroupNodeMessage(comms,desc, initiateNodeMessage());
 				} catch (DragonCommsException e) {
 					fail("network errors prevented group operation");
 				}
@@ -63,7 +59,7 @@ public class GroupOp extends Op implements Serializable {
 		if(!getSourceDesc().equals(comms.getMyNodeDescriptor())) {
 			NodeMessage tsm = successNodeMessage();
 			try {
-				sendGroupNodeMessage(comms,getSourceDesc(), tsm, orig);
+				sendGroupNodeMessage(comms,getSourceDesc(), tsm);
 			} catch (DragonCommsException e) {
 				log.fatal("network errors prevented group operation");
 			}
@@ -74,7 +70,7 @@ public class GroupOp extends Op implements Serializable {
 	
 	public void sendError(IComms comms,String error) {
 		try {
-			comms.sendNodeMessage(getSourceDesc(),errorNodeMessage(error),orig);
+			comms.sendNodeMessage(getSourceDesc(),errorNodeMessage(error));
 		} catch (DragonCommsException e) {
 			log.fatal("network errors prevented group operation");
 		}

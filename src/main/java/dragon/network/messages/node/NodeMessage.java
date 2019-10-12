@@ -2,7 +2,14 @@ package dragon.network.messages.node;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.Message;
+import dragon.network.operations.GroupOp;
 
+/**
+ * Node messages are sent only between nodes (daemons), and processed by the 
+ * Node processor.
+ * @author aaron
+ *
+ */
 public class NodeMessage extends Message {
 	private static final long serialVersionUID = -1656333391539097974L;
 
@@ -36,6 +43,16 @@ public class NodeMessage extends Message {
 	}
 	
 	private final NodeMessageType type;
+	
+	/**
+	 * Used when the message is part of a group operation. Messages may or may
+	 * not be part of a group operation.
+	 */
+	private GroupOp groupOperation;
+	
+	/**
+	 * Used either to respond, or to complete group operations.
+	 */
 	private NodeDescriptor sender;
 	
 	public NodeMessage(NodeMessageType type) {
@@ -54,6 +71,12 @@ public class NodeMessage extends Message {
 		return sender;
 	}
 
+	public void setGroupOp(GroupOp groupOperation) {
+		this.groupOperation=groupOperation;
+	}
 	
+	public GroupOp getGroupOp() {
+		return this.groupOperation;
+	}
 
 }

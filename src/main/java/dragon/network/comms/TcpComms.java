@@ -15,7 +15,6 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
 import dragon.network.NodeDescriptor;
-import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
@@ -305,7 +304,7 @@ public class TcpComms implements IComms {
 		throw new DragonCommsException("service data can not be transmitted");
 	}
 	
-	public void sendServiceMessage(ServiceMessage message, Message inResponseTo) throws DragonCommsException {
+	public void sendServiceMessage(ServiceMessage message, ServiceMessage inResponseTo) throws DragonCommsException {
 		message.setMessageId(inResponseTo.getMessageId());
 		sendServiceMessage(message);
 	}
@@ -342,10 +341,10 @@ public class TcpComms implements IComms {
 		throw new DragonCommsException("node data can not be transmitted");
 	}
 	
-	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message, Message inResponseTo) throws DragonCommsException {
-		message.setMessageId(inResponseTo.getMessageId());
-		sendNodeMessage(desc,message);
-	}
+//	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message) throws DragonCommsException {
+//		//message.setMessageId(inResponseTo.getMessageId());
+//		sendNodeMessage(desc,message);
+//	}
 
 	public NodeMessage receiveNodeMessage() throws InterruptedException {
 		return incomingNodeQueue.take();

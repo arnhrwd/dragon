@@ -11,9 +11,8 @@ public class HaltTopoGroupOp extends GroupOp {
 	private final String topologyId;
 	
 	public HaltTopoGroupOp(Message orig,IOpSuccess success, IOpFailure failure) {
-		super(orig,success,failure);
+		super(success,failure);
 		topologyId = ((dragon.network.messages.service.HaltTopoSMsg)orig).topologyId;
-		
 	}
 	
 	@Override

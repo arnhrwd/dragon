@@ -5,6 +5,11 @@ import dragon.network.messages.Message;
 public class ServiceMessage extends Message {
 	private static final long serialVersionUID = -682715214185176661L;
 	
+	/**
+	 * The client id, used to identify the client to respond to.
+	 */
+	private String messageId="";
+	
 	public static enum ServiceMessageType {
 		RUN_TOPOLOGY,
 		TOPOLOGY_ERROR,
@@ -41,6 +46,14 @@ public class ServiceMessage extends Message {
 	
 	public ServiceMessageType getType(){
 		return type;
+	}
+	
+	public void setMessageId(String messageId) {
+		this.messageId=messageId;
+	}
+	
+	public String getMessageId() {
+		return messageId;
 	}
 	
 }

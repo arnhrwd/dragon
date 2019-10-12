@@ -1,6 +1,6 @@
 package dragon.network.operations;
 
-import dragon.network.messages.Message;
+
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.TopoRemovedNMsg;
 import dragon.network.messages.node.RemoveTopoErrorNMsg;
@@ -11,8 +11,8 @@ public class TermRouterGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7871246034104368201L;
 	public final String topologyId;
 	
-	public TermRouterGroupOp(Message orig,String topologyId,IOpSuccess success,IOpFailure failure) {
-		super(orig,success,failure);
+	public TermRouterGroupOp(String topologyId,IOpSuccess success,IOpFailure failure) {
+		super(success,failure);
 		this.topologyId=topologyId;
 	}
 	

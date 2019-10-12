@@ -11,7 +11,7 @@ public class ResumeTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = -8685556477082460093L;
 	private final String topologyId;
 	public ResumeTopoGroupOp(Message orig,IOpSuccess success,IOpFailure failure) {
-		super(orig,success,failure);
+		super(success,failure);
 		topologyId = ((dragon.network.messages.service.ResumeTopoSMsg)orig).topologyId;
 		
 	}

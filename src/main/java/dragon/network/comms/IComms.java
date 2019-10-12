@@ -56,7 +56,7 @@ public interface IComms {
 	 * @param inResponseTo message in response to
 	 * @throws DragonCommsException if the message could not be sent.
 	 */
-	public void sendServiceMessage(ServiceMessage message, Message inResponseTo) throws DragonCommsException;
+	public void sendServiceMessage(ServiceMessage message, ServiceMessage inResponseTo) throws DragonCommsException;
 	
 	/**
 	 * Blocking receive message for service messages. A received service message
@@ -73,7 +73,7 @@ public interface IComms {
 	
 	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message) throws DragonCommsException;
 	
-	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message, Message inReponseTo) throws DragonCommsException;
+	//public void sendNodeMessage(NodeDescriptor desc, NodeMessage message, Message inReponseTo) throws DragonCommsException;
 	
 	public NodeMessage receiveNodeMessage() throws InterruptedException;
 	

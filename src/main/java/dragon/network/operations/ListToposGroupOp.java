@@ -17,8 +17,8 @@ public class ListToposGroupOp extends GroupOp {
 	public transient final HashMap<String,HashMap<String,String>> descState;
 	public transient final HashMap<String,HashMap<String,HashMap<String,ArrayList<ComponentError>>>> descErrors;
 	
-	public ListToposGroupOp(Message orig) {
-		super(orig,null,null);
+	public ListToposGroupOp() {
+		super(null,null);
 		descState=new HashMap<String,HashMap<String,String>>();
 		descErrors=new HashMap<String,HashMap<String,HashMap<String,ArrayList<ComponentError>>>>();
 	}

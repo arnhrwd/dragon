@@ -8,34 +8,26 @@ import dragon.network.messages.service.RunTopoSMsg;
 
 public class RunTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = -2038551040445600017L;
-	private RunTopoSMsg rtm;
-	private transient byte[] jar;
-	
+	private final transient byte[] jar;
+	private final String topologyId;
 	public RunTopoGroupOp(RunTopoSMsg orig,byte[] jar,IOpSuccess success,
 			IOpFailure failure) {
-		super(arbridged(orig),success,failure);
-		this.rtm=orig;
-		this.rtm.dragonTopology=null;
+		super(success,failure);
 		this.jar=jar;
-	}
-	
-	private static RunTopoSMsg arbridged(RunTopoSMsg rtm) {
-		RunTopoSMsg rtmlocal = new RunTopoSMsg(rtm.topologyName,rtm.conf,null);
-		rtmlocal.setMessageId(rtm.getMessageId());
-		return rtmlocal;
+		this.topologyId=orig.topologyName;
 	}
 	
 	@Override
 	protected NodeMessage initiateNodeMessage() {
-		return new PrepareJarNMsg(rtm.topologyName,jar);
+		return new PrepareJarNMsg(topologyId,jar);
 	}
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new JarReadyNMsg(rtm.topologyName);
+		return new JarReadyNMsg(topologyId);
 	}
 	@Override
 	protected NodeMessage errorNodeMessage(String error) {
-		return new PrepareJarErrorNMsg(rtm.topologyName,error);
+		return new PrepareJarErrorNMsg(topologyId,error);
 	}
 
 }

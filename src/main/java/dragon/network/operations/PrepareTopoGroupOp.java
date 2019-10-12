@@ -13,7 +13,7 @@ public class PrepareTopoGroupOp extends GroupOp {
 	
 	public PrepareTopoGroupOp(RunTopoSMsg orig,IOpSuccess success,
 			IOpFailure failure) {
-		super(orig,success,failure);
+		super(success,failure);
 		this.rtm=orig;
 	}
 

@@ -11,7 +11,7 @@ public class StartTopoGroupOp extends GroupOp {
 	private final RunTopoSMsg rtm;
 	
 	public StartTopoGroupOp(RunTopoSMsg orig,IOpSuccess success,IOpFailure failure) {
-		super(orig,success,failure);
+		super(success,failure);
 		this.rtm=orig;
 	}
 

@@ -13,7 +13,7 @@ import dragon.network.messages.service.TopoHaltedSMsg;
 import dragon.network.messages.service.TopoListSMsg;
 import dragon.network.messages.service.TopoResumedMsg;
 import dragon.network.messages.service.TopoRunningSMsg;
-import dragon.network.messages.service.TopologyTerminatedMessage;
+import dragon.network.messages.service.TopoTermdSMsg;
 import dragon.network.messages.service.UploadJarFailedSMsg;
 import dragon.network.messages.service.RunTopoErrorSMsg;
 import dragon.network.comms.DragonCommsException;
@@ -115,8 +115,6 @@ public class ServiceProcessor extends Thread {
 			final DragonTopology dragonTopology = scommand.dragonTopology;
 			Operations.getInstance().newRunTopoGroupOp(scommand,
 				node.readJarFile(scommand.topologyName), dragonTopology, (op) -> {
-					log.debug("here");
-					scommand.dragonTopology = dragonTopology; // undo a side-effect from the run topology operation
 					Operations.getInstance().newPrepareTopoGroupOp(scommand, dragonTopology, (op2) -> {
 						Operations.getInstance().newStartTopologyGroupOperation(scommand, (op3) -> {
 								try {
@@ -235,7 +233,7 @@ public class ServiceProcessor extends Thread {
 							topology,
 							(op2)->{
 								try {
-									node.getComms().sendServiceMessage(new TopologyTerminatedMessage(tt.topologyId),tt);
+									node.getComms().sendServiceMessage(new TopoTermdSMsg(tt.topologyId),tt);
 								} catch (DragonCommsException e) {
 									log.fatal("can't communicate with client: "+e.getMessage());
 								}
@@ -271,8 +269,7 @@ public class ServiceProcessor extends Thread {
 	 * @param command
 	 */
 	private void processListTopologies(ServiceMessage command){
-		ListToposSMsg ltm = (ListToposSMsg)command;
-		Operations.getInstance().newListToposGroupOp(ltm,
+		Operations.getInstance().newListToposGroupOp(
 			(op)->{
 				ListToposGroupOp ltgo = (ListToposGroupOp)op;
 					try {
