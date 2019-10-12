@@ -28,11 +28,7 @@ public class Bolt extends Component {
 	@Override
 	public final synchronized void run() {
 		Tuple tuple;
-		if(isClosing()) {
-			close();
-			setClosed();
-			return;
-		}
+		if(closed)return;
 		if(tickTuple!=null) {
 			tuple=tickTuple;
 			tickTuple=null;
@@ -90,7 +86,7 @@ public class Bolt extends Component {
 					//log.debug("closed");
 					close();
 					getOutputCollector().emitTerminateTuple(); //TODO: see how to call this safely _after_ calling setClosed()
-					setClosed();
+					closed=true;
 					
 				}
 				break;

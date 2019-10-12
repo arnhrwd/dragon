@@ -744,7 +744,7 @@ public class LocalCluster {
 		return dragonTopology;
 	}
 
-	public void setShouldTerminate() {
+	public synchronized void setShouldTerminate() {
 		if(state==State.TERMINATING) return;
 		if(state==State.HALTED) {
 			state=State.TERMINATING;
@@ -760,8 +760,8 @@ public class LocalCluster {
 			HashMap<Integer,Spout> component = spouts.get(componentId);
 			for(Integer taskId : component.keySet()) {
 				Spout spout = component.get(taskId);
-				spout.setClosing();
-				spout.run();
+				spout.setClosed();
+				spout.close();
 			}
 		}
 		checkCloseCondition();
@@ -807,7 +807,7 @@ public class LocalCluster {
 		}
 	}
 
-	public void componentException(Component component, String message, StackTraceElement[] stackTrace) {
+	public synchronized void componentException(Component component, String message, StackTraceElement[] stackTrace) {
 		ComponentError ce = new ComponentError(message,stackTrace);
 		if(!componentErrors.containsKey(component)) {
 			componentErrors.put(component,new ArrayList<ComponentError>());

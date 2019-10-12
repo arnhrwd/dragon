@@ -15,12 +15,10 @@ public class Spout extends Component {
 
 	@Override
 	public final synchronized void run() {
-		if(isClosing()) {
-			close();
-			setClosed();
+		if(closed) {
+			log.debug("closed");
 			return;
 		}
-		if(isClosed()) return;
 		getOutputCollector().resetEmit();
 		try {
 			nextTuple();

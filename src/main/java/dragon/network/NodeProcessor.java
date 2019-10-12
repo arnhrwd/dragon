@@ -220,6 +220,7 @@ public class NodeProcessor extends Thread {
 		StopTopoNMsg stm = (StopTopoNMsg) msg;
 		try {
 			// starts a thread to stop the topology
+			log.debug("asking node to stop the topology");
 			node.terminateTopology(stm.topologyId,stm.getGroupOp());
 		} catch (DragonTopologyException e) {
 			sendError(stm,e.getMessage());

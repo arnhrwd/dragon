@@ -14,32 +14,40 @@ public class Component implements Runnable, Cloneable, Serializable{
 	private LocalCluster localCluster;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	private Collector collector;
-	private volatile long emitted=0;
-	private volatile long transferred=0;
-	private volatile boolean closing=false;
-	private volatile boolean closed=false;
+	private Long emitted=0L;
+	private Long transferred=0L;
+	protected Boolean closing=false;
+	protected Boolean closed=false;
 	
-	public synchronized final void setClosing() {
-		closing=true;
+	public final void setClosing() {
+		synchronized(closing) {
+			closing=true;
+		}
 	}
 	
-	public synchronized final boolean isClosing() {
-		return closing;
+	public final boolean isClosing() {
+		synchronized(closing){
+			return closing;
+		}
 	}
 	
-	public synchronized final void setClosed() {
-		closed=true;
+	public final void setClosed() {
+		synchronized(closed) {
+			closed=true;
+		}
 	}
 	
-	public synchronized final boolean isClosed() {
-		return closed;
+	public final boolean isClosed() {
+		synchronized(closed) {
+			return closed;
+		}
 	}
 	
 	public final void setOutputCollector(Collector collector) {
 		closing=false;
 		closed=false;
-		emitted=0;
-		transferred=0;
+		emitted=0L;
+		transferred=0L;
 		this.collector=collector;
 	}
 	
@@ -90,18 +98,26 @@ public class Component implements Runnable, Cloneable, Serializable{
 	}  
 	
 	public final void incEmitted(long inc){
-		emitted+=inc;
+		synchronized(emitted) {
+			emitted+=inc;
+		}
 	}
 	
 	public final void incTransferred(long inc){
-		transferred+=inc;
+		synchronized(transferred){
+			transferred+=inc;
+		}
 	}
 	
 	public final long getEmitted(){
-		return emitted;
+		synchronized(emitted) {
+			return emitted;
+		}
 	}
 	
 	public final long getTransferred(){
-		return transferred;
+		synchronized(transferred) {
+			return transferred;
+		}
 	}
 }
