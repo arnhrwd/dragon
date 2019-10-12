@@ -11,7 +11,6 @@ import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.service.ServiceMessage;
 
 /**
  * A group operation is one which sends a number of daemons messages and waits
@@ -20,15 +19,14 @@ import dragon.network.messages.service.ServiceMessage;
  * @author aaron
  *
  */
-public class GroupOperation extends Operation implements Serializable {
+public class GroupOp extends Op implements Serializable {
 	private static final long serialVersionUID = 7500196228211761411L;
-	private static Log log = LogFactory.getLog(GroupOperation.class);
+	private static Log log = LogFactory.getLog(GroupOp.class);
 	protected transient HashSet<NodeDescriptor> group;
-	private long id;
-	private NodeDescriptor sourceDesc;
+	
 	private Message orig;
 	
-	public GroupOperation(Message orig,IOperationSuccess success,IOperationFailure failure) {
+	public GroupOp(Message orig,IOpSuccess success,IOpFailure failure) {
 		super(success,failure);
 		this.orig = orig;
 		group = new HashSet<NodeDescriptor>();
@@ -43,19 +41,6 @@ public class GroupOperation extends Operation implements Serializable {
 		return group.isEmpty();
 	}
 
-	public void init(NodeDescriptor desc,long groupOperationCounter) {
-		this.sourceDesc=desc;
-		this.id=groupOperationCounter;
-	}
-	
-	public Long getId() {
-		return this.id;
-	}
-	
-	public NodeDescriptor getSourceDesc() {
-		return this.sourceDesc;
-	}
-	
 	private void sendGroupNodeMessage(IComms comms,NodeDescriptor desc, NodeMessage message, Message to) throws DragonCommsException {
 		message.setGroupOperation(this);
 		comms.sendNodeMessage(desc,message,to);
@@ -64,7 +49,7 @@ public class GroupOperation extends Operation implements Serializable {
 	public void initiate(IComms comms) {
 		super.start();
 		for(NodeDescriptor desc : group) {
-			if(!desc.equals(sourceDesc)) {
+			if(!desc.equals(getSourceDesc())) {
 				try {
 					sendGroupNodeMessage(comms,desc, initiateNodeMessage() ,orig);
 				} catch (DragonCommsException e) {

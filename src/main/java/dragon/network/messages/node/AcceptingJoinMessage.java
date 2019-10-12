@@ -1,7 +1,5 @@
 package dragon.network.messages.node;
 
-import java.util.HashMap;
-
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
 

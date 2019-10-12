@@ -2,7 +2,7 @@ package dragon.network.messages;
 
 import java.io.Serializable;
 
-import dragon.network.operations.GroupOperation;
+import dragon.network.operations.GroupOp;
 
 
 public class Message implements Serializable {
@@ -13,7 +13,7 @@ public class Message implements Serializable {
 	
 	
 	private String messageId;
-	private GroupOperation groupOperation;
+	private GroupOp groupOperation;
 	
 	public Message(){
 		this.messageId="";
@@ -27,11 +27,11 @@ public class Message implements Serializable {
 		return messageId;
 	}
 	
-	public void setGroupOperation(GroupOperation groupOperation) {
+	public void setGroupOperation(GroupOp groupOperation) {
 		this.groupOperation=groupOperation;
 	}
 	
-	public GroupOperation getGroupOperation() {
+	public GroupOp getGroupOperation() {
 		return this.groupOperation;
 	}
 	

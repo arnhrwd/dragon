@@ -7,11 +7,11 @@ import dragon.network.messages.node.TerminateRouterErrorMessage;
 import dragon.network.messages.node.TerminateRouterMessage;
 
 
-public class TerminateRouterGroupOperation extends GroupOperation {
+public class TermRouterGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7871246034104368201L;
 	public final String topologyId;
 	
-	public TerminateRouterGroupOperation(Message orig,String topologyId,IOperationSuccess success,IOperationFailure failure) {
+	public TermRouterGroupOp(Message orig,String topologyId,IOpSuccess success,IOpFailure failure) {
 		super(orig,success,failure);
 		this.topologyId=topologyId;
 	}

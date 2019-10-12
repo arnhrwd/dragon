@@ -31,7 +31,7 @@ import dragon.network.messages.node.TopologyResumedMessage;
 import dragon.network.messages.node.TopologyStartedMessage;
 import dragon.network.messages.node.TopologyStoppedMessage;
 import dragon.network.messages.node.TopologyHaltedMessage;
-import dragon.network.operations.ListTopologiesGroupOperation;
+import dragon.network.operations.ListToposGroupOp;
 
 /**
  * Process node message, which are messages that can only originate from
@@ -146,13 +146,13 @@ public class NodeProcessor extends Thread {
 	
 	private void processPrepareJarError(NodeMessage message) {
 		PrepareJarErrorMessage pjem = (PrepareJarErrorMessage) message;
-		node.getGroupOperation(pjem.getGroupOperation()
+		node.getOperationsProcessor().getGroupOperation(pjem.getGroupOperation()
 				.getId()).receiveError(node.getComms(), pjem.getSender(), pjem.error);
 	}
 	
 	private void processJarReady(NodeMessage message) {
 		JarReadyMessage jrm = (JarReadyMessage) message;
-		node.getGroupOperation(jrm.getGroupOperation()
+		node.getOperationsProcessor().getGroupOperation(jrm.getGroupOperation()
 				.getId()).receiveSuccess(node.getComms(), jrm.getSender());
 		//node.removeGroupOperation(jrm.getGroupOperation().getId());
 	}
@@ -169,7 +169,7 @@ public class NodeProcessor extends Thread {
 	
 	private void processTopologyReady(NodeMessage message) {
 		TopologyReadyMessage tr = (TopologyReadyMessage) message;
-		node.getGroupOperation(tr.getGroupOperation().getId()).receiveSuccess(node.getComms(), tr.getSender());
+		node.getOperationsProcessor().getGroupOperation(tr.getGroupOperation().getId()).receiveSuccess(node.getComms(), tr.getSender());
 		//node.removeGroupOperation(tr.getGroupOperation().getId());
 	}
 	
@@ -181,7 +181,7 @@ public class NodeProcessor extends Thread {
 	
 	private void processTopologyStarted(NodeMessage message) {
 		TopologyStartedMessage tsm = (TopologyStartedMessage) message;
-		node.getGroupOperation(tsm.getGroupOperation().getId()).receiveSuccess(node.getComms(), tsm.getSender());
+		node.getOperationsProcessor().getGroupOperation(tsm.getGroupOperation().getId()).receiveSuccess(node.getComms(), tsm.getSender());
 		//node.removeGroupOperation(tsm.getGroupOperation().getId());
 	}
 	
@@ -197,7 +197,7 @@ public class NodeProcessor extends Thread {
 	
 	private void processTopologyStopped(NodeMessage message) {
 		TopologyStoppedMessage tsm = (TopologyStoppedMessage) message;
-		node.getGroupOperation(tsm
+		node.getOperationsProcessor().getGroupOperation(tsm
 				.getGroupOperation()
 				.getId())
 				.receiveSuccess(node.getComms(),tsm.getSender());
@@ -206,7 +206,7 @@ public class NodeProcessor extends Thread {
 	
 	private void processStopTopologyError(NodeMessage message) {
 		StopTopologyErrorMessage stem = (StopTopologyErrorMessage) message;
-		node.getGroupOperation(stem
+		node.getOperationsProcessor().getGroupOperation(stem
 				.getGroupOperation()
 				.getId())
 				.receiveError(node.getComms(),stem.getSender(),stem.error);
@@ -222,12 +222,12 @@ public class NodeProcessor extends Thread {
 	
 	private void processTopologyHalted(NodeMessage message) {
 		TopologyHaltedMessage thm = (TopologyHaltedMessage) message;
-		node.getGroupOperation(thm.getGroupOperation().getId()).receiveSuccess(node.getComms(), thm.getSender());
+		node.getOperationsProcessor().getGroupOperation(thm.getGroupOperation().getId()).receiveSuccess(node.getComms(), thm.getSender());
 	}
 	
 	private void processHaltTopologyError(NodeMessage message) {
 		HaltTopologyErrorMessage htem = (HaltTopologyErrorMessage) message;
-		node.getGroupOperation(htem
+		node.getOperationsProcessor().getGroupOperation(htem
 				.getGroupOperation()
 				.getId())
 				.receiveError(node.getComms(), htem.getSender(), htem.error);
@@ -243,12 +243,12 @@ public class NodeProcessor extends Thread {
 	
 	private void processTopologyResumed(NodeMessage message) {
 		TopologyResumedMessage thm = (TopologyResumedMessage) message;
-		node.getGroupOperation(thm.getGroupOperation().getId()).receiveSuccess(node.getComms(), thm.getSender());
+		node.getOperationsProcessor().getGroupOperation(thm.getGroupOperation().getId()).receiveSuccess(node.getComms(), thm.getSender());
 	}
 	
 	private void processResumeTopologyError(NodeMessage message) {
 		ResumeTopologyErrorMessage htem = (ResumeTopologyErrorMessage) message;
-		node.getGroupOperation(htem
+		node.getOperationsProcessor().getGroupOperation(htem
 				.getGroupOperation()
 				.getId())
 				.receiveError(node.getComms(), htem.getSender(), htem.error);
@@ -256,14 +256,14 @@ public class NodeProcessor extends Thread {
 	
 	private void processGetTopologyInformation(NodeMessage message) {
 		GetTopologyInformationMessage gtim = (GetTopologyInformationMessage) message;
-		node.listTopologies((ListTopologiesGroupOperation)gtim.getGroupOperation());
+		node.listTopologies((ListToposGroupOp)gtim.getGroupOperation());
 	}
 	
 	private void processTopologyInformation(NodeMessage message) {
 		TopologyInformationMessage tim = (TopologyInformationMessage) message;
-		((ListTopologiesGroupOperation)(node.getGroupOperation(tim.getGroupOperation().getId()))).aggregate(tim.getSender(),
+		((ListToposGroupOp)(node.getOperationsProcessor().getGroupOperation(tim.getGroupOperation().getId()))).aggregate(tim.getSender(),
 				tim.state,tim.errors);
-		node.getGroupOperation(tim.getGroupOperation().getId()).receiveSuccess(node.getComms(),
+		node.getOperationsProcessor().getGroupOperation(tim.getGroupOperation().getId()).receiveSuccess(node.getComms(),
 				tim.getSender());
 	}
 	

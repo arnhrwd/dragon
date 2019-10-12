@@ -13,8 +13,8 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.grouping.AbstractGrouping;
 import dragon.network.Node;
-import dragon.network.operations.GroupOperation;
-import dragon.network.operations.TerminateTopologyGroupOperation;
+import dragon.network.operations.GroupOp;
+import dragon.network.operations.TermTopoGroupOp;
 import dragon.spout.SpoutOutputCollector;
 import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
@@ -66,7 +66,7 @@ public class LocalCluster {
 	private final Condition restartCondition = haltLock.newCondition();
 	
 	@SuppressWarnings("rawtypes")
-	private HashMap<Class,HashSet<GroupOperation>> groupOperations;
+	private HashMap<Class,HashSet<GroupOp>> groupOperations;
 	
 	private String topologyName;
 	private Config conf;
@@ -119,7 +119,7 @@ public class LocalCluster {
 	public LocalCluster(){
 		this.node=null;
 		state=State.ALLOCATED;
-		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
+		groupOperations = new HashMap<Class,HashSet<GroupOp>>();
 		componentErrors = new  HashMap<Component,ArrayList<ComponentError>>();
 	}
 	
@@ -127,7 +127,7 @@ public class LocalCluster {
 	public LocalCluster(Node node) {
 		this.node=node;
 		state=State.ALLOCATED;
-		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
+		groupOperations = new HashMap<Class,HashSet<GroupOp>>();
 		componentErrors = new  HashMap<Component,ArrayList<ComponentError>>();
 	}
 	
@@ -582,8 +582,8 @@ public class LocalCluster {
 				
 				// the local cluster can now be garbage collected
 				synchronized(groupOperations) {
-					for(GroupOperation go : groupOperations.get(TerminateTopologyGroupOperation.class)) {
-						node.localClusterTerminated(topologyName,(TerminateTopologyGroupOperation) go);
+					for(GroupOp go : groupOperations.get(TermTopoGroupOp.class)) {
+						node.localClusterTerminated(topologyName,(TermTopoGroupOp) go);
 					}
 				}
 				
@@ -797,12 +797,12 @@ public class LocalCluster {
 		return node;
 	}
 	
-	public void setGroupOperation(GroupOperation go) {
+	public void setGroupOperation(GroupOp go) {
 		synchronized(groupOperations) {
 			if(!groupOperations.containsKey(go.getClass())) {
-				groupOperations.put(go.getClass(), new HashSet<GroupOperation>());
+				groupOperations.put(go.getClass(), new HashSet<GroupOp>());
 			}
-			HashSet<GroupOperation> gos = groupOperations.get(go.getClass());
+			HashSet<GroupOp> gos = groupOperations.get(go.getClass());
 			gos.add(go);
 		}
 	}

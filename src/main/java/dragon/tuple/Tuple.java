@@ -21,7 +21,8 @@ public class Tuple implements IRecyclable, Serializable {
 		APPLICATION,
 		TERMINATE,
 		FREEZE,
-		CHECKPOINT
+		CHECKPOINT,
+		PRECYCLE
 	}
 	
 	private Type type;

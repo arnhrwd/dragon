@@ -6,11 +6,11 @@ import dragon.network.messages.node.TopologyStartedMessage;
 import dragon.network.messages.service.RunTopologyMessage;
 
 
-public class StartTopologyGroupOperation extends GroupOperation {
+public class StartTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = 2635749611866470029L;
 	private final RunTopologyMessage rtm;
 	
-	public StartTopologyGroupOperation(RunTopologyMessage orig,IOperationSuccess success,IOperationFailure failure) {
+	public StartTopoGroupOp(RunTopologyMessage orig,IOpSuccess success,IOpFailure failure) {
 		super(orig,success,failure);
 		this.rtm=orig;
 	}

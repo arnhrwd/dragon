@@ -6,12 +6,11 @@ import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.ResumeTopologyErrorMessage;
 import dragon.network.messages.node.ResumeTopologyMessage;
 import dragon.network.messages.node.TopologyResumedMessage;
-import dragon.network.messages.service.ServiceMessage;
 
-public class ResumeTopologyGroupOperation extends GroupOperation {
+public class ResumeTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = -8685556477082460093L;
 	private final String topologyId;
-	public ResumeTopologyGroupOperation(Message orig,IOperationSuccess success,IOperationFailure failure) {
+	public ResumeTopoGroupOp(Message orig,IOpSuccess success,IOpFailure failure) {
 		super(orig,success,failure);
 		topologyId = ((dragon.network.messages.service.ResumeTopologyMessage)orig).topologyId;
 		

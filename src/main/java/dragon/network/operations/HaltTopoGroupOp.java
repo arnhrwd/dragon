@@ -5,13 +5,12 @@ import dragon.network.messages.node.HaltTopologyErrorMessage;
 import dragon.network.messages.node.HaltTopologyMessage;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.TopologyHaltedMessage;
-import dragon.network.messages.service.ServiceMessage;
 
-public class HaltTopologyGroupOperation extends GroupOperation {
+public class HaltTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7324344914355135103L;
 	private final String topologyId;
 	
-	public HaltTopologyGroupOperation(Message orig,IOperationSuccess success, IOperationFailure failure) {
+	public HaltTopoGroupOp(Message orig,IOpSuccess success, IOpFailure failure) {
 		super(orig,success,failure);
 		topologyId = ((dragon.network.messages.service.HaltTopologyMessage)orig).topologyId;
 		

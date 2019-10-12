@@ -7,12 +7,12 @@ import dragon.network.messages.node.TopologyReadyMessage;
 import dragon.network.messages.service.RunTopologyMessage;
 
 
-public class PrepareTopologyGroupOperation extends GroupOperation {
+public class PrepareTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7223966055440319387L;
 	private RunTopologyMessage rtm;
 	
-	public PrepareTopologyGroupOperation(RunTopologyMessage orig,IOperationSuccess success,
-			IOperationFailure failure) {
+	public PrepareTopoGroupOp(RunTopologyMessage orig,IOpSuccess success,
+			IOpFailure failure) {
 		super(orig,success,failure);
 		this.rtm=orig;
 	}

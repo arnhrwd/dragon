@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,9 +24,12 @@ import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.HaltTopologyMessage;
 import dragon.network.messages.node.JoinRequestMessage;
-import dragon.network.operations.GroupOperation;
-import dragon.network.operations.ListTopologiesGroupOperation;
-import dragon.network.operations.TerminateTopologyGroupOperation;
+import dragon.network.operations.GroupOp;
+import dragon.network.operations.ListToposGroupOp;
+import dragon.network.operations.Op;
+import dragon.network.operations.Operations;
+import dragon.network.operations.RequestReplyOp;
+import dragon.network.operations.TermTopoGroupOp;
 import dragon.topology.DragonTopology;
 import dragon.topology.base.Component;
 
@@ -39,10 +41,10 @@ public class Node {
 	@SuppressWarnings("unused")
 	private ServiceProcessor serviceThread;
 	private NodeProcessor nodeThread;
+	private Operations operationsThread;
 	private Config conf;
 	private Metrics metrics;
-	private long groupOperationCounter=0;
-	private HashMap<Long,GroupOperation> groupOperations;
+	
 	private Router router;
 	
 	public enum NodeState {
@@ -56,7 +58,7 @@ public class Node {
 	
 	public Node(Config conf) throws IOException {
 		this.conf=conf;
-		groupOperations=new HashMap<Long,GroupOperation>();
+		operationsThread = new Operations(this);
 		localClusters = new HashMap<String,LocalCluster>();
 		comms = new TcpComms(conf);
 		comms.open();
@@ -86,6 +88,30 @@ public class Node {
 			metrics.start();
 		}
 	}
+	
+//	public void test() {
+//		for(NodeDescriptor existingNode : conf.getHosts()) {
+//			if(!existingNode.equals(comms.getMyNodeDescriptor())) {
+//				nodeState=NodeState.JOIN_REQUESTED;
+//				RequestReplyOperation rro = new RequestReplyOperation();
+//				rro.onStart(()->{
+//					try {
+//						comms.sendNodeMessage(existingNode, new JoinRequestMessage());
+//					} catch (DragonCommsException e) {
+//						rro.fail("could not communicate with neighbor ["+existingNode+"]: "+e.getMessage());
+//					}
+//				});
+//				rro.onSuccess(()->{
+//						
+//				});
+//				rro.onFailure((error)->{
+//						
+//				});
+//				operationsThread.register(rro);
+//				rro.start();
+//			}
+//		}
+//	}
 	
 	public IComms getComms() {
 		return comms;
@@ -171,7 +197,7 @@ public class Node {
 		localClusters.get(topologyId).openAll();
 	}
 	
-	public synchronized void stopTopology(String topologyId,GroupOperation go) {
+	public synchronized void stopTopology(String topologyId,GroupOp go) {
 		LocalCluster localCluster = getLocalClusters().get(topologyId);
 		localCluster.setGroupOperation(go);
 		localCluster.setShouldTerminate();
@@ -183,49 +209,15 @@ public class Node {
 		} else return null;
 	}
 	
-	public synchronized void localClusterTerminated(String topologyId, TerminateTopologyGroupOperation ttgo) {
+	public synchronized void localClusterTerminated(String topologyId, TermTopoGroupOp ttgo) {
 		//router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
 		System.gc();
 		ttgo.sendSuccess(comms);
 	}
 	
-	public GroupOperation newGroupOperation(GroupOperation go,String topologyId){
-		for(NodeDescriptor desc : localClusters.get(topologyId).getTopology().getReverseEmbedding().keySet()) {
-			go.add(desc);
-		}
-		register(go);
-		go.initiate(comms);
-		return go;
-	}
-	
-	public GroupOperation newGroupOperation(GroupOperation go,DragonTopology topology){
-		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
-			go.add(desc);
-		}
-		register(go);
-		go.initiate(comms);
-		return go;
-	}
-
-	public void register(GroupOperation groupOperation) {
-		synchronized(groupOperations) {
-			groupOperation.init(comms.getMyNodeDescriptor(),groupOperationCounter);
-			groupOperations.put(groupOperationCounter, groupOperation);
-			groupOperationCounter++;
-		}
-	}
-	
-	public GroupOperation getGroupOperation(Long id) {
-		synchronized(groupOperations) {
-			return groupOperations.get(id);
-		}
-	}
-	
-	public void removeGroupOperation(Long id) {
-		synchronized(groupOperations) {
-			groupOperations.remove(id);
-		}
+	public Operations getOperationsProcessor() {
+		return operationsThread;
 	}
 	
 	public void signalHaltTopology(String topologyName) {
@@ -249,7 +241,7 @@ public class Node {
 		}
 	}
 
-	public synchronized void listTopologies(ListTopologiesGroupOperation ltgo) {
+	public synchronized void listTopologies(ListToposGroupOp ltgo) {
 		HashMap<String,String> state = new HashMap<String,String>();
 		HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors = 
 				new HashMap<String,HashMap<String,ArrayList<ComponentError>>>();
