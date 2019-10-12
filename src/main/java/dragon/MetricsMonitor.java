@@ -51,8 +51,8 @@ public class MetricsMonitor {
 			for(NodeDescriptor desc : conf.getHosts()){
 				log.debug("requesting metrics from ["+desc.toString()+"] on service port ["+desc.getServicePort()+"]");
 				comms.open(desc);
-				comms.sendServiceMessage(new GetMetricsSMsg(topologyId));
-				ServiceMessage response = comms.receiveServiceMessage();
+				comms.sendServiceMsg(new GetMetricsSMsg(topologyId));
+				ServiceMessage response = comms.receiveServiceMsg();
 				switch(response.getType()){
 				case METRICS:
 					MetricsSMsg m = (MetricsSMsg) response;
@@ -82,7 +82,7 @@ public class MetricsMonitor {
 				case GET_METRICS_ERROR:
 					break;
 				}
-				comms.sendServiceMessage(new ServiceDoneSMsg());
+				comms.sendServiceMsg(new ServiceDoneSMsg());
 				comms.close();
 			}
 			for(String componentId : meanInputQueueLength.keySet()) {

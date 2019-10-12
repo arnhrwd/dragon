@@ -19,12 +19,12 @@ public class PrepareTopoGroupOp extends GroupOp {
 
 	@Override
 	protected NodeMessage initiateNodeMessage() {
-		return new PrepareTopoNMsg(rtm.topologyName,rtm.conf,rtm.dragonTopology);
+		return new PrepareTopoNMsg(rtm.topologyId,rtm.conf,rtm.dragonTopology);
 	}
 
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new TopoReadyNMsg(rtm.topologyName);
+		return new TopoReadyNMsg(rtm.topologyId);
 	}
 
 }

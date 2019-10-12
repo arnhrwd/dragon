@@ -171,7 +171,7 @@ public class LocalCluster {
 		spoutConfs = new HashMap<String,Config>();
 		for(String spoutId : dragonTopology.getSpoutMap().keySet()) {
 			boolean localcomponent = !(dragonTopology.getReverseEmbedding()!=null &&
-					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId));
+					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId));
 			HashMap<Integer,Spout> hm=null;
 			SpoutDeclarer spoutDeclarer = dragonTopology.getSpoutMap().get(spoutId);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
@@ -190,7 +190,7 @@ public class LocalCluster {
 			int numAllocated=0;
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				boolean localtask = !(dragonTopology.getReverseEmbedding()!=null &&
-						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId,i));
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId,i));
 				try {
 					if(localtask) numAllocated++;
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
@@ -224,7 +224,7 @@ public class LocalCluster {
 		boltConfs = new HashMap<String,Config>();
 		for(String boltId : dragonTopology.getBoltMap().keySet()) {
 			boolean localcomponent = !(dragonTopology.getReverseEmbedding()!=null &&
-					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId));
+					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),boltId));
 			HashMap<Integer,Bolt> hm=null;
 			BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(boltId);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
@@ -243,7 +243,7 @@ public class LocalCluster {
 			int numAllocated=0;
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 				boolean localtask = !(dragonTopology.getReverseEmbedding()!=null &&
-						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId,i));
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),boltId,i));
 				try {
 					if(localtask) numAllocated++;
 					Bolt bolt=(Bolt) boltDeclarer.getBolt().clone();

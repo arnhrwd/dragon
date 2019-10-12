@@ -54,7 +54,7 @@ public class NodeProcessor extends Thread {
 	public NodeProcessor(Node node) {
 		this.node=node;
 		context=new NodeContext();
-		nextNode=node.getComms().getMyNodeDescriptor();
+		nextNode=node.getComms().getMyNodeDesc();
 		log.info("next pointer = ["+this.nextNode+"]");
 		context.put(nextNode);
 		pendingJoinRequests = new HashSet<NodeMessage>();
@@ -62,66 +62,66 @@ public class NodeProcessor extends Thread {
 		start();
 	}
 	
-	private void receiveError(NodeMessage message) {
+	private void receiveError(NodeMessage msg) {
 		node.getOperationsProcessor()
-		.getGroupOperation(message.getGroupOp().getId())
+		.getGroupOperation(msg.getGroupOp().getId())
 		.receiveError(node.getComms(), 
-				message.getSender(),
-				((IErrorMessage)message).getError());
+				msg.getSender(),
+				((IErrorMessage)msg).getError());
 	}
 	
-	private void receiveSuccess(NodeMessage message) {
+	private void receiveSuccess(NodeMessage msg) {
 		node.getOperationsProcessor()
-		.getGroupOperation(message.getGroupOp().getId())
+		.getGroupOperation(msg.getGroupOp().getId())
 		.receiveSuccess(node.getComms(), 
-				message.getSender());
+				msg.getSender());
 	}
 	
-	private void sendSuccess(NodeMessage message) {
-		message.getGroupOp().sendSuccess(node.getComms());
+	private void sendSuccess(NodeMessage msg) {
+		msg.getGroupOp().sendSuccess(node.getComms());
 	}
 	
-	private void sendError(NodeMessage message,String error) {
-		message.getGroupOp().sendError(node.getComms(),error);
+	private void sendError(NodeMessage msg,String error) {
+		msg.getGroupOp().sendError(node.getComms(),error);
 	}
 	
-	private void processJoinRequest(NodeMessage message) {
+	private void processJoinRequest(NodeMessage msg) {
 		if(node.getNodeState()!=NodeState.OPERATIONAL) {
-			log.debug("placing join request from ["+message.getSender()+"] on pending list");
-			pendingJoinRequests.add(message);
+			log.debug("placing join request from ["+msg.getSender()+"] on pending list");
+			pendingJoinRequests.add(msg);
 		} else {
 			node.setNodeState(NodeState.ACCEPTING_JOIN);
-			context.put(message.getSender());
+			context.put(msg.getSender());
 			try {
-				node.getComms().sendNodeMessage(message.getSender(),new AcceptingJoinNMsg(nextNode,context));
-				nextNode=message.getSender();
+				node.getComms().sendNodeMsg(msg.getSender(),new AcceptingJoinNMsg(nextNode,context));
+				nextNode=msg.getSender();
 				log.debug("next pointer = ["+nextNode+"]");
 			} catch (DragonCommsException e) {
-				log.error("a join request could not be completed to ["+message.getSender()+"]");
-				context.remove(message.getSender());
+				log.error("a join request could not be completed to ["+msg.getSender()+"]");
+				context.remove(msg.getSender());
 				node.setNodeState(NodeState.OPERATIONAL);
 			}
 		}
 	}
 	
-	private void processAcceptingJoin(NodeMessage message) {
+	private void processAcceptingJoin(NodeMessage msg) {
 		if(node.getNodeState()!=NodeState.JOIN_REQUESTED) {
 			log.error("unexpected message: "+NodeMessage.NodeMessageType.ACCEPTING_JOIN.name());
 		} else {
-			AcceptingJoinNMsg aj = (AcceptingJoinNMsg) message;
+			AcceptingJoinNMsg aj = (AcceptingJoinNMsg) msg;
 			nextNode=aj.nextNode;
 			log.debug("next pointer = ["+nextNode+"]");
 			try {
-				node.getComms().sendNodeMessage(message.getSender(), new JoinCompleteNMsg());
+				node.getComms().sendNodeMsg(msg.getSender(), new JoinCompleteNMsg());
 			} catch (DragonCommsException e) {
-				log.error("could not complete join with ["+message.getSender());
+				log.error("could not complete join with ["+msg.getSender());
 				// TODO: possibly signal that the node has failed
 			}
 			context.putAll(aj.context);
 			for(NodeDescriptor descriptor : context.values()) {
-				if(!descriptor.equals(node.getComms().getMyNodeDescriptor())) {
+				if(!descriptor.equals(node.getComms().getMyNodeDesc())) {
 					try {
-						node.getComms().sendNodeMessage(descriptor, new ContextUpdateNMsg(context));
+						node.getComms().sendNodeMsg(descriptor, new ContextUpdateNMsg(context));
 					} catch (DragonCommsException e) {
 						log.error("could not send context update to ["+descriptor+"]");
 						// TODO: possibly signal that the node has failed
@@ -132,7 +132,7 @@ public class NodeProcessor extends Thread {
 		}
 	}
 	
-	private void processJoinComplete(NodeMessage message) {
+	private void processJoinComplete(NodeMessage msg) {
 		if(node.getNodeState()!=NodeState.ACCEPTING_JOIN) {
 			log.error("unexpected message: "+NodeMessage.NodeMessageType.JOIN_COMPLETE.name());
 		} else {
@@ -140,16 +140,16 @@ public class NodeProcessor extends Thread {
 		}
 	}
 	
-	private void processContextUpdate(NodeMessage message) {
-		ContextUpdateNMsg cu = (ContextUpdateNMsg) message;
+	private void processContextUpdate(NodeMessage msg) {
+		ContextUpdateNMsg cu = (ContextUpdateNMsg) msg;
 		boolean hit=false;
 		for(String key : context.keySet()) {
 			if(!cu.context.containsKey(key)) {
 				context.putAll(cu.context);
 				try {
-					node.getComms().sendNodeMessage(message.getSender(), new ContextUpdateNMsg(context));
+					node.getComms().sendNodeMsg(msg.getSender(), new ContextUpdateNMsg(context));
 				} catch (DragonCommsException e) {
-					log.error("could not send context update to ["+message.getSender()+"]");
+					log.error("could not send context update to ["+msg.getSender()+"]");
 					// TODO: possibly signal that the node has failed
 				}
 				hit=true;
@@ -159,56 +159,56 @@ public class NodeProcessor extends Thread {
 		if(!hit) context.putAll(cu.context);
 	}
 	
-	private void processPrepareJar(NodeMessage message) {
-		PrepareJarNMsg pjf = (PrepareJarNMsg) message;
-		if(!node.storeJarFile(pjf.topologyName,pjf.topologyJar)) {
+	private void processPrepareJar(NodeMessage msg) {
+		PrepareJarNMsg pjf = (PrepareJarNMsg) msg;
+		if(!node.storeJarFile(pjf.topologyId,pjf.topologyJar)) {
 			sendError(pjf,"could not store the topology jar");
 			return;
-		} else if(!node.loadJarFile(pjf.topologyName)) {
+		} else if(!node.loadJarFile(pjf.topologyId)) {
 			sendError(pjf,"could not load the topology jar");
 			return;
 		}
 		sendSuccess(pjf);
 	}
 	
-	private void processPrepareJarError(NodeMessage message) {
-		PrepareJarErrorNMsg pjem = (PrepareJarErrorNMsg) message;
+	private void processPrepareJarError(NodeMessage msg) {
+		PrepareJarErrorNMsg pjem = (PrepareJarErrorNMsg) msg;
 		receiveError(pjem);
 	}
 	
-	private void processJarReady(NodeMessage message) {
-		JarReadyNMsg jrm = (JarReadyNMsg) message;
+	private void processJarReady(NodeMessage msg) {
+		JarReadyNMsg jrm = (JarReadyNMsg) msg;
 		receiveSuccess(jrm);
 	}
 	
-	private void processPrepareTopology(NodeMessage message) {
-		PrepareTopoNMsg pt = (PrepareTopoNMsg) message;
+	private void processPrepareTopology(NodeMessage msg) {
+		PrepareTopoNMsg pt = (PrepareTopoNMsg) msg;
 		try {
-			node.prepareTopology(pt.topologyName, pt.conf, pt.topology, false);
+			node.prepareTopology(pt.topoloyId, pt.conf, pt.topology, false);
 			sendSuccess(pt);
 		} catch (DragonRequiresClonableException e) {
 			sendError(pt,e.getMessage());
 		}
 	}
 	
-	private void processTopologyReady(NodeMessage message) {
-		TopoReadyNMsg tr = (TopoReadyNMsg) message;
+	private void processTopologyReady(NodeMessage msg) {
+		TopoReadyNMsg tr = (TopoReadyNMsg) msg;
 		receiveSuccess(tr);
 	}
 	
-	private void processStartTopology(NodeMessage message) {
-		StartTopoNMsg st = (StartTopoNMsg) message;
+	private void processStartTopology(NodeMessage msg) {
+		StartTopoNMsg st = (StartTopoNMsg) msg;
 		node.startTopology(st.topologyId);
 		sendSuccess(st);
 	}
 	
-	private void processTopologyStarted(NodeMessage message) {
-		TopoStartedNMsg tsm = (TopoStartedNMsg) message;
+	private void processTopologyStarted(NodeMessage msg) {
+		TopoStartedNMsg tsm = (TopoStartedNMsg) msg;
 		receiveSuccess(tsm);
 	}
 	
-	private void processStopTopology(NodeMessage message) {
-		StopTopoNMsg stm = (StopTopoNMsg) message;
+	private void processStopTopology(NodeMessage msg) {
+		StopTopoNMsg stm = (StopTopoNMsg) msg;
 		if(!node.getLocalClusters().containsKey(stm.topologyId)){
 			sendError(stm,"topology does not exist");
 		} else {
@@ -216,162 +216,163 @@ public class NodeProcessor extends Thread {
 		}
 	}
 		
-	private void processTopologyStopped(NodeMessage message) {
-		TopoStoppedNMsg tsm = (TopoStoppedNMsg) message;
+	private void processTopologyStopped(NodeMessage msg) {
+		TopoStoppedNMsg tsm = (TopoStoppedNMsg) msg;
 		receiveSuccess(tsm);
 	}
 	
-	private void processStopTopologyError(NodeMessage message) {
-		StopTopoErrorNMsg stem = (StopTopoErrorNMsg) message;
+	private void processStopTopologyError(NodeMessage msg) {
+		StopTopoErrorNMsg stem = (StopTopoErrorNMsg) msg;
 		receiveError(stem);
 	}
 	
-	private void processRemoveTopology(NodeMessage message) {
-		RemoveTopoNMsg trm = (RemoveTopoNMsg) message;
+	private void processRemoveTopology(NodeMessage msg) {
+		RemoveTopoNMsg trm = (RemoveTopoNMsg) msg;
 		node.removeTopo(trm.topologyId);
 		sendSuccess(trm);
 	}
 	
-	private void processTopologyRemoved(NodeMessage message) {
-		TopoRemovedNMsg rtm = (TopoRemovedNMsg) message;
+	private void processTopologyRemoved(NodeMessage msg) {
+		TopoRemovedNMsg rtm = (TopoRemovedNMsg) msg;
 		receiveSuccess(rtm);
 	}
 	
-	private void processRemoveTopologyError(NodeMessage message) {
-		RemoveTopoErrorNMsg trm = (RemoveTopoErrorNMsg) message;
+	private void processRemoveTopologyError(NodeMessage msg) {
+		RemoveTopoErrorNMsg trm = (RemoveTopoErrorNMsg) msg;
 		receiveError(trm);
 	}
 	
-	private void processHaltTopology(NodeMessage message) {
-		HaltTopoNMsg htm = (HaltTopoNMsg) message;
+	private void processHaltTopology(NodeMessage msg) {
+		HaltTopoNMsg htm = (HaltTopoNMsg) msg;
 		node.haltTopology(htm.topologyId);
 		sendSuccess(htm);
 	}
 	
-	private void processTopologyHalted(NodeMessage message) {
-		TopoHaltedNMsg thm = (TopoHaltedNMsg) message;
+	private void processTopologyHalted(NodeMessage msg) {
+		TopoHaltedNMsg thm = (TopoHaltedNMsg) msg;
 		receiveSuccess(thm);
 	}
 	
-	private void processHaltTopologyError(NodeMessage message) {
-		HaltTopoErrorNMsg htem = (HaltTopoErrorNMsg) message;
+	private void processHaltTopologyError(NodeMessage msg) {
+		HaltTopoErrorNMsg htem = (HaltTopoErrorNMsg) msg;
 		receiveError(htem);
 	}
 	
-	private void processResumeTopology(NodeMessage message) {
-		ResumeTopoNMsg htm = (ResumeTopoNMsg) message;
+	private void processResumeTopology(NodeMessage msg) {
+		ResumeTopoNMsg htm = (ResumeTopoNMsg) msg;
 		node.resumeTopology(htm.topologyId);
 		sendSuccess(htm);
 	}
 	
-	private void processTopologyResumed(NodeMessage message) {
-		TopoResumedNMsg thm = (TopoResumedNMsg) message;
+	private void processTopologyResumed(NodeMessage msg) {
+		TopoResumedNMsg thm = (TopoResumedNMsg) msg;
 		receiveSuccess(thm);
 	}
 	
-	private void processResumeTopologyError(NodeMessage message) {
-		ResumeTopoErrorNMsg htem = (ResumeTopoErrorNMsg) message;
+	private void processResumeTopologyError(NodeMessage msg) {
+		ResumeTopoErrorNMsg htem = (ResumeTopoErrorNMsg) msg;
 		receiveError(htem);
 	}
 	
-	private void processGetTopologyInformation(NodeMessage message) {
-		GetTopoInfoNMsg gtim = (GetTopoInfoNMsg) message;
+	private void processGetTopologyInformation(NodeMessage msg) {
+		GetTopoInfoNMsg gtim = (GetTopoInfoNMsg) msg;
 		node.listTopologies((ListToposGroupOp)gtim.getGroupOp()); // sends the response for us
 	}
 	
-	private void processTopologyInformation(NodeMessage message) {
-		TopoInfoNMsg tim = (TopoInfoNMsg) message;
-		((ListToposGroupOp)(node.getOperationsProcessor().getGroupOperation(tim.getGroupOp().getId()))).aggregate(tim.getSender(),
-				tim.state,tim.errors);
+	private void processTopologyInformation(NodeMessage msg) {
+		TopoInfoNMsg tim = (TopoInfoNMsg) msg;
+		((ListToposGroupOp)(node.getOperationsProcessor()
+				.getGroupOperation(tim.getGroupOp().getId())))
+				.aggregate(tim.getSender(),tim.state,tim.errors);
 		receiveSuccess(tim);
 	}
 	
 	@Override
 	public void run() {
 		while(!shouldTerminate) {
-			NodeMessage message;
+			NodeMessage msg;
 			try {
-				message = node.getComms().receiveNodeMessage();
+				msg = node.getComms().receiveNodeMsg();
 			} catch (InterruptedException e) {
 				log.info("interrupted");
 				break;
 			}
-			log.debug("received ["+message.getType().name()+"] from ["+message.getSender());
-			switch(message.getType()) {
+			log.debug("received ["+msg.getType().name()+"] from ["+msg.getSender());
+			switch(msg.getType()) {
 			case JOIN_REQUEST:
-				processJoinRequest(message);
+				processJoinRequest(msg);
 				break;
 			case ACCEPTING_JOIN:
-				processAcceptingJoin(message);
+				processAcceptingJoin(msg);
 				break;
 			case JOIN_COMPLETE:
-				processJoinComplete(message);
+				processJoinComplete(msg);
 				break;
 			case CONTEXT_UPDATE:
-				processContextUpdate(message);
+				processContextUpdate(msg);
 				break;
 			case PREPARE_JAR:
-				processPrepareJar(message);
+				processPrepareJar(msg);
 				break;
 			case PREPARE_JAR_ERROR:
-				processPrepareJarError(message);
+				processPrepareJarError(msg);
 				break;
 			case JAR_READY:
-				processJarReady(message);
+				processJarReady(msg);
 				break;
 			case PREPARE_TOPOLOGY:
-				processPrepareTopology(message);
+				processPrepareTopology(msg);
 				break;
 			case TOPOLOGY_READY:
-				processTopologyReady(message);
+				processTopologyReady(msg);
 				break;
 			case START_TOPOLOGY:
-				processStartTopology(message);
+				processStartTopology(msg);
 				break;
 			case TOPOLOGY_STARTED:
-				processTopologyStarted(message);
+				processTopologyStarted(msg);
 				break;
 			case STOP_TOPOLOGY:
-				processStopTopology(message);
+				processStopTopology(msg);
 				break;
 			case TOPOLOGY_STOPPED:
-				processTopologyStopped(message);
+				processTopologyStopped(msg);
 				break;
 			case STOP_TOPOLOGY_ERROR:
-				processStopTopologyError(message);
+				processStopTopologyError(msg);
 				break;
 			case REMOVE_TOPOLOGY:
-				processRemoveTopology(message);
+				processRemoveTopology(msg);
 				break;
 			case TOPOLOGY_REMOVED:
-				processTopologyRemoved(message);
+				processTopologyRemoved(msg);
 				break;
 			case REMOVE_TOPOLOGY_ERROR:
-				processRemoveTopologyError(message);
+				processRemoveTopologyError(msg);
 				break;
 			case HALT_TOPOLOGY:
-				processHaltTopology(message);
+				processHaltTopology(msg);
 				break;
 			case TOPOLOGY_HALTED:
-				processTopologyHalted(message);
+				processTopologyHalted(msg);
 				break;
 			case HALT_TOPOLOGY_ERROR:
-				processHaltTopologyError(message);
+				processHaltTopologyError(msg);
 				break;
 			case RESUME_TOPOLOGY:
-				processResumeTopology(message);
+				processResumeTopology(msg);
 				break;
 			case TOPOLOGY_RESUMED:
-				processTopologyResumed(message);
+				processTopologyResumed(msg);
 				break;
 			case RESUME_TOPOLOGY_ERROR:
-				processResumeTopologyError(message);
+				processResumeTopologyError(msg);
 				break;
 			case GET_TOPOLOGY_INFORMATION:
-				processGetTopologyInformation(message);
+				processGetTopologyInformation(msg);
 				break;
 			case TOPOLOGY_INFORMATION:
-				processTopologyInformation(message);
+				processTopologyInformation(msg);
 				break;
 			default:
 				break;
@@ -385,7 +386,7 @@ public class NodeProcessor extends Thread {
 			node.setNodeState(NodeState.ACCEPTING_JOIN);
 			context.put(m.getSender());
 			try {
-				node.getComms().sendNodeMessage(m.getSender(),new AcceptingJoinNMsg(nextNode,context));
+				node.getComms().sendNodeMsg(m.getSender(),new AcceptingJoinNMsg(nextNode,context));
 			} catch (DragonCommsException e) {
 				log.error("could not send accepting join to ["+m.getSender()+"]");
 			}

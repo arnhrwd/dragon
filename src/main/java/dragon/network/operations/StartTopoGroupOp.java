@@ -17,12 +17,12 @@ public class StartTopoGroupOp extends GroupOp {
 
 	@Override
 	protected NodeMessage initiateNodeMessage() {
-		return new StartTopoNMsg(rtm.topologyName);
+		return new StartTopoNMsg(rtm.topologyId);
 	}
 
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new TopoStartedNMsg(rtm.topologyName);
+		return new TopoStartedNMsg(rtm.topologyId);
 	}
 
 }

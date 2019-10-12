@@ -94,8 +94,8 @@ public class Op implements Serializable {
 	}
 	
 	public void start() {
-		state=State.RUNNING;
 		if(start!=null) start.start(this);
+		state=State.RUNNING;
 		if(running!=null) running.running(this);
 	}
 	

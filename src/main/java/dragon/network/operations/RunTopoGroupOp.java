@@ -14,7 +14,7 @@ public class RunTopoGroupOp extends GroupOp {
 			IOpFailure failure) {
 		super(success,failure);
 		this.jar=jar;
-		this.topologyId=orig.topologyName;
+		this.topologyId=orig.topologyId;
 	}
 	
 	@Override

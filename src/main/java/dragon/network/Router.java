@@ -166,7 +166,7 @@ public class Router {
 
 	public void submitTopology(String topologyName, DragonTopology topology) {
 		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
-			if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
+			if(!desc.equals(node.getComms().getMyNodeDesc())) {
 				for(String componentId : topology.getReverseEmbedding().get(desc).keySet()) {
 					if(!topology.getBoltMap().containsKey(componentId))continue;
 					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
@@ -193,7 +193,7 @@ public class Router {
 	
 	public void terminateTopology(String topologyName, DragonTopology topology) {
 		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
-			if(!desc.equals(node.getComms().getMyNodeDescriptor())) {
+			if(!desc.equals(node.getComms().getMyNodeDesc())) {
 				for(String componentId : topology.getReverseEmbedding().get(desc).keySet()) {
 					if(!topology.getBoltMap().containsKey(componentId))continue;
 					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {

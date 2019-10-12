@@ -9,12 +9,12 @@ public class PrepareTopoNMsg extends NodeMessage {
 	 */
 	private static final long serialVersionUID = 2867515610457893626L;
 	public DragonTopology topology;
-	public String topologyName;
+	public String topoloyId;
 	public Config conf;
 
 	public PrepareTopoNMsg(String topologyName, Config conf, DragonTopology dragonTopology) {
 		super(NodeMessage.NodeMessageType.PREPARE_TOPOLOGY);
-		this.topologyName=topologyName;
+		this.topoloyId=topologyName;
 		this.topology=dragonTopology;
 		this.conf=conf;
 		

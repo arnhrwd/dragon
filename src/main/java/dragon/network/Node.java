@@ -26,9 +26,7 @@ import dragon.network.messages.node.HaltTopoNMsg;
 import dragon.network.messages.node.JoinRequestNMsg;
 import dragon.network.operations.GroupOp;
 import dragon.network.operations.ListToposGroupOp;
-import dragon.network.operations.Op;
 import dragon.network.operations.Operations;
-import dragon.network.operations.RequestReplyOp;
 import dragon.network.operations.TermTopoGroupOp;
 import dragon.topology.DragonTopology;
 import dragon.topology.base.Component;
@@ -64,10 +62,10 @@ public class Node {
 		comms.open();
 		nodeState=NodeState.JOINING;
 		for(NodeDescriptor existingNode : conf.getHosts()) {
-			if(!existingNode.equals(comms.getMyNodeDescriptor())) {
+			if(!existingNode.equals(comms.getMyNodeDesc())) {
 				nodeState=NodeState.JOIN_REQUESTED;
 				try {
-					comms.sendNodeMessage(existingNode, new JoinRequestNMsg());
+					comms.sendNodeMsg(existingNode, new JoinRequestNMsg());
 				} catch (DragonCommsException e) {
 					log.error("failed to join with ["+existingNode+"]: "+e.getMessage());
 					nodeState=NodeState.JOINING;
@@ -142,7 +140,7 @@ public class Node {
 	}
 	
 	public boolean storeJarFile(String topologyName, byte[] topologyJar) {
-		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDescriptor(),topologyName);
+		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDesc(),topologyName);
 		File f = new File(pathname.getParent().toString());
 		f.mkdirs();
 		try (FileOutputStream fos = new FileOutputStream(pathname.toString())) {
@@ -157,7 +155,7 @@ public class Node {
 	}
 	
 	public boolean loadJarFile(String topologyName) {
-		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDescriptor(),topologyName);
+		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDesc(),topologyName);
 		try {
 			Agent.addToClassPath(new File(pathname.toString()));
 			return true;
@@ -170,7 +168,7 @@ public class Node {
 	}
 	
 	public byte[] readJarFile(String topologyName) {
-		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDescriptor(),topologyName);
+		Path pathname = Paths.get(conf.getJarPath()+"/"+comms.getMyNodeDesc(),topologyName);
 		
 		File file = new File(pathname.toString());
 		try {
@@ -226,9 +224,9 @@ public class Node {
 	
 	public void signalHaltTopology(String topologyName) {
 		for(NodeDescriptor desc : localClusters.get(topologyName).getTopology().getReverseEmbedding().keySet()) {
-			if(!desc.equals(getComms().getMyNodeDescriptor())) {
+			if(!desc.equals(getComms().getMyNodeDesc())) {
 				try {
-					getComms().sendNodeMessage(desc, new HaltTopoNMsg(topologyName));
+					getComms().sendNodeMsg(desc, new HaltTopoNMsg(topologyName));
 				} catch (DragonCommsException e) {
 					log.error("could not signal halt topology");
 				}
