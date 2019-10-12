@@ -39,56 +39,203 @@ import dragon.tuple.Values;
 import dragon.utils.CircularBlockingQueue;
 import dragon.utils.NetworkTaskBuffer;
 
-
+/**
+ * LocalCluster manages the bolts and spouts for a given topology that are
+ * within this daemon.
+ * 
+ * @author aaron
+ *
+ */
 public class LocalCluster {
 	private final static Log log = LogFactory.getLog(LocalCluster.class);
+	
+	/**
+	 * A reference to the node for this daemon.
+	 */
+	private final Node node;
+	
+	/**
+	 * Map from component id to task id to instance of bolt, for only those
+	 * instances in the topology that are allocated to this daemon.
+	 */
 	private HashMap<String,HashMap<Integer,Bolt>> bolts;
+	
+	/**
+	 * Map from component id to task id to instance of spout, for only those
+	 * instances in the topology that are allocated to this daemon.
+	 */
 	private HashMap<String,HashMap<Integer,Spout>> spouts;
+	
+	/**
+	 * Queue of queues of NetworkTasks, i.e. the outputs of spouts and bolts,
+	 * that are waiting to be serviced. One reference to such a queue is placed
+	 * on outputsPending for each NetworkTask it contains.
+	 */
+	private CircularBlockingQueue<NetworkTaskBuffer> outputsPending;
+	
+	/**
+	 * References to components that have tuples waiting to be processed
+	 * on their input queue. One reference to the component is on componentsPending
+	 * for each tuple on its input queue.
+	 */
+	private CircularBlockingQueue<Component> componentsPending;
+	
+	/**
+	 * Map from component id to the conf for spouts, for only those instances
+	 * in the topology that are allocated to this daemon.
+	 */
 	private HashMap<String,Config> spoutConfs;
+	
+	/**
+	 * Map from component id to the conf for bolts, for only those instances
+	 * in the topology that are allocated to this daemon.
+	 */
 	private HashMap<String,Config> boltConfs;
+	
+	/**
+	 * Threads that are allocated to execute the run() methods of bolts and spouts.
+	 * There may be less threads than total number of instances of bolts and spouts
+	 * combined, allocated on this daemon. However the number of threads must be at
+	 * least one more than the number of spout instances allocated on this daemon,
+	 * because spout threads are allowed to block in the run() method.
+	 * There does not need to be more threads than the total number of bolts and
+	 * spouts combined, allocated on this daemon.
+	 */
 	private ArrayList<Thread> componentExecutorThreads;
+	
+	/**
+	 * Threads that are allocated to transfer NetworkTasks from the outputs of 
+	 * components to their destinations in this local cluster, or from the Router
+	 * (that are incoming from a remote daemon) to their destinations in this
+	 * local cluster. These threads never block when a destination buffer is full,
+	 * but rather continue to poll. Therefore the number of these threads can be as
+	 * little as one.
+	 */
 	private ArrayList<Thread> networkExecutorThreads;
+	
+	/**
+	 * Map from component reference to array list of component errors that the
+	 * component has thrown on this local cluster.
+	 */
 	private HashMap<Component,ArrayList<ComponentError>> componentErrors;
 	
-
+	/**
+	 * The possible states of the local cluster.
+	 *
+	 */
 	public static enum State {
+		/**
+		 * The state that is set when the local cluster is constructed.
+		 * A transient state (only held momentarily).
+		 */
 		ALLOCATED,
+		
+		/**
+		 * The local cluster is ready to use. A transient state.
+		 */
 		SUBMITTED,
+		
+		/**
+		 * The local cluster is busy doing pre-processing tasks, prior to running.
+		 * A transient state, but may take some time depending on the complexity of
+		 * the topology.
+		 */
 		PREPROCESSING,
+		
+		/**
+		 * The local cluster is now processing tuples.
+		 */
 		RUNNING,
+		
+		/**
+		 * The local cluster is terminating, no more tuples are being emitted at spouts.
+		 */
 		TERMINATING,
+		
+		/**
+		 * The local cluster's threads have been suspended and it can be resumed.
+		 */
 		HALTED
 	}
 	
+	/**
+	 * The state of the local cluster.
+	 */
 	private volatile State state;
 	
+	/**
+	 * Lock for halting the threads in the local cluster.
+	 */
 	private final ReentrantLock haltLock = new ReentrantLock();
+	
+	/**
+	 * Condition for threads in the local cluster to wait on.
+	 */
 	private final Condition restartCondition = haltLock.newCondition();
 	
+	/**
+	 * Set of outstanding group operations for this local cluster to respond to.
+	 */
 	@SuppressWarnings("rawtypes")
 	private HashMap<Class,HashSet<GroupOp>> groupOperations;
 	
+	/**
+	 * Name of the topology on this local cluster.
+	 */
 	private String topologyName;
-	private Config conf;
-	private DragonTopology dragonTopology;
 	
-	private CircularBlockingQueue<NetworkTaskBuffer> outputsPending;
-	private CircularBlockingQueue<Component> componentsPending;
+	/**
+	 * Conf applied to the topology on this local cluster.
+	 */
+	private Config conf;
+	
+	/**
+	 * The complete topology, a part or all of which is allocated on this
+	 * local cluster.
+	 */
+	private DragonTopology dragonTopology;
 
+	/**
+	 * A thread that sleeps for 1 second at a time.
+	 */
 	private Thread tickThread;
+	
+	/**
+	 * A thread that generates tick tuples for bolts as required by their conf.
+	 */
 	private Thread tickCounterThread;
+	
+	/**
+	 * The number of ticks of the tick thread.
+	 */
 	private long tickTime=0;
+	
+	/**
+	 * The number of ticks that the ticker counter thread has processed.
+	 */
 	private long tickCounterTime=0;
 	
+	/**
+	 * The number of ticks that each bolt component has reached.
+	 */
 	private HashMap<String,Integer> boltTickCount;
 	
-	private int totalParallelismHint=0;
-	
-	private final Node node;
-	
+	/**
+	 * The fields of a tick tuple.
+	 */
 	private final Fields tickFields=new Fields("tick");
 	
-
+	/**
+	 * The amount of parallelism for the component threads that has been computed
+	 * based on the number of spout instances and parallelism hints provided on the
+	 * bolt instances.
+	 */
+	private int totalParallelismHint=0;
+	
+	/**
+	 * Container class for bolt instances on this local cluster that need to be prepared,
+	 * when the start message is received.
+	 */
 	private class BoltPrepare {
 		public Bolt bolt;
 		public TopologyContext context;
@@ -100,8 +247,15 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * Array list of bolt instances that need to be prepared, when the start message is received. 
+	 */
 	private ArrayList<BoltPrepare> boltPrepareList;
 	
+	/**
+	 * Container class for spout instances on this local cluster that need to be prepared,
+	 * when the start message is received.
+	 */
 	private class SpoutOpen {
 		public Spout spout;
 		public TopologyContext context;
@@ -113,6 +267,9 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * Array list of spout instances that need to be prepared, when the start message is received.
+	 */
 	private ArrayList<SpoutOpen> spoutOpenList;
 	
 	@SuppressWarnings("rawtypes")
@@ -131,6 +288,12 @@ public class LocalCluster {
 		componentErrors = new  HashMap<Component,ArrayList<ComponentError>>();
 	}
 	
+	/**
+	 * Submit a topology and run it immediately, useful only in local mode.
+	 * @param topologyName the name of the topology
+	 * @param conf the conf for the topology
+	 * @param dragonTopology the topology
+	 */
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
 		Config lconf=null;
 		try {
@@ -148,6 +311,14 @@ public class LocalCluster {
 		}
 	}
 
+	/**
+	 * Submit a toplogy and run it if start is true, otherwise wait for a start topology message.
+	 * @param topologyName the name of the topology
+	 * @param conf the conf for the topology
+	 * @param dragonTopology the topology
+	 * @param start whether to start the topology immediately or not
+	 * @throws DragonRequiresClonableException if the topology contains components that are not clonable
+	 */
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) throws DragonRequiresClonableException {
 		this.topologyName=topologyName;
 		this.conf=conf;
@@ -430,6 +601,7 @@ public class LocalCluster {
 		state=State.SUBMITTED;
 		if(start) {
 			scheduleSpouts();	
+			state=State.RUNNING;
 		}
 	}
 	
@@ -454,6 +626,9 @@ public class LocalCluster {
 		spoutOpenList.add(new SpoutOpen(spout,context,collector));
 	}
 	
+	/**
+	 * Start a topology by opening all its components and scheduling the spouts.
+	 */
 	public void openAll() {
 		log.info("opening bolts");
 		for(BoltPrepare boltPrepare : boltPrepareList) {
@@ -715,6 +890,13 @@ public class LocalCluster {
 		
 	}
 	
+	/**
+	 * Schedule a component to process a pending tuple on its input queue.
+	 * There will be one reference of each component for each tuple that is oustanding
+	 * on its input queue.
+	 * 
+	 * @param component the component reference to run
+	 */
 	public void componentPending(final Component component){
 		try {
 			componentsPending.put(component);
@@ -723,6 +905,12 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * Schedule a queue that has a new NetworkTask on it to be processed. There will
+	 * be one reference of each queue for each NetworkTask that is outstanding on it.
+	 * 
+	 * @param queue the reference of the queue to process
+	 */
 	public void outputPending(final NetworkTaskBuffer queue) {
 		try {
 			outputsPending.put(queue);
@@ -732,18 +920,33 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * 
+	 * @return the name of the topology for this local cluster
+	 */
 	public String getTopologyId() {
 		return topologyName;
 	}
 	
+	/**
+	 * 
+	 * @return the topology conf for this local cluster
+	 */
 	public Config getConf(){
 		return conf;
 	}
 	
+	/**
+	 * 
+	 * @return the topology for this local cluster.
+	 */
 	public DragonTopology getTopology() {
 		return dragonTopology;
 	}
 
+	/**
+	 * Terminate the topology on this local cluster.
+	 */
 	public synchronized void setShouldTerminate() {
 		if(state==State.TERMINATING) return;
 		if(state==State.HALTED) {
@@ -767,11 +970,17 @@ public class LocalCluster {
 		checkCloseCondition();
 	}
 	
+	/**
+	 * Halt the topology on this local cluster.
+	 */
 	public void haltTopology() {
 		log.info("halting topology");
 		state=State.HALTED;
 	}
 	
+	/**
+	 * Resume the topology from a halted state on this locacl cluster.
+	 */
 	public void resumeTopology() {
 		log.info("resuming topology");
 		if(state==State.HALTED) {
