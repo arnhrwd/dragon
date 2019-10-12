@@ -7,7 +7,6 @@ import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.StopTopoErrorNMsg;
 import dragon.network.messages.node.StopTopoNMsg;
 import dragon.network.messages.node.TopoStoppedNMsg;
-import dragon.network.messages.service.TermTopoSMsg;
 
 
 public class TermTopoGroupOp extends GroupOp {
@@ -15,10 +14,9 @@ public class TermTopoGroupOp extends GroupOp {
 	@SuppressWarnings("unused")
 	private static final Log log = LogFactory.getLog(TermTopoGroupOp.class);
 	private final String topologyId;
-	
-	public TermTopoGroupOp(TermTopoSMsg ttm,IOpSuccess success, IOpFailure failure) {
+	public TermTopoGroupOp(String topologyId,IOpSuccess success, IOpFailure failure) {
 		super(success,failure);
-		this.topologyId=ttm.topologyId;
+		this.topologyId=topologyId;
 	}
 	
 	@Override

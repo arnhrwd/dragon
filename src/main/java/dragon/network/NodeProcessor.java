@@ -64,7 +64,7 @@ public class NodeProcessor extends Thread {
 	
 	private void receiveError(NodeMessage msg) {
 		node.getOperationsProcessor()
-		.getGroupOperation(msg.getGroupOp().getId())
+		.getGroupOp(msg.getGroupOp().getId())
 		.receiveError(node.getComms(), 
 				msg.getSender(),
 				((IErrorMessage)msg).getError());
@@ -72,7 +72,7 @@ public class NodeProcessor extends Thread {
 	
 	private void receiveSuccess(NodeMessage msg) {
 		node.getOperationsProcessor()
-		.getGroupOperation(msg.getGroupOp().getId())
+		.getGroupOp(msg.getGroupOp().getId())
 		.receiveSuccess(node.getComms(), 
 				msg.getSender());
 	}
@@ -184,7 +184,11 @@ public class NodeProcessor extends Thread {
 	private void processPrepareTopology(NodeMessage msg) {
 		PrepareTopoNMsg pt = (PrepareTopoNMsg) msg;
 		try {
-			node.prepareTopology(pt.topoloyId, pt.conf, pt.topology, false);
+			try {
+				node.prepareTopology(pt.topoloyId, pt.conf, pt.topology, false);
+			} catch (DragonTopologyException e) {
+				sendError(pt,e.getMessage());
+			}
 			sendSuccess(pt);
 		} catch (DragonRequiresClonableException e) {
 			sendError(pt,e.getMessage());
@@ -198,8 +202,13 @@ public class NodeProcessor extends Thread {
 	
 	private void processStartTopology(NodeMessage msg) {
 		StartTopoNMsg st = (StartTopoNMsg) msg;
-		node.startTopology(st.topologyId);
-		sendSuccess(st);
+		try {
+			node.startTopology(st.topologyId);
+			sendSuccess(st);
+		} catch (DragonTopologyException e) {
+			sendError(st,e.getMessage());
+		}
+		
 	}
 	
 	private void processTopologyStarted(NodeMessage msg) {
@@ -209,11 +218,12 @@ public class NodeProcessor extends Thread {
 	
 	private void processStopTopology(NodeMessage msg) {
 		StopTopoNMsg stm = (StopTopoNMsg) msg;
-		if(!node.getLocalClusters().containsKey(stm.topologyId)){
-			sendError(stm,"topology does not exist");
-		} else {
-			node.stopTopology(stm.topologyId,stm.getGroupOp()); // starts a thread to stop the topology
-		}
+		try {
+			// starts a thread to stop the topology
+			node.terminateTopology(stm.topologyId,stm.getGroupOp());
+		} catch (DragonTopologyException e) {
+			sendError(stm,e.getMessage());
+		} 
 	}
 		
 	private void processTopologyStopped(NodeMessage msg) {
@@ -228,8 +238,12 @@ public class NodeProcessor extends Thread {
 	
 	private void processRemoveTopology(NodeMessage msg) {
 		RemoveTopoNMsg trm = (RemoveTopoNMsg) msg;
-		node.removeTopo(trm.topologyId);
-		sendSuccess(trm);
+		try {
+			node.removeTopo(trm.topologyId);
+			sendSuccess(trm);
+		} catch (DragonTopologyException e) {
+			sendError(trm,e.getMessage());
+		}
 	}
 	
 	private void processTopologyRemoved(NodeMessage msg) {
@@ -244,8 +258,12 @@ public class NodeProcessor extends Thread {
 	
 	private void processHaltTopology(NodeMessage msg) {
 		HaltTopoNMsg htm = (HaltTopoNMsg) msg;
-		node.haltTopology(htm.topologyId);
-		sendSuccess(htm);
+		try {
+			node.haltTopology(htm.topologyId);
+			sendSuccess(htm);
+		} catch (DragonTopologyException e) {
+			sendError(htm,e.getMessage());
+		}
 	}
 	
 	private void processTopologyHalted(NodeMessage msg) {
@@ -260,8 +278,12 @@ public class NodeProcessor extends Thread {
 	
 	private void processResumeTopology(NodeMessage msg) {
 		ResumeTopoNMsg htm = (ResumeTopoNMsg) msg;
-		node.resumeTopology(htm.topologyId);
-		sendSuccess(htm);
+		try {
+			node.resumeTopology(htm.topologyId);
+			sendSuccess(htm);
+		} catch (DragonTopologyException e) {
+			sendError(htm,e.getMessage());
+		}
 	}
 	
 	private void processTopologyResumed(NodeMessage msg) {
@@ -282,7 +304,7 @@ public class NodeProcessor extends Thread {
 	private void processTopologyInformation(NodeMessage msg) {
 		TopoInfoNMsg tim = (TopoInfoNMsg) msg;
 		((ListToposGroupOp)(node.getOperationsProcessor()
-				.getGroupOperation(tim.getGroupOp().getId())))
+				.getGroupOp(tim.getGroupOp().getId())))
 				.aggregate(tim.getSender(),tim.state,tim.errors);
 		receiveSuccess(tim);
 	}

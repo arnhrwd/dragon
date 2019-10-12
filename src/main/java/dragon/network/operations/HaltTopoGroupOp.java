@@ -1,6 +1,5 @@
 package dragon.network.operations;
 
-import dragon.network.messages.Message;
 import dragon.network.messages.node.HaltTopoErrorNMsg;
 import dragon.network.messages.node.HaltTopoNMsg;
 import dragon.network.messages.node.NodeMessage;
@@ -10,9 +9,9 @@ public class HaltTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7324344914355135103L;
 	private final String topologyId;
 	
-	public HaltTopoGroupOp(Message orig,IOpSuccess success, IOpFailure failure) {
+	public HaltTopoGroupOp(String topologyId,IOpSuccess success, IOpFailure failure) {
 		super(success,failure);
-		topologyId = ((dragon.network.messages.service.HaltTopoSMsg)orig).topologyId;
+		this.topologyId = topologyId;
 	}
 	
 	@Override

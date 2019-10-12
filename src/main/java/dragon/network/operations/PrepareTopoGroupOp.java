@@ -2,6 +2,7 @@ package dragon.network.operations;
 
 
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.node.PrepareTopoErrorNMsg;
 import dragon.network.messages.node.PrepareTopoNMsg;
 import dragon.network.messages.node.TopoReadyNMsg;
 import dragon.network.messages.service.RunTopoSMsg;
@@ -25,6 +26,11 @@ public class PrepareTopoGroupOp extends GroupOp {
 	@Override
 	protected NodeMessage successNodeMessage() {
 		return new TopoReadyNMsg(rtm.topologyId);
+	}
+
+	@Override
+	protected NodeMessage errorNodeMessage(String error) {
+		return new PrepareTopoErrorNMsg(rtm.topologyId, error);
 	}
 
 }

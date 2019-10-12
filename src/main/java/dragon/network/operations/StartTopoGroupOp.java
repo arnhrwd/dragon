@@ -1,28 +1,32 @@
 package dragon.network.operations;
 
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.node.StartTopoErrorNMsg;
 import dragon.network.messages.node.StartTopoNMsg;
 import dragon.network.messages.node.TopoStartedNMsg;
-import dragon.network.messages.service.RunTopoSMsg;
 
 
 public class StartTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = 2635749611866470029L;
-	private final RunTopoSMsg rtm;
-	
-	public StartTopoGroupOp(RunTopoSMsg orig,IOpSuccess success,IOpFailure failure) {
+	private final String topologyId;
+	public StartTopoGroupOp(String topologyId,IOpSuccess success,IOpFailure failure) {
 		super(success,failure);
-		this.rtm=orig;
+		this.topologyId=topologyId;
 	}
 
 	@Override
 	protected NodeMessage initiateNodeMessage() {
-		return new StartTopoNMsg(rtm.topologyId);
+		return new StartTopoNMsg(topologyId);
 	}
 
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new TopoStartedNMsg(rtm.topologyId);
+		return new TopoStartedNMsg(topologyId);
+	}
+	
+	@Override
+	protected NodeMessage errorNodeMessage(String error) {
+		return new StartTopoErrorNMsg(topologyId,error);
 	}
 
 }

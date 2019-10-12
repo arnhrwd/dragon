@@ -11,8 +11,16 @@ import dragon.network.messages.node.TopoInfoNMsg;
 
 public class ListToposGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7346932652353465012L;
+	
+	/*
+	 * Holding variables prior to transmitting a success message.
+	 */
 	public transient HashMap<String,String> state;
 	public transient HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors;
+	
+	/*
+	 * Holding variables for collecting all of the responses.
+	 */
 	public transient final HashMap<String,HashMap<String,String>> descState;
 	public transient final HashMap<String,HashMap<String,HashMap<String,ArrayList<ComponentError>>>> descErrors;
 	
@@ -29,7 +37,6 @@ public class ListToposGroupOp extends GroupOp {
 			descErrors.put(desc.toString(),errors);
 	}
 
-
 	@Override
 	public NodeMessage initiateNodeMessage() {
 		return new GetTopoInfoNMsg();
@@ -38,6 +45,12 @@ public class ListToposGroupOp extends GroupOp {
 	@Override
 	public NodeMessage successNodeMessage() {
 		return new TopoInfoNMsg(state,errors);
+	}
+
+	@Override
+	protected NodeMessage errorNodeMessage(String error) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

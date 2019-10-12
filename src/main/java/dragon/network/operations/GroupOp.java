@@ -18,7 +18,7 @@ import dragon.network.messages.node.NodeMessage;
  * @author aaron
  *
  */
-public class GroupOp extends Op implements Serializable {
+public abstract class GroupOp extends Op implements Serializable {
 	private static final long serialVersionUID = 7500196228211761411L;
 	private static final Log log = LogFactory.getLog(GroupOp.class);
 	protected transient HashSet<NodeDescriptor> group; // not necessary at the group members
@@ -95,14 +95,8 @@ public class GroupOp extends Op implements Serializable {
 	 * message need not be provided.
 	 */
 
-	protected NodeMessage initiateNodeMessage() {
-		return null;
-	}
-	protected NodeMessage successNodeMessage() {
-		return null;
-	}
-	protected NodeMessage errorNodeMessage(String error) {
-		return null;
-	}
+	protected abstract NodeMessage initiateNodeMessage();
+	protected abstract NodeMessage successNodeMessage();
+	protected abstract NodeMessage errorNodeMessage(String error);
 
 }

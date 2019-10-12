@@ -583,7 +583,7 @@ public class LocalCluster {
 				// the local cluster can now be garbage collected
 				synchronized(groupOperations) {
 					for(GroupOp go : groupOperations.get(TermTopoGroupOp.class)) {
-						node.localClusterTerminated(topologyName,(TermTopoGroupOp) go);
+						node.localClusterTerminated((TermTopoGroupOp) go);
 					}
 				}
 				
