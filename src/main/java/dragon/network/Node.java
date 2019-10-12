@@ -22,8 +22,8 @@ import dragon.metrics.Metrics;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
-import dragon.network.messages.node.HaltTopologyMessage;
-import dragon.network.messages.node.JoinRequestMessage;
+import dragon.network.messages.node.HaltTopoNMsg;
+import dragon.network.messages.node.JoinRequestNMsg;
 import dragon.network.operations.GroupOp;
 import dragon.network.operations.ListToposGroupOp;
 import dragon.network.operations.Op;
@@ -67,7 +67,7 @@ public class Node {
 			if(!existingNode.equals(comms.getMyNodeDescriptor())) {
 				nodeState=NodeState.JOIN_REQUESTED;
 				try {
-					comms.sendNodeMessage(existingNode, new JoinRequestMessage());
+					comms.sendNodeMessage(existingNode, new JoinRequestNMsg());
 				} catch (DragonCommsException e) {
 					log.error("failed to join with ["+existingNode+"]: "+e.getMessage());
 					nodeState=NodeState.JOINING;
@@ -211,9 +211,13 @@ public class Node {
 	
 	public synchronized void localClusterTerminated(String topologyId, TermTopoGroupOp ttgo) {
 		//router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
+		ttgo.sendSuccess(comms);
+	}
+
+	public synchronized void removeTopo(String topologyId) {
+		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
 		System.gc();
-		ttgo.sendSuccess(comms);
 	}
 	
 	public Operations getOperationsProcessor() {
@@ -224,7 +228,7 @@ public class Node {
 		for(NodeDescriptor desc : localClusters.get(topologyName).getTopology().getReverseEmbedding().keySet()) {
 			if(!desc.equals(getComms().getMyNodeDescriptor())) {
 				try {
-					getComms().sendNodeMessage(desc, new HaltTopologyMessage(topologyName));
+					getComms().sendNodeMessage(desc, new HaltTopoNMsg(topologyName));
 				} catch (DragonCommsException e) {
 					log.error("could not signal halt topology");
 				}

@@ -5,24 +5,24 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.DragonRequiresClonableException;
 import dragon.metrics.ComponentMetricMap;
-import dragon.network.messages.service.RunTopologyMessage;
+import dragon.network.messages.service.RunTopoSMsg;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.TerminateTopologyErrorMessage;
-import dragon.network.messages.service.TerminateTopologyMessage;
-import dragon.network.messages.service.TopologyHaltedMessage;
-import dragon.network.messages.service.TopologyListMessage;
-import dragon.network.messages.service.TopologyResumedMessage;
-import dragon.network.messages.service.TopologyRunningMessage;
+import dragon.network.messages.service.TermTopoErrorSMsg;
+import dragon.network.messages.service.TermTopoSMsg;
+import dragon.network.messages.service.TopoHaltedSMsg;
+import dragon.network.messages.service.TopoListSMsg;
+import dragon.network.messages.service.TopoResumedMsg;
+import dragon.network.messages.service.TopoRunningSMsg;
 import dragon.network.messages.service.TopologyTerminatedMessage;
-import dragon.network.messages.service.UploadJarFailedMessage;
-import dragon.network.messages.service.RunTopologyErrorMessage;
+import dragon.network.messages.service.UploadJarFailedSMsg;
+import dragon.network.messages.service.RunTopoErrorSMsg;
 import dragon.network.comms.DragonCommsException;
-import dragon.network.messages.service.GetMetricsMessage;
-import dragon.network.messages.service.HaltTopologyErrorMessage;
-import dragon.network.messages.service.HaltTopologyMessage;
-import dragon.network.messages.service.ListTopologiesMessage;
-import dragon.network.messages.service.UploadJarMessage;
-import dragon.network.messages.service.UploadJarSuccessMessage;
+import dragon.network.messages.service.GetMetricsSMsg;
+import dragon.network.messages.service.HaltTopoErrorSMsg;
+import dragon.network.messages.service.HaltTopoSMsg;
+import dragon.network.messages.service.ListToposSMsg;
+import dragon.network.messages.service.UploadJarSMsg;
+import dragon.network.messages.service.UploadJarSuccessSMsg;
 import dragon.network.operations.HaltTopoGroupOp;
 import dragon.network.operations.ListToposGroupOp;
 import dragon.network.operations.PrepareTopoGroupOp;
@@ -33,11 +33,11 @@ import dragon.network.operations.TermRouterGroupOp;
 import dragon.network.operations.TermTopoGroupOp;
 import dragon.network.operations.Operations;
 import dragon.topology.DragonTopology;
-import dragon.network.messages.service.GetMetricsErrorMessage;
-import dragon.network.messages.service.MetricsMessage;
-import dragon.network.messages.service.NodeContextMessage;
-import dragon.network.messages.service.ResumeTopologyErrorMessage;
-import dragon.network.messages.service.ResumeTopologyMessage;
+import dragon.network.messages.service.GetMetricsErrorSMsg;
+import dragon.network.messages.service.MetricsSMsg;
+import dragon.network.messages.service.NodeContextSMsg;
+import dragon.network.messages.service.ResumeTopoErrorSMsg;
+import dragon.network.messages.service.ResumeTopoSMsg;
 
 /**
  * Process service messages that come from a client. Processing may require issuing a
@@ -63,10 +63,10 @@ public class ServiceProcessor extends Thread {
 	 * @param command contains the name of the topology and the JAR byte array
 	 */
 	private void processUploadJar(ServiceMessage command){
-		UploadJarMessage jf = (UploadJarMessage) command;
+		UploadJarSMsg jf = (UploadJarSMsg) command;
 		if(node.getLocalClusters().containsKey(jf.topologyName)){
 			try {
-				node.getComms().sendServiceMessage(new UploadJarFailedMessage(jf.topologyName,"topology exists"),jf);
+				node.getComms().sendServiceMessage(new UploadJarFailedSMsg(jf.topologyName,"topology exists"),jf);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: "+e.getMessage());
 			}
@@ -74,7 +74,7 @@ public class ServiceProcessor extends Thread {
 			log.info("storing topology ["+jf.topologyName+"]");
 			if(!node.storeJarFile(jf.topologyName,jf.topologyJar)) {
 				try {
-					node.getComms().sendServiceMessage(new UploadJarFailedMessage(jf.topologyName,"could not store the topology jar"),jf);
+					node.getComms().sendServiceMessage(new UploadJarFailedSMsg(jf.topologyName,"could not store the topology jar"),jf);
 				} catch (DragonCommsException e) {
 					log.fatal("can't communicate with client: "+e.getMessage());
 				}
@@ -82,14 +82,14 @@ public class ServiceProcessor extends Thread {
 			}
 			if(!node.loadJarFile(jf.topologyName)) {
 				try {
-					node.getComms().sendServiceMessage(new UploadJarFailedMessage(jf.topologyName,"could not load the topology jar"),jf);
+					node.getComms().sendServiceMessage(new UploadJarFailedSMsg(jf.topologyName,"could not load the topology jar"),jf);
 				} catch (DragonCommsException e) {
 					log.fatal("can't communicate with client: "+e.getMessage());
 				}				
 				return;
 			}
 			try {
-				node.getComms().sendServiceMessage(new UploadJarSuccessMessage(jf.topologyName),jf);
+				node.getComms().sendServiceMessage(new UploadJarSuccessSMsg(jf.topologyName),jf);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: "+e.getMessage());
 			}
@@ -104,10 +104,10 @@ public class ServiceProcessor extends Thread {
 	 * @param command contains the name of the topology and the topology itself
 	 */
 	private void processRunTopology(ServiceMessage command) {
-		RunTopologyMessage scommand = (RunTopologyMessage) command;
+		RunTopoSMsg scommand = (RunTopoSMsg) command;
 		if(node.getLocalClusters().containsKey(scommand.topologyName)){
 			try {
-				node.getComms().sendServiceMessage(new RunTopologyErrorMessage(scommand.topologyName,"topology exists"),scommand);
+				node.getComms().sendServiceMessage(new RunTopoErrorSMsg(scommand.topologyName,"topology exists"),scommand);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: "+e.getMessage());
 			}
@@ -115,20 +115,20 @@ public class ServiceProcessor extends Thread {
 			final DragonTopology dragonTopology = scommand.dragonTopology;
 			Operations.getInstance().newRunTopoGroupOp(scommand,
 				node.readJarFile(scommand.topologyName), dragonTopology, (op) -> {
+					log.debug("here");
 					scommand.dragonTopology = dragonTopology; // undo a side-effect from the run topology operation
-					Operations.getInstance().newPrepareTopoGroupOp(scommand, (op2) -> {
-						Operations.getInstance()
-							.newStartTopologyGroupOperation(scommand, (op3) -> {
+					Operations.getInstance().newPrepareTopoGroupOp(scommand, dragonTopology, (op2) -> {
+						Operations.getInstance().newStartTopologyGroupOperation(scommand, (op3) -> {
 								try {
 									node.getComms().sendServiceMessage(
-											new TopologyRunningMessage(scommand.topologyName), scommand);
+											new TopoRunningSMsg(scommand.topologyName), scommand);
 								} catch (DragonCommsException e) {
 									log.fatal("can't communicate with client: " + e.getMessage());
 								}
 							}, (op3, error) -> {
 								try {
 									node.getComms().sendServiceMessage(
-											new RunTopologyErrorMessage(scommand.topologyName, error),
+											new RunTopoErrorSMsg(scommand.topologyName, error),
 											scommand);
 								} catch (DragonCommsException e) {
 									log.fatal("can't communicate with client: " + e.getMessage());
@@ -140,7 +140,7 @@ public class ServiceProcessor extends Thread {
 					}, (op2, error) -> {
 						try {
 							node.getComms().sendServiceMessage(
-									new RunTopologyErrorMessage(scommand.topologyName, error), scommand);
+									new RunTopoErrorSMsg(scommand.topologyName, error), scommand);
 						} catch (DragonCommsException e) {
 							log.fatal("can't communicate with client: " + e.getMessage());
 						}
@@ -157,7 +157,7 @@ public class ServiceProcessor extends Thread {
 				}, (op, error) -> {
 					try {
 						node.getComms().sendServiceMessage(
-								new RunTopologyErrorMessage(scommand.topologyName, error), scommand);
+								new RunTopoErrorSMsg(scommand.topologyName, error), scommand);
 					} catch (DragonCommsException e) {
 						log.fatal("can't communicate with client: " + e.getMessage());
 					}
@@ -176,7 +176,7 @@ public class ServiceProcessor extends Thread {
 	private void processGetNodeContext(ServiceMessage command){
 		try {
 			node.getComms().sendServiceMessage(
-					new NodeContextMessage(node.getNodeProcessor().getContext()),command);
+					new NodeContextSMsg(node.getNodeProcessor().getContext()),command);
 		} catch (DragonCommsException e) {
 			log.fatal("can't communicate with client: "+e.getMessage());
 		}
@@ -187,18 +187,18 @@ public class ServiceProcessor extends Thread {
 	 * @param command
 	 */
 	private void processGetMetrics(ServiceMessage command){
-		GetMetricsMessage gm = (GetMetricsMessage) command;
+		GetMetricsSMsg gm = (GetMetricsSMsg) command;
 		if((Boolean)node.getConf().getDragonMetricsEnabled()){
 			ComponentMetricMap cm = node.getMetrics(gm.topologyId);
 			if(cm!=null){
 				try {
-					node.getComms().sendServiceMessage(new MetricsMessage(cm),command);
+					node.getComms().sendServiceMessage(new MetricsSMsg(cm),command);
 				} catch (DragonCommsException e) {
 					log.fatal("can't communicate with client: "+e.getMessage());
 				}
 			} else {
 				try {
-					node.getComms().sendServiceMessage(new GetMetricsErrorMessage("unknown topology or there are no samples available yet"),command);
+					node.getComms().sendServiceMessage(new GetMetricsErrorSMsg("unknown topology or there are no samples available yet"),command);
 				} catch (DragonCommsException e) {
 					log.fatal("can't communicate with client: "+e.getMessage());
 				}
@@ -206,7 +206,7 @@ public class ServiceProcessor extends Thread {
 		} else {
 			log.warn("metrics are not enabled");
 			try {
-				node.getComms().sendServiceMessage(new GetMetricsErrorMessage("metrics are not enabled in dragon.yaml for this node"),command);
+				node.getComms().sendServiceMessage(new GetMetricsErrorSMsg("metrics are not enabled in dragon.yaml for this node"),command);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: "+e.getMessage());
 			}
@@ -220,10 +220,10 @@ public class ServiceProcessor extends Thread {
 	 * @param command contains the name of the topology
 	 */
 	private void processTerminateTopology(ServiceMessage command){
-		TerminateTopologyMessage tt = (TerminateTopologyMessage) command;
+		TermTopoSMsg tt = (TermTopoSMsg) command;
 		if(!node.getLocalClusters().containsKey(tt.topologyId)){
 			try {
-				node.getComms().sendServiceMessage(new TerminateTopologyErrorMessage(tt.topologyId,"topology does not exist"),command);
+				node.getComms().sendServiceMessage(new TermTopoErrorSMsg(tt.topologyId,"topology does not exist"),command);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: "+e.getMessage());
 			}
@@ -232,6 +232,7 @@ public class ServiceProcessor extends Thread {
 			Operations.getInstance().newTermTopoGroupOp(tt,
 				(op)->{
 					Operations.getInstance().newTermRouterGroupOp(tt,
+							topology,
 							(op2)->{
 								try {
 									node.getComms().sendServiceMessage(new TopologyTerminatedMessage(tt.topologyId),tt);
@@ -241,19 +242,19 @@ public class ServiceProcessor extends Thread {
 							},
 							(op2,error)->{
 								try {
-									node.getComms().sendServiceMessage(new TerminateTopologyErrorMessage(tt.topologyId,error),tt);
+									node.getComms().sendServiceMessage(new TermTopoErrorSMsg(tt.topologyId,error),tt);
 								} catch (DragonCommsException e) {
 									log.fatal("can't communicate with client: "+e.getMessage());
 								}
 							}).onRunning((op2)->{
-								node.getRouter().terminateTopology(tt.topologyId,topology);
+								node.removeTopo(tt.topologyId);
 								((TermRouterGroupOp)op2).receiveSuccess(node.getComms(), node.getComms().getMyNodeDescriptor());
 							});
 					
 				},
 				(op,error)->{
 					try {
-						node.getComms().sendServiceMessage(new TerminateTopologyErrorMessage(tt.topologyId,error),tt);
+						node.getComms().sendServiceMessage(new TermTopoErrorSMsg(tt.topologyId,error),tt);
 					} catch (DragonCommsException e) {
 						log.error("could not send terminate topology error message");
 					}
@@ -270,12 +271,12 @@ public class ServiceProcessor extends Thread {
 	 * @param command
 	 */
 	private void processListTopologies(ServiceMessage command){
-		ListTopologiesMessage ltm = (ListTopologiesMessage)command;
+		ListToposSMsg ltm = (ListToposSMsg)command;
 		Operations.getInstance().newListToposGroupOp(ltm,
 			(op)->{
 				ListToposGroupOp ltgo = (ListToposGroupOp)op;
 					try {
-						node.getComms().sendServiceMessage(new TopologyListMessage(ltgo.descState,ltgo.descErrors),command);
+						node.getComms().sendServiceMessage(new TopoListSMsg(ltgo.descState,ltgo.descErrors),command);
 					} catch (DragonCommsException e) {
 						log.fatal("can't communicate with client: "+e.getMessage());
 					}
@@ -295,10 +296,10 @@ public class ServiceProcessor extends Thread {
 	 * @param command contains the name of the topology to halt.
 	 */
 	private void processHaltTopology(ServiceMessage command){
-		HaltTopologyMessage htm = (HaltTopologyMessage) command;
+		HaltTopoSMsg htm = (HaltTopoSMsg) command;
 		if(!node.getLocalClusters().containsKey(htm.topologyId)){
 			try {
-				node.getComms().sendServiceMessage(new HaltTopologyErrorMessage(htm.topologyId,"topology does not exist"),command);
+				node.getComms().sendServiceMessage(new HaltTopoErrorSMsg(htm.topologyId,"topology does not exist"),command);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: "+e.getMessage());
 			}
@@ -306,14 +307,14 @@ public class ServiceProcessor extends Thread {
 			Operations.getInstance().newHaltTopoGroupOp(htm,
 				(op)->{
 					try {
-						node.getComms().sendServiceMessage(new TopologyHaltedMessage(htm.topologyId),command);
+						node.getComms().sendServiceMessage(new TopoHaltedSMsg(htm.topologyId),command);
 					} catch (DragonCommsException e) {
 						log.fatal("can't communicate with client: "+e.getMessage());
 					}
 				},
 				(op,error)->{
 					try {
-						node.getComms().sendServiceMessage(new HaltTopologyErrorMessage(htm.topologyId,error),command);
+						node.getComms().sendServiceMessage(new HaltTopoErrorSMsg(htm.topologyId,error),command);
 					} catch (DragonCommsException e) {
 						log.fatal("can't communicate with client: "+e.getMessage());
 					}
@@ -329,10 +330,10 @@ public class ServiceProcessor extends Thread {
 	 * @param command contains the name of the topology to resume.
 	 */
 	private void processResumeTopology(ServiceMessage command){
-		ResumeTopologyMessage htm = (ResumeTopologyMessage) command;
+		ResumeTopoSMsg htm = (ResumeTopoSMsg) command;
 		if(!node.getLocalClusters().containsKey(htm.topologyId)){
 			try {
-				node.getComms().sendServiceMessage(new ResumeTopologyErrorMessage(htm.topologyId,"topology does not exist"),command);
+				node.getComms().sendServiceMessage(new ResumeTopoErrorSMsg(htm.topologyId,"topology does not exist"),command);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: "+e.getMessage());
 			}
@@ -340,14 +341,14 @@ public class ServiceProcessor extends Thread {
 			Operations.getInstance().newResumeTopoGroupOp(htm,
 				(op)->{
 					try {
-						node.getComms().sendServiceMessage(new TopologyResumedMessage(htm.topologyId),command);
+						node.getComms().sendServiceMessage(new TopoResumedMsg(htm.topologyId),command);
 					} catch (DragonCommsException e) {
 						log.fatal("can't communicate with client: "+e.getMessage());
 					}
 				},
 				(op,error)->{
 					try {
-						node.getComms().sendServiceMessage(new ResumeTopologyErrorMessage(htm.topologyId,error),command);
+						node.getComms().sendServiceMessage(new ResumeTopoErrorSMsg(htm.topologyId,error),command);
 					} catch (DragonCommsException e) {
 						log.fatal("can't communicate with client: "+e.getMessage());
 					}

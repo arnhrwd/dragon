@@ -1,17 +1,17 @@
 package dragon.network.operations;
 
-import dragon.network.messages.node.JarReadyMessage;
+import dragon.network.messages.node.JarReadyNMsg;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.PrepareJarErrorMessage;
-import dragon.network.messages.node.PrepareJarMessage;
-import dragon.network.messages.service.RunTopologyMessage;
+import dragon.network.messages.node.PrepareJarErrorNMsg;
+import dragon.network.messages.node.PrepareJarNMsg;
+import dragon.network.messages.service.RunTopoSMsg;
 
 public class RunTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = -2038551040445600017L;
-	private RunTopologyMessage rtm;
+	private RunTopoSMsg rtm;
 	private transient byte[] jar;
 	
-	public RunTopoGroupOp(RunTopologyMessage orig,byte[] jar,IOpSuccess success,
+	public RunTopoGroupOp(RunTopoSMsg orig,byte[] jar,IOpSuccess success,
 			IOpFailure failure) {
 		super(arbridged(orig),success,failure);
 		this.rtm=orig;
@@ -19,23 +19,23 @@ public class RunTopoGroupOp extends GroupOp {
 		this.jar=jar;
 	}
 	
-	private static RunTopologyMessage arbridged(RunTopologyMessage rtm) {
-		RunTopologyMessage rtmlocal = new RunTopologyMessage(rtm.topologyName,rtm.conf,null);
+	private static RunTopoSMsg arbridged(RunTopoSMsg rtm) {
+		RunTopoSMsg rtmlocal = new RunTopoSMsg(rtm.topologyName,rtm.conf,null);
 		rtmlocal.setMessageId(rtm.getMessageId());
 		return rtmlocal;
 	}
 	
 	@Override
 	protected NodeMessage initiateNodeMessage() {
-		return new PrepareJarMessage(rtm.topologyName,jar);
+		return new PrepareJarNMsg(rtm.topologyName,jar);
 	}
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new JarReadyMessage(rtm.topologyName);
+		return new JarReadyNMsg(rtm.topologyName);
 	}
 	@Override
 	protected NodeMessage errorNodeMessage(String error) {
-		return new PrepareJarErrorMessage(rtm.topologyName,error);
+		return new PrepareJarErrorNMsg(rtm.topologyName,error);
 	}
 
 }

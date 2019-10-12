@@ -2,9 +2,9 @@ package dragon.network.operations;
 
 import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.RouterTerminatedMessage;
-import dragon.network.messages.node.TerminateRouterErrorMessage;
-import dragon.network.messages.node.TerminateRouterMessage;
+import dragon.network.messages.node.TopoRemovedNMsg;
+import dragon.network.messages.node.RemoveTopoErrorNMsg;
+import dragon.network.messages.node.RemoveTopoNMsg;
 
 
 public class TermRouterGroupOp extends GroupOp {
@@ -18,17 +18,17 @@ public class TermRouterGroupOp extends GroupOp {
 	
 	@Override
 	protected NodeMessage initiateNodeMessage() {
-		return new TerminateRouterMessage(topologyId);
+		return new RemoveTopoNMsg(topologyId);
 	}
 	
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new RouterTerminatedMessage(topologyId);
+		return new TopoRemovedNMsg(topologyId);
 	}
 	
 	@Override 
 	protected NodeMessage errorNodeMessage(String error) {
-		return new TerminateRouterErrorMessage(topologyId,error);
+		return new RemoveTopoErrorNMsg(topologyId,error);
 	}
 	
 }

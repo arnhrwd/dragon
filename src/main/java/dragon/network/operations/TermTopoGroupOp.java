@@ -4,10 +4,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.StopTopologyErrorMessage;
-import dragon.network.messages.node.StopTopologyMessage;
-import dragon.network.messages.node.TopologyStoppedMessage;
-import dragon.network.messages.service.TerminateTopologyMessage;
+import dragon.network.messages.node.StopTopoErrorNMsg;
+import dragon.network.messages.node.StopTopoNMsg;
+import dragon.network.messages.node.TopoStoppedNMsg;
+import dragon.network.messages.service.TermTopoSMsg;
 
 
 public class TermTopoGroupOp extends GroupOp {
@@ -16,24 +16,24 @@ public class TermTopoGroupOp extends GroupOp {
 	private static final Log log = LogFactory.getLog(TermTopoGroupOp.class);
 	private final String topologyId;
 	
-	public TermTopoGroupOp(TerminateTopologyMessage ttm,IOpSuccess success, IOpFailure failure) {
+	public TermTopoGroupOp(TermTopoSMsg ttm,IOpSuccess success, IOpFailure failure) {
 		super(ttm,success,failure);
 		this.topologyId=ttm.topologyId;
 	}
 	
 	@Override
 	protected NodeMessage initiateNodeMessage() {
-		return new StopTopologyMessage(topologyId);
+		return new StopTopoNMsg(topologyId);
 	}
 	
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new TopologyStoppedMessage(topologyId);
+		return new TopoStoppedNMsg(topologyId);
 	}
 	
 	@Override
 	protected NodeMessage errorNodeMessage(String error) {
-		return new StopTopologyErrorMessage(topologyId,error);
+		return new StopTopoErrorNMsg(topologyId,error);
 	}
 
 }

@@ -4,11 +4,11 @@ import java.util.HashMap;
 
 import dragon.network.Node;
 import dragon.network.NodeDescriptor;
-import dragon.network.messages.service.HaltTopologyMessage;
-import dragon.network.messages.service.ListTopologiesMessage;
-import dragon.network.messages.service.ResumeTopologyMessage;
-import dragon.network.messages.service.RunTopologyMessage;
-import dragon.network.messages.service.TerminateTopologyMessage;
+import dragon.network.messages.service.HaltTopoSMsg;
+import dragon.network.messages.service.ListToposSMsg;
+import dragon.network.messages.service.ResumeTopoSMsg;
+import dragon.network.messages.service.RunTopoSMsg;
+import dragon.network.messages.service.TermTopoSMsg;
 import dragon.topology.DragonTopology;
 
 public class Operations extends Thread {
@@ -27,7 +27,7 @@ public class Operations extends Thread {
 		groupOperations=new HashMap<Long,Op>();
 	}
 	
-	public RunTopoGroupOp newRunTopoGroupOp(RunTopologyMessage rtm,
+	public RunTopoGroupOp newRunTopoGroupOp(RunTopoSMsg rtm,
 			byte[] jarFile,
 			DragonTopology topology,
 			IOpSuccess success,
@@ -36,35 +36,37 @@ public class Operations extends Thread {
 		return (RunTopoGroupOp) newGroupOperation(rtgo,topology);
 	}
 	
-	public PrepareTopoGroupOp newPrepareTopoGroupOp(RunTopologyMessage rtm,
+	public PrepareTopoGroupOp newPrepareTopoGroupOp(RunTopoSMsg rtm,
+			DragonTopology topology,
 			IOpSuccess success,
 			IOpFailure failure) {
 		PrepareTopoGroupOp ptgo = new PrepareTopoGroupOp(rtm,success,failure);
-		return (PrepareTopoGroupOp) newGroupOperation(ptgo,rtm.topologyName);
+		return (PrepareTopoGroupOp) newGroupOperation(ptgo,topology);
 	}
 	
-	public StartTopoGroupOp newStartTopologyGroupOperation(RunTopologyMessage orig,
+	public StartTopoGroupOp newStartTopologyGroupOperation(RunTopoSMsg orig,
 			IOpSuccess success,
 			IOpFailure failure) {
 		StartTopoGroupOp stgo = new StartTopoGroupOp(orig,success,failure);
 		return (StartTopoGroupOp) newGroupOperation(stgo,orig.topologyName);
 	}
 	
-	public TermTopoGroupOp newTermTopoGroupOp(TerminateTopologyMessage ttm,
+	public TermTopoGroupOp newTermTopoGroupOp(TermTopoSMsg ttm,
 			IOpSuccess success,
 			IOpFailure failure) {
 		TermTopoGroupOp ttgo = new TermTopoGroupOp(ttm,success,failure);
 		return (TermTopoGroupOp) newGroupOperation(ttgo,ttm.topologyId);
 	}
 	
-	public TermRouterGroupOp newTermRouterGroupOp(TerminateTopologyMessage ttm,
+	public TermRouterGroupOp newTermRouterGroupOp(TermTopoSMsg ttm,
+			DragonTopology topology,
 			IOpSuccess success,
 			IOpFailure failure) {
 		TermRouterGroupOp trgo = new TermRouterGroupOp(ttm,ttm.topologyId,success,failure);
-		return (TermRouterGroupOp) newGroupOperation(trgo,ttm.topologyId);
+		return (TermRouterGroupOp) newGroupOperation(trgo,topology);
 	}
 	
-	public ListToposGroupOp newListToposGroupOp(ListTopologiesMessage ltm,
+	public ListToposGroupOp newListToposGroupOp(ListToposSMsg ltm,
 			IOpSuccess success,
 			IOpFailure failure) {
 		ListToposGroupOp ltgo = new ListToposGroupOp(ltm);
@@ -79,14 +81,14 @@ public class Operations extends Thread {
 	}
 			
 	
-	public HaltTopoGroupOp newHaltTopoGroupOp(HaltTopologyMessage orig,
+	public HaltTopoGroupOp newHaltTopoGroupOp(HaltTopoSMsg orig,
 			IOpSuccess success,
 			IOpFailure failure) {
 		HaltTopoGroupOp htgo = new HaltTopoGroupOp(orig,success,failure);
 		return (HaltTopoGroupOp) newGroupOperation(htgo,orig.topologyId);
 	}
 	
-	public ResumeTopoGroupOp newResumeTopoGroupOp(ResumeTopologyMessage orig,
+	public ResumeTopoGroupOp newResumeTopoGroupOp(ResumeTopoSMsg orig,
 			IOpSuccess success,
 			IOpFailure failure) {
 		ResumeTopoGroupOp htgo = new ResumeTopoGroupOp(orig,success,failure);

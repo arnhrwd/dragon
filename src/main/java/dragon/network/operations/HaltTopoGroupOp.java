@@ -1,10 +1,10 @@
 package dragon.network.operations;
 
 import dragon.network.messages.Message;
-import dragon.network.messages.node.HaltTopologyErrorMessage;
-import dragon.network.messages.node.HaltTopologyMessage;
+import dragon.network.messages.node.HaltTopoErrorNMsg;
+import dragon.network.messages.node.HaltTopoNMsg;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.TopologyHaltedMessage;
+import dragon.network.messages.node.TopoHaltedNMsg;
 
 public class HaltTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7324344914355135103L;
@@ -12,23 +12,23 @@ public class HaltTopoGroupOp extends GroupOp {
 	
 	public HaltTopoGroupOp(Message orig,IOpSuccess success, IOpFailure failure) {
 		super(orig,success,failure);
-		topologyId = ((dragon.network.messages.service.HaltTopologyMessage)orig).topologyId;
+		topologyId = ((dragon.network.messages.service.HaltTopoSMsg)orig).topologyId;
 		
 	}
 	
 	@Override
 	protected NodeMessage initiateNodeMessage() {
-		return new HaltTopologyMessage(topologyId);
+		return new HaltTopoNMsg(topologyId);
 	}
 	
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new TopologyHaltedMessage(topologyId);
+		return new TopoHaltedNMsg(topologyId);
 	}
 	
 	@Override 
 	protected NodeMessage errorNodeMessage(String error) {
-		return new HaltTopologyErrorMessage(topologyId,error);
+		return new HaltTopoErrorNMsg(topologyId,error);
 	}
 
 }

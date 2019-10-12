@@ -2,16 +2,16 @@ package dragon.network.operations;
 
 
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.PrepareTopologyMessage;
-import dragon.network.messages.node.TopologyReadyMessage;
-import dragon.network.messages.service.RunTopologyMessage;
+import dragon.network.messages.node.PrepareTopoNMsg;
+import dragon.network.messages.node.TopoReadyNMsg;
+import dragon.network.messages.service.RunTopoSMsg;
 
 
 public class PrepareTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7223966055440319387L;
-	private RunTopologyMessage rtm;
+	private RunTopoSMsg rtm;
 	
-	public PrepareTopoGroupOp(RunTopologyMessage orig,IOpSuccess success,
+	public PrepareTopoGroupOp(RunTopoSMsg orig,IOpSuccess success,
 			IOpFailure failure) {
 		super(orig,success,failure);
 		this.rtm=orig;
@@ -19,12 +19,12 @@ public class PrepareTopoGroupOp extends GroupOp {
 
 	@Override
 	protected NodeMessage initiateNodeMessage() {
-		return new PrepareTopologyMessage(rtm.topologyName,rtm.conf,rtm.dragonTopology);
+		return new PrepareTopoNMsg(rtm.topologyName,rtm.conf,rtm.dragonTopology);
 	}
 
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new TopologyReadyMessage(rtm.topologyName);
+		return new TopoReadyNMsg(rtm.topologyName);
 	}
 
 }

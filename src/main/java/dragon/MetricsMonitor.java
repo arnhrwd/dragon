@@ -20,9 +20,9 @@ import dragon.network.NodeDescriptor;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
-import dragon.network.messages.service.GetMetricsMessage;
-import dragon.network.messages.service.MetricsMessage;
-import dragon.network.messages.service.ServiceDoneMessage;
+import dragon.network.messages.service.GetMetricsSMsg;
+import dragon.network.messages.service.MetricsSMsg;
+import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
 
 public class MetricsMonitor {
@@ -51,11 +51,11 @@ public class MetricsMonitor {
 			for(NodeDescriptor desc : conf.getHosts()){
 				log.debug("requesting metrics from ["+desc.toString()+"] on service port ["+desc.getServicePort()+"]");
 				comms.open(desc);
-				comms.sendServiceMessage(new GetMetricsMessage(topologyId));
+				comms.sendServiceMessage(new GetMetricsSMsg(topologyId));
 				ServiceMessage response = comms.receiveServiceMessage();
 				switch(response.getType()){
 				case METRICS:
-					MetricsMessage m = (MetricsMessage) response;
+					MetricsSMsg m = (MetricsSMsg) response;
 					for(String componentId : m.samples.keySet()) {
 						if(!meanInputQueueLength.containsKey(componentId)) {
 							meanInputQueueLength.put(componentId,(float) 0.0);
@@ -82,7 +82,7 @@ public class MetricsMonitor {
 				case GET_METRICS_ERROR:
 					break;
 				}
-				comms.sendServiceMessage(new ServiceDoneMessage());
+				comms.sendServiceMessage(new ServiceDoneSMsg());
 				comms.close();
 			}
 			for(String componentId : meanInputQueueLength.keySet()) {

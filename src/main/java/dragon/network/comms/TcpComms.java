@@ -17,7 +17,7 @@ import dragon.Config;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.service.ServiceDoneMessage;
+import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.tuple.NetworkTask;
 import dragon.utils.CircularBlockingQueue;
@@ -143,7 +143,7 @@ public class TcpComms implements IComms {
 										incomingServiceQueue.put(message);
 										message = (ServiceMessage) in.readObject();
 									}
-									ServiceDoneMessage r = new ServiceDoneMessage();
+									ServiceDoneSMsg r = new ServiceDoneSMsg();
 									r.setMessageId(myid.toString());
 									try {
 										sendServiceMessage(r);

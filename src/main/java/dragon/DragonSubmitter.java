@@ -14,25 +14,25 @@ import dragon.network.NodeDescriptor;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
-import dragon.network.messages.service.GetMetricsMessage;
-import dragon.network.messages.service.GetNodeContextMessage;
-import dragon.network.messages.service.HaltTopologyErrorMessage;
-import dragon.network.messages.service.HaltTopologyMessage;
-import dragon.network.messages.service.ListTopologiesMessage;
-import dragon.network.messages.service.UploadJarMessage;
-import dragon.network.messages.service.GetMetricsErrorMessage;
-import dragon.network.messages.service.MetricsMessage;
-import dragon.network.messages.service.NodeContextMessage;
-import dragon.network.messages.service.ResumeTopologyErrorMessage;
-import dragon.network.messages.service.ResumeTopologyMessage;
-import dragon.network.messages.service.RunTopologyErrorMessage;
-import dragon.network.messages.service.RunTopologyMessage;
-import dragon.network.messages.service.ServiceDoneMessage;
+import dragon.network.messages.service.GetMetricsSMsg;
+import dragon.network.messages.service.GetNodeContextSMsg;
+import dragon.network.messages.service.HaltTopoErrorSMsg;
+import dragon.network.messages.service.HaltTopoSMsg;
+import dragon.network.messages.service.ListToposSMsg;
+import dragon.network.messages.service.UploadJarSMsg;
+import dragon.network.messages.service.GetMetricsErrorSMsg;
+import dragon.network.messages.service.MetricsSMsg;
+import dragon.network.messages.service.NodeContextSMsg;
+import dragon.network.messages.service.ResumeTopoErrorSMsg;
+import dragon.network.messages.service.ResumeTopoSMsg;
+import dragon.network.messages.service.RunTopoErrorSMsg;
+import dragon.network.messages.service.RunTopoSMsg;
+import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.TerminateTopologyErrorMessage;
-import dragon.network.messages.service.TerminateTopologyMessage;
-import dragon.network.messages.service.TopologyListMessage;
-import dragon.network.messages.service.UploadJarFailedMessage;
+import dragon.network.messages.service.TermTopoErrorSMsg;
+import dragon.network.messages.service.TermTopoSMsg;
+import dragon.network.messages.service.TopoListSMsg;
+import dragon.network.messages.service.UploadJarFailedSMsg;
 import dragon.topology.DragonTopology;
 
 public class DragonSubmitter {
@@ -58,7 +58,7 @@ public class DragonSubmitter {
 		initComms(conf);
 		log.info("requesting context from ["+node+"]");
 		try {
-			comms.sendServiceMessage(new GetNodeContextMessage());
+			comms.sendServiceMessage(new GetNodeContextSMsg());
 		} catch (DragonCommsException e1) {
 			System.out.println("could not send get node context message");
 			System.exit(-1);
@@ -74,7 +74,7 @@ public class DragonSubmitter {
 		NodeContext context=null;
 		switch(message.getType()) {
 		case NODE_CONTEXT:
-			NodeContextMessage nc = (NodeContextMessage) message;
+			NodeContextSMsg nc = (NodeContextSMsg) message;
 			context=nc.context;
 			break;
 		default:
@@ -91,7 +91,7 @@ public class DragonSubmitter {
 		
 		log.info("uploading jar file to ["+node+"]");
 		try {
-			comms.sendServiceMessage(new UploadJarMessage(string,topologyJar));
+			comms.sendServiceMessage(new UploadJarSMsg(string,topologyJar));
 		} catch (DragonCommsException e1) {
 			System.out.println("could not send upload jar message");
 			System.exit(-1);
@@ -103,12 +103,12 @@ public class DragonSubmitter {
 			comms.close();
 			System.exit(-1);
 		}
-		UploadJarFailedMessage te;
+		UploadJarFailedSMsg te;
 		switch(message.getType()) {
 		case UPLOAD_JAR_FAILED:
-			te = (UploadJarFailedMessage) message;
+			te = (UploadJarFailedSMsg) message;
 			try {
-				comms.sendServiceMessage(new ServiceDoneMessage());
+				comms.sendServiceMessage(new ServiceDoneSMsg());
 			} catch (DragonCommsException e1) {
 				System.out.println("could not send service done message");
 				System.exit(-1);
@@ -126,7 +126,7 @@ public class DragonSubmitter {
 		
 		log.debug("running topology on ["+node+"]");
 		try {
-			comms.sendServiceMessage(new RunTopologyMessage(string,conf,topology));
+			comms.sendServiceMessage(new RunTopoSMsg(string,conf,topology));
 		} catch (DragonCommsException e1) {
 			System.out.println("could not send run topoology message");
 			System.exit(-1);
@@ -138,10 +138,10 @@ public class DragonSubmitter {
 			comms.close();
 			System.exit(-1);
 		}
-		RunTopologyErrorMessage rtem;
+		RunTopoErrorSMsg rtem;
 		switch(message.getType()){
 		case RUN_TOPOLOGY_ERROR:
-			rtem = (RunTopologyErrorMessage) message;
+			rtem = (RunTopoErrorSMsg) message;
 			System.out.println("run topology error for ["+string+"]: "+rtem.error);
 			break;
 		case TOPOLOGY_RUNNING:
@@ -153,7 +153,7 @@ public class DragonSubmitter {
 			System.exit(-1);
 		}
 		try {
-			comms.sendServiceMessage(new ServiceDoneMessage());
+			comms.sendServiceMessage(new ServiceDoneSMsg());
 		} catch (DragonCommsException e) {
 			log.error("could not send service done message");
 			System.exit(-1);
@@ -163,15 +163,15 @@ public class DragonSubmitter {
 	
 	public static void getMetrics(Config conf,String topologyId) throws InterruptedException, DragonCommsException{
 		initComms(conf);
-		comms.sendServiceMessage(new GetMetricsMessage(topologyId));
+		comms.sendServiceMessage(new GetMetricsSMsg(topologyId));
 		ServiceMessage message = comms.receiveServiceMessage();
 		switch(message.getType()){
 		case METRICS:
-			MetricsMessage m = (MetricsMessage) message;
+			MetricsSMsg m = (MetricsSMsg) message;
 			System.out.println(m.samples.toString());
 			break;
 		case GET_METRICS_ERROR:
-			GetMetricsErrorMessage e = (GetMetricsErrorMessage) message;
+			GetMetricsErrorSMsg e = (GetMetricsErrorSMsg) message;
 			System.out.println(e.error);
 			break;
 		default:
@@ -179,18 +179,18 @@ public class DragonSubmitter {
 			comms.close();
 			System.exit(-1);
 		}
-		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.sendServiceMessage(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
 	public static void terminateTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
-		comms.sendServiceMessage(new TerminateTopologyMessage(topologyId));
+		comms.sendServiceMessage(new TermTopoSMsg(topologyId));
 		ServiceMessage message = comms.receiveServiceMessage();
-		TerminateTopologyErrorMessage tte;
+		TermTopoErrorSMsg tte;
 		switch(message.getType()) {
 		case TERMINATE_TOPOLOGY_ERROR:
-			tte = (TerminateTopologyErrorMessage) message;
+			tte = (TermTopoErrorSMsg) message;
 			System.out.println("terminate topology error ["+topologyId+"] "+tte.error);
 		case TOPOLOGY_TERMINATED:
 			System.out.println("topology terminated ["+topologyId+"]");
@@ -200,18 +200,18 @@ public class DragonSubmitter {
 			comms.close();
 			System.exit(-1);
 		}
-		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.sendServiceMessage(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
 	public static void resumeTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
-		comms.sendServiceMessage(new ResumeTopologyMessage(topologyId));
+		comms.sendServiceMessage(new ResumeTopoSMsg(topologyId));
 		ServiceMessage message = comms.receiveServiceMessage();
-		ResumeTopologyErrorMessage tte;
+		ResumeTopoErrorSMsg tte;
 		switch(message.getType()) {
 		case RESUME_TOPOLOGY_ERROR:
-			tte = (ResumeTopologyErrorMessage) message;
+			tte = (ResumeTopoErrorSMsg) message;
 			System.out.println("resume topology error ["+topologyId+"] "+tte.error);
 		case TOPOLOGY_RESUMED:
 			System.out.println("topology resumed ["+topologyId+"]");
@@ -221,18 +221,18 @@ public class DragonSubmitter {
 			comms.close();
 			System.exit(-1);
 		}
-		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.sendServiceMessage(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
 	public static void haltTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
-		comms.sendServiceMessage(new HaltTopologyMessage(topologyId));
+		comms.sendServiceMessage(new HaltTopoSMsg(topologyId));
 		ServiceMessage message = comms.receiveServiceMessage();
-		HaltTopologyErrorMessage tte;
+		HaltTopoErrorSMsg tte;
 		switch(message.getType()) {
 		case HALT_TOPOLOGY_ERROR:
-			tte = (HaltTopologyErrorMessage) message;
+			tte = (HaltTopoErrorSMsg) message;
 			System.out.println("halt topology error ["+topologyId+"] "+tte.error);
 		case TOPOLOGY_HALTED:
 			System.out.println("topology halted ["+topologyId+"]");
@@ -242,15 +242,15 @@ public class DragonSubmitter {
 			comms.close();
 			System.exit(-1);
 		}
-		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.sendServiceMessage(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
 	public static void listTopologies(Config conf) throws DragonCommsException, InterruptedException {
 		initComms(conf);
-		comms.sendServiceMessage(new ListTopologiesMessage());
-		TopologyListMessage message = (TopologyListMessage) comms.receiveServiceMessage();
-		comms.sendServiceMessage(new ServiceDoneMessage());
+		comms.sendServiceMessage(new ListToposSMsg());
+		TopoListSMsg message = (TopoListSMsg) comms.receiveServiceMessage();
+		comms.sendServiceMessage(new ServiceDoneSMsg());
 		comms.close();
 		HashSet<String> topologies = new HashSet<String>();
 		for(String descid : message.descState.keySet()) {

@@ -6,9 +6,9 @@ import java.util.HashMap;
 import dragon.ComponentError;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.Message;
-import dragon.network.messages.node.GetTopologyInformationMessage;
+import dragon.network.messages.node.GetTopoInfoNMsg;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.TopologyInformationMessage;
+import dragon.network.messages.node.TopoInfoNMsg;
 
 public class ListToposGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7346932652353465012L;
@@ -39,12 +39,12 @@ public class ListToposGroupOp extends GroupOp {
 
 	@Override
 	public NodeMessage initiateNodeMessage() {
-		return new GetTopologyInformationMessage();
+		return new GetTopoInfoNMsg();
 	}
 	
 	@Override
 	public NodeMessage successNodeMessage() {
-		return new TopologyInformationMessage(state,errors);
+		return new TopoInfoNMsg(state,errors);
 	}
 
 }
