@@ -64,15 +64,15 @@ public class Node {
 		localClusters = new HashMap<String, LocalCluster>();
 		comms = new TcpComms(conf);
 		comms.open();
-		nodeState = NodeState.JOINING;
+		setNodeState(NodeState.JOINING);
 		for (NodeDescriptor existingNode : conf.getHosts()) {
 			if (!existingNode.equals(comms.getMyNodeDesc())) {
-				nodeState = NodeState.JOIN_REQUESTED;
+				setNodeState(NodeState.JOIN_REQUESTED);
 				try {
 					comms.sendNodeMsg(existingNode, new JoinRequestNMsg());
 				} catch (DragonCommsException e) {
 					log.error("failed to join with [" + existingNode + "]: " + e.getMessage());
-					nodeState = NodeState.JOINING;
+					setNodeState(NodeState.JOINING);
 					continue;
 				}
 				break;
@@ -80,7 +80,7 @@ public class Node {
 		}
 		if (nodeState == NodeState.JOINING) {
 			log.warn("did not join with any existing Dragon daemons");
-			nodeState = NodeState.OPERATIONAL;
+			setNodeState(NodeState.OPERATIONAL);
 		}
 		router = new Router(this, conf);
 		serviceThread = new ServiceProcessor(this);
@@ -92,30 +92,6 @@ public class Node {
 			metrics = null;
 		}
 	}
-
-//	public void test() {
-//		for(NodeDescriptor existingNode : conf.getHosts()) {
-//			if(!existingNode.equals(comms.getMyNodeDescriptor())) {
-//				nodeState=NodeState.JOIN_REQUESTED;
-//				RequestReplyOperation rro = new RequestReplyOperation();
-//				rro.onStart(()->{
-//					try {
-//						comms.sendNodeMessage(existingNode, new JoinRequestMessage());
-//					} catch (DragonCommsException e) {
-//						rro.fail("could not communicate with neighbor ["+existingNode+"]: "+e.getMessage());
-//					}
-//				});
-//				rro.onSuccess(()->{
-//						
-//				});
-//				rro.onFailure((error)->{
-//						
-//				});
-//				operationsThread.register(rro);
-//				rro.start();
-//			}
-//		}
-//	}
 
 	public synchronized IComms getComms() {
 		return comms;
@@ -130,6 +106,7 @@ public class Node {
 	}
 
 	public synchronized void setNodeState(NodeState nodeState) {
+		log.info("state is now ["+nodeState+"]");
 		this.nodeState = nodeState;
 	}
 

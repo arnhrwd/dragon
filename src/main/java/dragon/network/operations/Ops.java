@@ -1,5 +1,6 @@
 package dragon.network.operations;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -27,7 +28,7 @@ public class Ops extends Thread {
 	private final Node node;
 	private static Ops me;
 	private final LinkedBlockingQueue<Op> readyQueue;
-
+	private final ArrayList<ConditionalOp> conditionalOps;
 	public static Ops inst() {
 		return me;
 	}
@@ -37,10 +38,23 @@ public class Ops extends Thread {
 		this.node = node;
 		groupOps = new HashMap<Long, Op>();
 		readyQueue = new LinkedBlockingQueue<Op>();
+		conditionalOps = new ArrayList<ConditionalOp>();
 		log.info("starting operations thread");
 		start();
 	}
 
+	public ConditionalOp newConditionOp(IOpCondition condition,
+			IOpSuccess success,
+			IOpFailure failure) {
+		ConditionalOp cop = new ConditionalOp(condition,success,failure);
+		try {
+			readyQueue.put(cop);
+		} catch (InterruptedException e) {
+			log.error("interrupted while putting conditional op on queue");
+		}
+		return cop;
+	}
+	
 	public RunTopoGroupOp newRunTopoGroupOp(String topologyId, byte[] jarFile, DragonTopology topology,
 			IOpSuccess success, IOpFailure failure) {
 		RunTopoGroupOp rtgo = new RunTopoGroupOp(topologyId, jarFile, success, failure);
@@ -128,17 +142,40 @@ public class Ops extends Thread {
 
 	@Override
 	public void run() {
+		final ArrayList<ConditionalOp> removed = new ArrayList<ConditionalOp>();
+		boolean hit;
 		while (!isInterrupted()) {
-			try {
-				Op op = readyQueue.take();
+			hit=false;
+			
+			Op op = readyQueue.poll();
+			if(op!=null) {
+				hit=true;
 				if (op instanceof GroupOp) {
 					GroupOp go = (GroupOp) op;
 					go.initiate(node.getComms());
+				} else if(op instanceof ConditionalOp){
+					op.start();
+					conditionalOps.add((ConditionalOp)op);
 				} else {
 					op.start();
 				}
-			} catch (InterruptedException e) {
-				log.info("interrupted");
+			}
+			
+			removed.clear();
+			for(ConditionalOp cop : conditionalOps) {
+				if(cop.check()) {
+					hit=true;
+					removed.add(cop);
+				}
+			}
+			conditionalOps.removeAll(removed);
+			
+			if(!hit) {
+				try {
+					Thread.sleep(50);
+				} catch (InterruptedException e) {
+					log.info("interrupted");
+				}
 			}
 
 		}
