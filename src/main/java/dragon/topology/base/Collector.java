@@ -10,6 +10,7 @@ import org.apache.commons.logging.LogFactory;
 import dragon.Constants;
 import dragon.LocalCluster;
 import dragon.grouping.AbstractGrouping;
+import dragon.network.Router;
 import dragon.topology.DestComponentMap;
 import dragon.topology.GroupingsSet;
 import dragon.topology.StreamMap;
@@ -28,10 +29,12 @@ public class Collector {
 	private final Component component;
 	private final int totalBufferSpace;
 	private boolean emitted;
+	private final Router router;
 	
 	public Collector(Component component,LocalCluster localCluster,int bufSize) {
 		this.component = component;
 		this.localCluster=localCluster;
+		router=localCluster.getNode().getRouter();
 		outputQueues=new ComponentTaskBuffer(bufSize);
 		DestComponentMap destComponentMap = localCluster.getTopology().getDestComponentMap(component.getComponentId());
 		int tbs=0;
@@ -87,27 +90,108 @@ public class Collector {
 			NetworkTask task = RecycleStation.getInstance()
 					.getNetworkTaskRecycler().newObject();
 			task.init(tuple, remoteTaskIds, componentId, localCluster.getTopologyId());
+//			try {
+//				if(tuple.getType()==Tuple.Type.TERMINATE ||  component.getComponentId().equals("numberSpout")) {
+//					log.debug("router queue");
+//				}
 			try {
-				localCluster.getNode().getRouter().put(task);
+				router.put(task);
 			} catch (InterruptedException e) {
-				log.error("failed to emit tuple: "+e.toString());
-			} 
+				log.info("interrupted");
+				;
+			}
+//				while(!router.offer(task)) {
+//					// while this component is blocked, try processing some other component
+//
+//						Component anotherComponent = localCluster.getComponentsPending().poll();
+//						if(anotherComponent==null) {
+//							try {
+//								router.put(task);
+//							} catch (InterruptedException e) {
+//								log.info("interrupted");
+//								break;
+//							}
+//							break;
+//						}
+//						if(anotherComponent!=component &&
+//								!anotherComponent.lock.isHeldByCurrentThread()
+//								&& anotherComponent.lock.tryLock()) {
+//							try {
+//								anotherComponent.run();	
+//							} finally {
+//								anotherComponent.lock.unlock();
+//							}
+//						} else {
+//							localCluster.componentPending(anotherComponent);
+//						}
+//					
+//					
+////					if(localCluster.getState()==LocalCluster.State.TERMINATING || component.getComponentId().equals("numberSpout")) {
+////						log.warn("blocked on router: "+component.getComponentId()+":"+component.getTaskId());
+////					}
+//				};
+//				if(tuple.getType()==Tuple.Type.TERMINATE ||  component.getComponentId().equals("numberSpout")) {
+//					log.debug("router queue done");
+//				}
+//			} catch (InterruptedException e) {
+//				log.error("failed to emit tuple: "+e.toString());
+//			} 
 			
 		}
 		HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
 		
 		localTaskIds.removeAll(remoteTaskIds);
 		if(!localTaskIds.isEmpty()){
-			try {
+//			try {
 				NetworkTask task = RecycleStation.getInstance()
 						.getNetworkTaskRecycler().newObject();
 				
 				task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
-				getQueue(componentId,streamId).put(task);
+				try {
+					getQueue(componentId,streamId).put(task);
+				} catch (InterruptedException e) {
+					log.info("interrupted");
+					
+				}
+//				while(!getQueue(componentId,streamId).offer(task)) {
+//					// while this component is blocked, try processing some other component
+//					
+//						Component anotherComponent = localCluster.getComponentsPending().poll();
+//						if(anotherComponent==null) {
+//							try {
+//								getQueue(componentId,streamId).put(task);
+//							} catch (InterruptedException e) {
+//								log.info("interrupted");
+//								break;
+//							}
+//							break;
+//						}
+//						if(anotherComponent!=component && 
+//								!anotherComponent.lock.isHeldByCurrentThread()
+//								&& anotherComponent.lock.tryLock()) {
+//							try {
+//								anotherComponent.run();
+//							} finally {
+//								anotherComponent.lock.unlock();
+//							}
+//						} else {
+//							localCluster.componentPending(anotherComponent);
+//						}
+//					
+////					if(localCluster.getState()==LocalCluster.State.TERMINATING || component.getComponentId().equals("numberSpout")) {
+////						log.warn("blocked locally: "+component.getComponentId()+":"+component.getTaskId());
+////					}
+//				}
+//				if(tuple.getType()==Tuple.Type.TERMINATE || component.getComponentId().equals("numberSpout")) {
+//					log.debug("outputs pending");
+//				}
 				localCluster.outputPending(getQueue(componentId,streamId));
-			} catch (InterruptedException e) {
-				log.error("failed to emit tuple: "+e.toString());
-			}
+//				if(tuple.getType()==Tuple.Type.TERMINATE || component.getComponentId().equals("numberSpout")) {
+//					log.debug("outputs pending done");
+//				}
+//			} catch (InterruptedException e) {
+//				log.error("failed to emit tuple: "+e.toString());
+//			}
 		}
 	}
 	
@@ -210,6 +294,8 @@ public class Collector {
 		for(String componentId : localCluster.getTopology().getTopology().get(component.getComponentId()).keySet()) {
 			StreamMap streamMap = localCluster.getTopology().getTopology().get(component.getComponentId()).get(componentId);
 			for(String streamId : streamMap.keySet()) {
+				// in this special case, we also use the grouping defined on the system stream, since 
+				// that is a single "all group".
 				GroupingsSet groupingsSet = streamMap.get(Constants.SYSTEM_STREAM_ID);
 				Tuple tuple = RecycleStation.getInstance()
 						.getTupleRecycler(new Fields(Constants.SYSTEM_TUPLE_FIELDS).getFieldNamesAsString())

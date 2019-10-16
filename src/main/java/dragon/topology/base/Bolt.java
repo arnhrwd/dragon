@@ -6,6 +6,7 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import dragon.LocalCluster;
 import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
@@ -42,11 +43,11 @@ public class Bolt extends Component {
 				try {
 					execute(tuple);
 				} catch (DragonEmitRuntimeException e) {
-					log.fatal("bolt ["+getComponentId()+"]: "+e.getMessage());
-					getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
+					log.warn("bolt ["+getComponentId()+"]: "+e.getMessage());
+					if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
 				} catch (Exception e) {
-					log.fatal("bolt ["+getComponentId()+"]: "+e.getMessage());
-					getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
+					log.warn("bolt ["+getComponentId()+"]: "+e.toString());
+					if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.toString(),e.getStackTrace());
 				}
 				processed++;
 				break;
@@ -78,12 +79,12 @@ public class Bolt extends Component {
 							}
 						}
 					}	
-					log.debug("waiting for "+upstreamComponents);
+					//log.debug("waiting for "+upstreamComponents);
 				}
 			
 				upstreamComponents.remove(tuple.getSourceComponent()+","+tuple.getSourceTaskId()+","+tuple.getSourceStreamId());
 				if(upstreamComponents.isEmpty()) {
-					//log.debug("closed");
+					log.debug(getComponentId()+":"+getTaskId()+" closed");
 					close();
 					getOutputCollector().emitTerminateTuple(); //TODO: see how to call this safely _after_ calling setClosed()
 					closed=true;

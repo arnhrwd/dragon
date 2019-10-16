@@ -8,6 +8,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.network.Node;
+import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.service.RunTopoSMsg;
 import dragon.network.messages.service.TermTopoSMsg;
@@ -86,7 +87,9 @@ public class Ops extends Thread {
 	public ListToposGroupOp newListToposGroupOp(IOpSuccess success, IOpFailure failure) {
 		ListToposGroupOp ltgo = new ListToposGroupOp(success, failure);
 		// this group operation goes to EVERY dragon daemon
-		for (NodeDescriptor desc : node.getNodeProcessor().getContext().values()) {
+		NodeContext nc = new NodeContext();
+		nc.putAll(node.getNodeProcessor().getContext());
+		for (NodeDescriptor desc : nc.values()) {
 			ltgo.add(desc);
 		}
 		register(ltgo);

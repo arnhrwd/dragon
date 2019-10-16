@@ -5,8 +5,12 @@ import java.util.HashMap;
 import dragon.tuple.NetworkTask;
 import dragon.utils.NetworkTaskBuffer;
 
-
-public class TopologyQueueMap extends HashMap<String,StreamQueueMap> {
+/**
+ * Map from a topology id to a component id
+ * @author aaron
+ *
+ */
+public class TopologyQueueMap extends HashMap<String,ComponentQueueMap> {
 	private static final long serialVersionUID = 2633646610735734489L;
 	private final int bufferSize;
 	
@@ -16,29 +20,29 @@ public class TopologyQueueMap extends HashMap<String,StreamQueueMap> {
 	
 	public void put(NetworkTask task) throws InterruptedException {
 		String topologyId = task.getTopologyId();
-		StreamQueueMap streamQueueMap = get(topologyId);
-		streamQueueMap.put(task);
+		ComponentQueueMap componentQueueMap = get(topologyId);
+		componentQueueMap.put(task);
 	}
 	
 	public NetworkTaskBuffer getBuffer(NetworkTask task) {
 		return get(task.getTopologyId()).getBuffer(task);
 	}
 
-	public void prepare(String topologyId, String streamId) {
+	public void prepare(String topologyId, String componentId,String streamId) {
 		if(!containsKey(topologyId)) {
-			StreamQueueMap streamQueueMap = new StreamQueueMap(bufferSize);
-			streamQueueMap.prepare(streamId);
-			put(topologyId, streamQueueMap);
+			ComponentQueueMap componentQueueMap = new ComponentQueueMap(bufferSize);
+			componentQueueMap.prepare(componentId,streamId);
+			put(topologyId, componentQueueMap);
 		} else {
-			get(topologyId).prepare(streamId);
+			get(topologyId).prepare(componentId,streamId);
 		}
 		
 	}
 
-	public void drop(String topologyName, String streamId) {
-		if(containsKey(topologyName)) {
-			get(topologyName).drop(streamId);
-			if(get(topologyName).isEmpty()) remove(topologyName);
+	public void drop(String topologyId, String componentId,String streamId) {
+		if(containsKey(topologyId)) {
+			get(topologyId).drop(componentId,streamId);
+			if(get(topologyId).isEmpty()) remove(topologyId);
 		}
 		
 	}

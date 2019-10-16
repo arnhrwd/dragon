@@ -79,7 +79,7 @@ public class LocalCluster {
 	 * for each tuple on its input queue.
 	 */
 	private CircularBlockingQueue<Component> componentsPending;
-	
+
 	/**
 	 * Map from component id to the conf for spouts, for only those instances
 	 * in the topology that are allocated to this daemon.
@@ -446,9 +446,9 @@ public class LocalCluster {
 		}
 		
 		log.info("total outputs buffer size is "+totalOutputsBufferSize);
-		outputsPending = new CircularBlockingQueue<NetworkTaskBuffer>(totalOutputsBufferSize);
+		outputsPending = new CircularBlockingQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
 		log.info("total inputs buffer size is "+totalInputsBufferSize);
-		componentsPending = new CircularBlockingQueue<Component>(totalInputsBufferSize);
+		componentsPending = new CircularBlockingQueue<Component>(2*totalInputsBufferSize);
 		
 		
 		// prepare groupings
@@ -595,6 +595,8 @@ public class LocalCluster {
 		tickThread.start();
 
 
+		//totalParallelismHint=1;
+		
 		outputsScheduler();
 		
 		componentExecutorThreads = new ArrayList<Thread>();
@@ -664,6 +666,7 @@ public class LocalCluster {
 			@Override
 			public void run() {
 				// wait for spouts to close
+				log.debug("waiting for spouts to close");
 				while(true) {
 					boolean spoutsClosed=true;
 					for(String componentId : spouts.keySet()) {
@@ -673,6 +676,8 @@ public class LocalCluster {
 							if(!spout.isClosed()) {
 								spoutsClosed=false;
 								break;
+							} else {
+								log.debug("not closed yet: "+spout.getComponentId()+":"+spout.getTaskId());
 							}
 						}
 						if(spoutsClosed==false) {
@@ -691,10 +696,12 @@ public class LocalCluster {
 				}
 				
 				// emit the terminate tuples
+				log.debug("emitting terminate tuples");
 				for(String componentId : spouts.keySet()) {
 					HashMap<Integer,Spout> component = spouts.get(componentId);
 					for(Integer taskId : component.keySet()) {
 						Spout spout = component.get(taskId);
+						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] emitting terminate tuple");
 						spout.getOutputCollector().emitTerminateTuple();
 					}
 				}
@@ -702,6 +709,7 @@ public class LocalCluster {
 				// wait for bolts to close (they only close when they receive the
 				// terminate tuple on all of their input streams, from all tasks on
 				// those streams).
+				log.debug("waiting for bolts to close");
 				while(true) {
 					boolean alldone=true;
 					for(HashMap<Integer,Bolt> boltInstances : bolts.values()) {
@@ -799,9 +807,12 @@ public class LocalCluster {
 							log.info(getName()+" interrupted");
 							break;
 						}
-						
-						component.run();
-							
+						//component.lock.lock();
+						//try {
+							component.run();
+						//} finally {
+						//	component.lock.unlock();
+						//}
 					}
 					log.info(getName()+" done");
 				}
@@ -963,8 +974,7 @@ public class LocalCluster {
 			HashMap<Integer,Spout> component = spouts.get(componentId);
 			for(Integer taskId : component.keySet()) {
 				Spout spout = component.get(taskId);
-				spout.setClosed();
-				spout.close();
+				spout.setClosing();
 			}
 		}
 		checkCloseCondition();
@@ -1004,6 +1014,10 @@ public class LocalCluster {
 	
 	public Node getNode(){
 		return node;
+	}
+	
+	public CircularBlockingQueue<Component> getComponentsPending() {
+		return componentsPending;
 	}
 	
 	public void setGroupOperation(GroupOp go) {

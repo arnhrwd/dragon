@@ -2,6 +2,10 @@ package dragon.topology.base;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
 import dragon.LocalCluster;
@@ -10,37 +14,37 @@ import dragon.topology.OutputFieldsDeclarer;
 
 public class Component implements Runnable, Cloneable, Serializable{
 	private static final long serialVersionUID = -3296255524018955053L;
+	@SuppressWarnings("unused")
+	private static final Log log = LogFactory.getLog(Component.class);
 	private TopologyContext context;
 	private LocalCluster localCluster;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	private Collector collector;
 	private Long emitted=0L;
 	private Long transferred=0L;
-	protected Boolean closing=false;
-	protected Boolean closed=false;
+	protected volatile Boolean closing=false;
+	protected volatile Boolean closed=false;
+	public volatile ReentrantLock lock;
 	
 	public final void setClosing() {
-		synchronized(closing) {
-			closing=true;
-		}
+		closing=true;
 	}
 	
 	public final boolean isClosing() {
-		synchronized(closing){
 			return closing;
-		}
+		
 	}
 	
 	public final void setClosed() {
-		synchronized(closed) {
+		
 			closed=true;
-		}
+			
 	}
 	
 	public final boolean isClosed() {
-		synchronized(closed) {
+		
 			return closed;
-		}
+		
 	}
 	
 	public final void setOutputCollector(Collector collector) {
@@ -49,6 +53,7 @@ public class Component implements Runnable, Cloneable, Serializable{
 		emitted=0L;
 		transferred=0L;
 		this.collector=collector;
+		this.lock=new ReentrantLock();
 	}
 	
 	public final Collector getOutputCollector() {
@@ -98,26 +103,26 @@ public class Component implements Runnable, Cloneable, Serializable{
 	}  
 	
 	public final void incEmitted(long inc){
-		synchronized(emitted) {
+		
 			emitted+=inc;
-		}
+		
 	}
 	
 	public final void incTransferred(long inc){
-		synchronized(transferred){
+		
 			transferred+=inc;
-		}
+		
 	}
 	
 	public final long getEmitted(){
-		synchronized(emitted) {
+		
 			return emitted;
-		}
+		
 	}
 	
 	public final long getTransferred(){
-		synchronized(transferred) {
+		
 			return transferred;
-		}
+		
 	}
 }

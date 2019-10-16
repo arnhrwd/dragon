@@ -182,7 +182,9 @@ public class ServiceProcessor extends Thread {
 	 */
 	private void processGetNodeContext(ServiceMessage msg) {
 		try {
-			comms.sendServiceMsg(new NodeContextSMsg(node.getNodeProcessor().getContext()), msg);
+			NodeContext nc = new NodeContext();
+			nc.putAll(node.getNodeProcessor().getContext());
+			comms.sendServiceMsg(new NodeContextSMsg(nc), msg);
 		} catch (DragonCommsException e) {
 			log.fatal("can't communicate with client: " + e.getMessage());
 		}

@@ -13,6 +13,7 @@ import dragon.network.comms.DragonCommsException;
 import dragon.topology.DragonTopology;
 import dragon.tuple.NetworkTask;
 import dragon.tuple.RecycleStation;
+import dragon.tuple.Tuple;
 import dragon.utils.NetworkTaskBuffer;
 
 /**
@@ -146,6 +147,7 @@ public class Router {
 	}
 	
 	public boolean offer(NetworkTask task) {
+		RecycleStation.getInstance().getNetworkTaskRecycler().shareRecyclable(task, 1);
 		boolean ret = outputQueues.getBuffer(task).offer(task);
 		if(ret){
 			try {
@@ -153,11 +155,15 @@ public class Router {
 			} catch (InterruptedException e) {
 				log.error("interrupted while waiting to put on outputs pending");
 			}
+			
 		}
+		RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 		return ret;
 	}
 	
+	
 	public void put(NetworkTask task) throws InterruptedException {
+		
 		//log.debug("putting on queue "+task.getTopologyId()+","+task.getTuple().getSourceStreamId());
 		RecycleStation.getInstance().getNetworkTaskRecycler().shareRecyclable(task, 1);
 		outputQueues.getBuffer(task).put(task);
@@ -172,8 +178,8 @@ public class Router {
 					if(!topology.getBoltMap().containsKey(componentId))continue;
 					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
 						for(String streamId : topology.getBoltMap().get(componentId).groupings.get(listened).keySet()) {
-							log.debug("preparing output queue ["+topologyName+","+streamId+"]");
-							outputQueues.prepare(topologyName,streamId);
+							log.debug("preparing output queue ["+topologyName+","+componentId+","+streamId+"]");
+							outputQueues.prepare(topologyName,componentId,streamId);
 						}
 					}
 				}
@@ -182,8 +188,8 @@ public class Router {
 					if(!topology.getBoltMap().containsKey(componentId))continue;
 					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
 						for(String streamId : topology.getBoltMap().get(componentId).groupings.get(listened).keySet()) {
-							log.debug("preparing input queue ["+topologyName+","+streamId+"]");
-							inputQueues.prepare(topologyName,streamId);
+							log.debug("preparing input queue ["+topologyName+","+componentId+","+streamId+"]");
+							inputQueues.prepare(topologyName,componentId,streamId);
 						}
 					}
 				}
@@ -199,8 +205,8 @@ public class Router {
 					if(!topology.getBoltMap().containsKey(componentId))continue;
 					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
 						for(String streamId : topology.getBoltMap().get(componentId).groupings.get(listened).keySet()) {
-							log.debug("dropping output queue ["+topologyName+","+streamId+"]");
-							outputQueues.drop(topologyName,streamId);
+							log.debug("dropping output queue ["+topologyName+","+componentId+","+streamId+"]");
+							outputQueues.drop(topologyName,componentId,streamId);
 						}
 					}
 				}
@@ -209,8 +215,8 @@ public class Router {
 					if(!topology.getBoltMap().containsKey(componentId))continue;
 					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
 						for(String streamId : topology.getBoltMap().get(componentId).groupings.get(listened).keySet()) {
-							log.debug("dropping input queue ["+topologyName+","+streamId+"]");
-							inputQueues.drop(topologyName,streamId);
+							log.debug("dropping input queue ["+topologyName+","+componentId+","+streamId+"]");
+							inputQueues.drop(topologyName,componentId,streamId);
 						}
 					}
 				}

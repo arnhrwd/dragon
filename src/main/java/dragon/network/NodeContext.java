@@ -5,14 +5,15 @@ import java.util.HashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+/**
+ * A map of node names "hostname:dport" to NodeDescriptors.
+ * 
+ * @author aaron
+ *
+ */
 public class NodeContext extends HashMap<String,NodeDescriptor>{
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 6956040375029092241L;
-	private static Log log = LogFactory.getLog(Node.class);
-	
+	private static final Log log = LogFactory.getLog(Node.class);
 	
 	public void put(NodeDescriptor desc) {
 		put(desc.toString(),desc);

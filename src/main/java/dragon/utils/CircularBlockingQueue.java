@@ -16,6 +16,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 	private final AtomicInteger head=new AtomicInteger(0);
 	private final AtomicInteger tail=new AtomicInteger(0);
 	private final int capacity;
+	private final int arraySize;
 	private final AtomicInteger count = new AtomicInteger(0);
 	private final ReentrantLock putLock = new ReentrantLock();
 	private final ReentrantLock takeLock = new ReentrantLock();
@@ -26,16 +27,18 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 	
 	public CircularBlockingQueue(){
 		capacity=1024;
-		elements = new AtomicReferenceArray<T>(capacity);
-		for(int i=0;i<capacity;i++) {
+		arraySize=capacity+1;
+		elements = new AtomicReferenceArray<T>(arraySize);
+		for(int i=0;i<arraySize;i++) {
 			elements.set(i,null);
 		}
 	}
 
 	public CircularBlockingQueue(int capacity){
-		this.capacity=capacity+1;
-		elements = new AtomicReferenceArray<T>(this.capacity);
-		for(int i=0;i<this.capacity;i++) {
+		this.capacity=capacity;
+		arraySize=capacity+1;
+		elements = new AtomicReferenceArray<T>(arraySize);
+		for(int i=0;i<arraySize;i++) {
 			elements.set(i,null);
 		}
 	}
@@ -99,7 +102,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 				throw ie;
 			}
 			elements.set(tail.get(),element);
-			tail.set(quickNext(tail.get(),capacity));
+			tail.set(quickNext(tail.get(),arraySize));
 			c = count.getAndIncrement();
 			if (c + 1 < capacity)
 				notFull.signal();
@@ -123,7 +126,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 			for (;;) {
 				if (count.get()<capacity) {
 					elements.set(tail.get(),element);
-					tail.set(quickNext(tail.get(),capacity));
+					tail.set(quickNext(tail.get(),arraySize));
 					c = count.getAndIncrement();
 					if(c+1<capacity) {
 						notFull.signal();
@@ -159,7 +162,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		try {
 			if (count.get()<capacity) {
 				elements.set(tail.get(),element);
-				tail.set(quickNext(tail.get(),capacity));
+				tail.set(quickNext(tail.get(),arraySize));
 				c = count.getAndIncrement();
 				if(c+1<capacity) {
 					notFull.signal();
@@ -190,7 +193,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 				throw ie;
 			}
 			element = elements.getAndSet(head.get(),null);
-			head.set(quickNext(head.get(),capacity));
+			head.set(quickNext(head.get(),arraySize));
 			c = count.getAndDecrement();
 			if (c > 1)
 				notEmpty.signal();
@@ -215,7 +218,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 			for (;;) {
 				if (count.get()>0) {
 					element = elements.getAndSet(head.get(),null);
-					head.set(quickNext(head.get(),capacity));
+					head.set(quickNext(head.get(),arraySize));
 					c=count.getAndDecrement();
 					if(c>1) {
 						notEmpty.signal();
@@ -253,7 +256,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		try {
 			if (count.get() > 0) {
 				element = elements.getAndSet(head.get(),null);
-				head.set(quickNext(head.get(), capacity));
+				head.set(quickNext(head.get(), arraySize));
 				c = count.getAndDecrement();
 				if (c > 1) {
 					notEmpty.signal();
@@ -303,7 +306,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 			oldElements=elements;
 			head.set(0);
 			tail.set(0);
-			elements=new AtomicReferenceArray<T>(capacity);
+			elements=new AtomicReferenceArray<T>(arraySize);
 			if(count.getAndSet(0)==capacity) {
 				notFull.signalAll();
 			}
@@ -313,7 +316,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		int n = 0;
 		while(oldhead!=oldtail) {
 			c.add(oldElements.getAndSet(oldhead,null));
-			oldhead = quickNext(oldhead, capacity);
+			oldhead = quickNext(oldhead, arraySize);
 			n++;
 		}
 		return n;
@@ -333,7 +336,7 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 			int n = 0;
 			while(head.get()!=tail.get() && n < maxElements) {
 				c.add(elements.getAndSet(head.get(),null));
-				head.set(quickNext(head.get(),capacity));
+				head.set(quickNext(head.get(),arraySize));
 				n++;
 			}
 			if(n!=0) {
