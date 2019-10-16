@@ -17,13 +17,14 @@ public class Spout extends Component {
 	@Override
 	public final synchronized void run() {
 		if(closed) {
-			log.error("spout is already closed");
+			log.warn("spout is already closed");
 			return;
 		}
 		if(closing) {
 			close();
 			log.debug(getComponentId()+":"+getTaskId()+" closed");
 			closed=true;
+			return;
 		}
 		getOutputCollector().resetEmit();
 		try {
