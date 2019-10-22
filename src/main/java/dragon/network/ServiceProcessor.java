@@ -122,9 +122,17 @@ public class ServiceProcessor extends Thread {
 		} else {
 			final DragonTopology topo = rtm.dragonTopology;
 			byte[] jarfile =  node.readJarFile(rtm.topologyId);
+			if(jarfile==null){
+				try {
+					comms.sendServiceMsg(new RunTopoErrorSMsg(rtm.topologyId, "could not read the jar file"),rtm);
+				} catch (DragonCommsException e) {
+					log.fatal("can't communicate with client: " + e.getMessage());
+				}
+				return;
+			}
 			Ops.inst().newRunTopoGroupOp(rtm.topologyId, jarfile, topo, (op) -> {
 				Ops.inst().newPrepareTopoGroupOp(rtm, topo, (op2) -> {
-					Ops.inst().newStartTopologyGroupOperation(rtm.topologyId, (op3) -> {
+					Ops.inst().newStartTopologyGroupOp(rtm.topologyId, (op3) -> {
 						try {
 							comms.sendServiceMsg(new TopoRunningSMsg(rtm.topologyId),
 									rtm);

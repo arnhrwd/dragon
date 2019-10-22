@@ -68,7 +68,7 @@ public class Ops extends Thread {
 		return (PrepareTopoGroupOp) newGroupOp(ptgo, topology);
 	}
 
-	public StartTopoGroupOp newStartTopologyGroupOperation(String topologyId, IOpSuccess success, IOpFailure failure) {
+	public StartTopoGroupOp newStartTopologyGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
 		StartTopoGroupOp stgo = new StartTopoGroupOp(topologyId, success, failure);
 		return (StartTopoGroupOp) newGroupOp(stgo, topologyId);
 	}
