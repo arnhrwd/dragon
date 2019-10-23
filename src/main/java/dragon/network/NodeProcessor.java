@@ -1,5 +1,7 @@
 package dragon.network;
 
+import java.util.Collection;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -32,6 +34,7 @@ import dragon.network.messages.node.TopoResumedNMsg;
 import dragon.network.messages.node.TopoStartedNMsg;
 import dragon.network.messages.node.TopoStoppedNMsg;
 import dragon.network.messages.node.TopoHaltedNMsg;
+import dragon.network.operations.JoinGroupOp;
 import dragon.network.operations.ListToposGroupOp;
 
 /**
@@ -64,8 +67,7 @@ public class NodeProcessor extends Thread {
 	private void receiveError(NodeMessage msg) {
 		node.getOpsProcessor()
 		.getGroupOp(msg.getGroupOp().getId())
-		.receiveError(node.getComms(), 
-				msg.getSender(),
+		.receiveError(node.getComms(), msg,
 				((IErrorMessage)msg).getError());
 	}
 	
@@ -76,8 +78,7 @@ public class NodeProcessor extends Thread {
 	private void receiveSuccess(NodeMessage msg) {
 		node.getOpsProcessor()
 		.getGroupOp(msg.getGroupOp().getId())
-		.receiveSuccess(node.getComms(), 
-				msg.getSender());
+		.receiveSuccess(node.getComms(),msg);
 	}
 	
 	/**
@@ -112,27 +113,7 @@ public class NodeProcessor extends Thread {
 		if(node.getNodeState()!=NodeState.JOIN_REQUESTED) {
 			log.error("unexpected message: "+NodeMessage.NodeMessageType.ACCEPTING_JOIN.name());
 		} else {
-			AcceptingJoinNMsg aj = (AcceptingJoinNMsg) msg;
-			nextNode=aj.nextNode;
-			log.debug("next pointer = ["+nextNode+"]");
-			try {
-				node.getComms().sendNodeMsg(msg.getSender(), new JoinCompleteNMsg());
-			} catch (DragonCommsException e) {
-				log.error("could not complete join with ["+msg.getSender());
-				// TODO: possibly signal that the node has failed
-			}
-			context.putAll(aj.context);
-			for(NodeDescriptor descriptor : context.values()) {
-				if(!descriptor.equals(node.getComms().getMyNodeDesc())) {
-					try {
-						node.getComms().sendNodeMsg(descriptor, new ContextUpdateNMsg(context));
-					} catch (DragonCommsException e) {
-						log.error("could not send context update to ["+descriptor+"]");
-						// TODO: possibly signal that the node has failed
-					}
-				}
-			}
-			node.setNodeState(NodeState.OPERATIONAL);
+			receiveSuccess(msg);
 		}
 	}
 	
@@ -151,15 +132,12 @@ public class NodeProcessor extends Thread {
 	private synchronized void processJoinRequest(NodeMessage msg) {
 		node.setNodeState(NodeState.ACCEPTING_JOIN);
 		context.put(msg.getSender());
-		try {
-			node.getComms().sendNodeMsg(msg.getSender(),new AcceptingJoinNMsg(nextNode,context));
-			nextNode=msg.getSender();
-			log.debug("next pointer = ["+nextNode+"]");
-		} catch (DragonCommsException e) {
-			log.error("a join request could not be completed to ["+msg.getSender()+"]");
-			context.remove(msg.getSender());
-			node.setNodeState(NodeState.OPERATIONAL);
-		}
+		JoinGroupOp jgo = (JoinGroupOp) msg.getGroupOp();
+		jgo.context=context;
+		jgo.next=nextNode;
+		sendSuccess(msg);
+		nextNode=msg.getSender();
+		log.debug("next pointer = ["+nextNode+"]");
 	}
 	
 	private synchronized void processContextUpdate(NodeMessage msg) {
@@ -468,5 +446,14 @@ public class NodeProcessor extends Thread {
 	
 	public NodeContext getContext() {
 		return context;
+	}
+	
+	public synchronized void contextPutAll(NodeContext context) {
+		this.context.putAll(context);
+	}
+	
+	public void setNextNode(NodeDescriptor desc) {
+		nextNode=desc;
+		log.debug("next pointer = ["+nextNode+"]");
 	}
 }

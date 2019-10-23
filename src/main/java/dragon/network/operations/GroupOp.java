@@ -1,6 +1,7 @@
 package dragon.network.operations;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.apache.commons.logging.Log;
@@ -21,11 +22,24 @@ import dragon.network.messages.node.NodeMessage;
 public abstract class GroupOp extends Op implements Serializable {
 	private static final long serialVersionUID = 7500196228211761411L;
 	private static final Log log = LogFactory.getLog(GroupOp.class);
-	protected transient HashSet<NodeDescriptor> group; // not necessary at the group members
+	
+	/**
+	 * The group of nodes that will be sent an initiate message when the
+	 * group operation starts.
+	 */
+	protected transient final HashSet<NodeDescriptor> group; // not necessary at the group members
+	
+	/**
+	 * The messages received from each of the group members. Will not contain
+	 * a message from the group member if it is the same node as initiating the
+	 * group operation.
+	 */
+	protected transient final ArrayList<NodeMessage> received; // not necessary at the group members
 	
 	public GroupOp(IOpSuccess success,IOpFailure failure) {
 		super(success,failure);
 		group = new HashSet<NodeDescriptor>();
+		received=new ArrayList<NodeMessage>();
 	}
 	
 	public void add(NodeDescriptor desc) {
@@ -78,15 +92,29 @@ public abstract class GroupOp extends Op implements Serializable {
 		}
 	}
 	
+	public void receiveSuccess(IComms comms, NodeMessage msg) {
+		received.add(0,msg);
+		receiveSuccess(comms,msg.getSender());
+	}
+	
 	public void receiveSuccess(IComms comms, NodeDescriptor desc) {
 		if(remove(desc)) {
 			success();
 		}
 	}
 	
+	public void receiveError(IComms comms, NodeMessage msg, String error) {
+		received.add(0,msg);
+		receiveError(comms,msg.getSender(),error);
+	}
+	
 	public void receiveError(IComms comms, NodeDescriptor desc,String error) {
 		remove(desc);
 		fail(error);
+	}
+	
+	public ArrayList<NodeMessage> getReceived() {
+		return received;
 	}
 	
 	/*

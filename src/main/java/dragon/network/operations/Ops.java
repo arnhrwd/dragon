@@ -106,6 +106,13 @@ public class Ops extends Thread {
 		ResumeTopoGroupOp htgo = new ResumeTopoGroupOp(topologyId, success, failure);
 		return (ResumeTopoGroupOp) newGroupOp(htgo, topologyId);
 	}
+	
+	public JoinGroupOp newJoinGroupOp(NodeDescriptor desc,IOpSuccess success, IOpFailure failure) {
+		JoinGroupOp jgo = new JoinGroupOp(success,failure);
+		jgo.add(desc);
+		register(jgo);
+		return jgo;
+	}
 
 	private GroupOp newGroupOp(GroupOp go, String topologyId) {
 		return newGroupOp(go, node.getLocalClusters().get(topologyId).getTopology());

@@ -22,8 +22,11 @@ import dragon.metrics.Metrics;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
-import dragon.network.messages.node.JoinRequestNMsg;
+import dragon.network.messages.node.AcceptingJoinNMsg;
+import dragon.network.messages.node.ContextUpdateNMsg;
+import dragon.network.messages.node.JoinCompleteNMsg;
 import dragon.network.operations.GroupOp;
+import dragon.network.operations.JoinGroupOp;
 import dragon.network.operations.ListToposGroupOp;
 import dragon.network.operations.Ops;
 import dragon.network.operations.TermTopoGroupOp;
@@ -96,13 +99,13 @@ public class Node {
 	public enum NodeState {
 		/**
 		 * The node is currently starting up and is determining whether
-		 * to join or not to an existing node. This is a transient state.
+		 * to join or not to an existing node.
 		 */
 		JOINING, 
 		
 		/**
 		 * The node has sent a join request message and is waiting for
-		 * an accepted join message in response. This is a transient state.
+		 * an accepted join message in response.
 		 */
 		JOIN_REQUESTED, 
 		
@@ -123,6 +126,12 @@ public class Node {
 	 */
 	private NodeState nodeState;
 
+	/**
+	 * Initialize the node, will initiate a join request if possible to
+	 * join to existing daemons.
+	 * @param conf provides the configuration to use
+	 * @throws IOException
+	 */
 	public Node(Config conf) throws IOException {
 		this.conf = conf;
 		operationsThread = new Ops(this);
@@ -130,23 +139,6 @@ public class Node {
 		comms = new TcpComms(conf);
 		comms.open();
 		setNodeState(NodeState.JOINING);
-		for (NodeDescriptor existingNode : conf.getHosts()) {
-			if (!existingNode.equals(comms.getMyNodeDesc())) {
-				setNodeState(NodeState.JOIN_REQUESTED);
-				try {
-					comms.sendNodeMsg(existingNode, new JoinRequestNMsg());
-				} catch (DragonCommsException e) {
-					log.error("failed to join with [" + existingNode + "]: " + e.getMessage());
-					setNodeState(NodeState.JOINING);
-					continue;
-				}
-				break;
-			}
-		}
-		if (nodeState == NodeState.JOINING) {
-			log.warn("did not join with any existing Dragon daemons");
-			setNodeState(NodeState.OPERATIONAL);
-		}
 		router = new Router(this, conf);
 		serviceThread = new ServiceProcessor(this);
 		nodeThread = new NodeProcessor(this);
@@ -155,6 +147,60 @@ public class Node {
 			metricsThread.start();
 		} else {
 			metricsThread = null;
+		}
+		
+		final ArrayList<NodeDescriptor> hosts = conf.getHosts();
+		sendJoinRequest(hosts);
+	}
+	
+	/**
+	 * Send a join request, progressively trying all hosts in the list until
+	 * one is found that is successful.
+	 * @param hosts the list of hosts to try to join to
+	 */
+	private void sendJoinRequest(final ArrayList<NodeDescriptor> hosts) {
+		if(hosts.isEmpty()) {
+			log.warn("did not join with any existing Dragon daemons");
+			setNodeState(NodeState.OPERATIONAL);
+			return;
+		}
+		NodeDescriptor desc = hosts.remove(0);
+		if(desc.equals(comms.getMyNodeDesc())) {
+			sendJoinRequest(hosts);
+			return;
+		} else {
+			Ops.inst().newJoinGroupOp(desc, (op)->{
+				log.info("joined to "+desc);
+				JoinGroupOp jgo = (JoinGroupOp) op;
+				AcceptingJoinNMsg aj = (AcceptingJoinNMsg) jgo.getReceived().get(0);
+				nodeThread.setNextNode(aj.nextNode);
+				
+				try {
+					comms.sendNodeMsg(aj.getSender(), new JoinCompleteNMsg());
+				} catch (DragonCommsException e) {
+					log.error("could not complete join with ["+aj.getSender());
+					// TODO: possibly signal that the node has failed
+				}
+				nodeThread.contextPutAll(aj.context);
+				for(NodeDescriptor descriptor : nodeThread.getContext().values()) {
+					if(!descriptor.equals(comms.getMyNodeDesc())) {
+						try {
+							comms.sendNodeMsg(descriptor, new ContextUpdateNMsg(nodeThread.getContext()));
+						} catch (DragonCommsException e) {
+							log.error("could not send context update to ["+descriptor+"]");
+							// TODO: possibly signal that the node has failed
+						}
+					}
+				}
+				
+				setNodeState(NodeState.OPERATIONAL);
+			}, (op,error)->{
+				setNodeState(NodeState.JOINING);
+				log.warn("error while joining: "+error);
+				sendJoinRequest(hosts);
+			}).onStart((op)->{
+				setNodeState(NodeState.JOIN_REQUESTED);
+			});
 		}
 	}
 
