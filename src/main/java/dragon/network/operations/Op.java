@@ -60,16 +60,36 @@ public class Op implements Serializable {
 	
 	/**
 	 * Possible states of the operation.
-	 * <li>
-	 *
+	 * <li>{@link #READY}</li>
+	 * <li>{@link #RUNNING}</li>
+	 * <li>{@link #FAILED}</li>
+	 * <li>{@link #COMPLETED}</li>
 	 */
 	public static enum State {
+		/**
+		 * The op has not yet started but is ready to start.
+		 */
 		READY,
+		
+		/**
+		 * The op has started, and is waiting for an outcome to be determined.
+		 */
 		RUNNING,
+		
+		/**
+		 * The op has failed.
+		 */
 		FAILED,
+		
+		/**
+		 * The op has succeeded.
+		 */
 		COMPLETED
 	}
 	
+	/**
+	 * The current state of the op.
+	 */
 	private State state;
 	
 	public Op(IOpSuccess success,IOpFailure failure) {
@@ -138,11 +158,19 @@ public class Op implements Serializable {
 	}
 	
 	public void success() {
+		if(state==State.FAILED) {
+			log.error("operation has already failed");
+			return;
+		}
 		state=State.COMPLETED;
 		if(success!=null) success.success(this);
 	}
 	
 	public void fail(String error) {
+		if(state==State.COMPLETED) {
+			log.error("operation has already completed");
+			return;
+		}
 		state=State.FAILED;
 		this.error=error;
 		if(failure!=null) failure.fail(this,error);
