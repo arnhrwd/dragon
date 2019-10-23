@@ -17,7 +17,7 @@ import dragon.topology.DragonTopology;
 /**
  * Provides a standard interface to construct new group operations and make them
  * asynchronous, so as not to block the calling thread while waiting to transmit
- * group messages.
+ * group messages. Also handles other kinds of ops such as conditional ops, etc.
  * 
  * @author aaron
  *
@@ -40,6 +40,7 @@ public class Ops extends Thread {
 		groupOps = new HashMap<Long, Op>();
 		readyQueue = new LinkedBlockingQueue<Op>();
 		conditionalOps = new ArrayList<ConditionalOp>();
+		setName("ops processor");
 		log.info("starting operations thread");
 		start();
 	}

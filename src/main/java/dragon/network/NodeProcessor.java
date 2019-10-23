@@ -43,7 +43,6 @@ import dragon.network.operations.ListToposGroupOp;
  */
 public class NodeProcessor extends Thread {
 	private final static Log log = LogFactory.getLog(NodeProcessor.class);
-	private boolean shouldTerminate=false;
 	private final Node node;
 	private NodeDescriptor nextNode=null;
 	private final NodeContext context;
@@ -53,29 +52,53 @@ public class NodeProcessor extends Thread {
 		nextNode=node.getComms().getMyNodeDesc();
 		log.info("next pointer = ["+this.nextNode+"]");
 		context.put(nextNode);
+		setName("node processor");
 		log.info("starting node processor");
 		start();
 	}
 	
+	/**
+	 * Process an error message for the group operation.
+	 * @param msg is an error message for a group operation
+	 */
 	private void receiveError(NodeMessage msg) {
-		node.getOperationsProcessor()
+		node.getOpsProcessor()
 		.getGroupOp(msg.getGroupOp().getId())
 		.receiveError(node.getComms(), 
 				msg.getSender(),
 				((IErrorMessage)msg).getError());
 	}
 	
+	/**
+	 * Process a success message for the group operation.
+	 * @param msg is a success message for a group operation
+	 */
 	private void receiveSuccess(NodeMessage msg) {
-		node.getOperationsProcessor()
+		node.getOpsProcessor()
 		.getGroupOp(msg.getGroupOp().getId())
 		.receiveSuccess(node.getComms(), 
 				msg.getSender());
 	}
 	
+	/**
+	 * Send a success message for a group operation. This should
+	 * be sent if the requested operation was successfully completed
+	 * on this daemon.
+	 * @param msg the node message that requested the group operation,
+	 * and that is being replied to
+	 */
 	private void sendSuccess(NodeMessage msg) {
 		msg.getGroupOp().sendSuccess(node.getComms());
 	}
 	
+	/**
+	 * Send an error message for a group operation. This should
+	 * be sent if the requested operation was not successfully completed
+	 * on this daemon. 
+	 * @param msg the node message that requested the group operation,
+	 * and that is being replied to
+	 * @param error an informative message explaining the error
+	 */
 	private void sendError(NodeMessage msg,String error) {
 		msg.getGroupOp().sendError(node.getComms(),error);
 	}
@@ -219,7 +242,7 @@ public class NodeProcessor extends Thread {
 		StopTopoNMsg stm = (StopTopoNMsg) msg;
 		try {
 			// starts a thread to stop the topology
-			log.debug("asking node to stop the topology");
+			log.debug("asking node to stop the topology ["+stm.topologyId+"]");
 			node.terminateTopology(stm.topologyId,stm.getGroupOp());
 		} catch (DragonTopologyException e) {
 			sendError(stm,e.getMessage());
@@ -303,7 +326,7 @@ public class NodeProcessor extends Thread {
 	
 	private synchronized void processTopologyInformation(NodeMessage msg) {
 		TopoInfoNMsg tim = (TopoInfoNMsg) msg;
-		((ListToposGroupOp)(node.getOperationsProcessor()
+		((ListToposGroupOp)(node.getOpsProcessor()
 				.getGroupOp(tim.getGroupOp().getId())))
 				.aggregate(tim.getSender(),tim.state,tim.errors);
 		receiveSuccess(tim);
@@ -387,7 +410,7 @@ public class NodeProcessor extends Thread {
 	
 	@Override
 	public void run() {
-		while(!shouldTerminate) {
+		while(!isInterrupted()) {
 			NodeMessage msg;
 			try {
 				msg = node.getComms().receiveNodeMsg();
@@ -429,7 +452,7 @@ public class NodeProcessor extends Thread {
 			case TOPOLOGY_STARTED:
 			case TOPOLOGY_STOPPED:
 				// do when appropriate
-				node.getOperationsProcessor().newConditionOp((op)->{
+				node.getOpsProcessor().newConditionOp((op)->{
 					return node.getNodeState()==NodeState.OPERATIONAL;
 				},(op)->{
 					processOperationalMsgs(msg);

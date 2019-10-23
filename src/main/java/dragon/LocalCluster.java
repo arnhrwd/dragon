@@ -121,7 +121,12 @@ public class LocalCluster {
 	
 	/**
 	 * The possible states of the local cluster.
-	 *
+	 * <li>{@link #ALLOCATED}</li>
+	 * <li>{@link #SUBMITTED}</li>
+	 * <li>{@link #PREPROCESSING}</li>
+	 * <li>{@link #RUNNING}</li>
+	 * <li>{@link #TERMINATING}</li>
+	 * <li>{@link #HALTED}</li>
 	 */
 	public static enum State {
 		/**
@@ -175,6 +180,10 @@ public class LocalCluster {
 	
 	/**
 	 * Set of outstanding group operations for this local cluster to respond to.
+	 * E.g. when the cluster terminates, there will be a group operation that
+	 * it should respond to, to indicate that termination is successful.
+	 * The map is from the class of the group operation, to a set of such group
+	 * operations for that class that are waiting for an outcome.
 	 */
 	@SuppressWarnings("rawtypes")
 	private HashMap<Class,HashSet<GroupOp>> groupOperations;
@@ -185,7 +194,10 @@ public class LocalCluster {
 	private String topologyName;
 	
 	/**
-	 * Conf applied to the topology on this local cluster.
+	 * Conf applied to the topology on this local cluster, which is the conf
+	 * for the node, overridden by variables in the conf supplied when submitting
+	 * the topology. This allows the programmer to override some aspects of this
+	 * local cluster on a per topology basis, like queue lengths, etc.
 	 */
 	private Config conf;
 	
@@ -196,7 +208,8 @@ public class LocalCluster {
 	private DragonTopology dragonTopology;
 
 	/**
-	 * A thread that sleeps for 1 second at a time.
+	 * A thread that sleeps for 1 second at a time, and causes the tickCounterThread
+	 * to increment counters etc., every second.
 	 */
 	private Thread tickThread;
 	
@@ -231,6 +244,15 @@ public class LocalCluster {
 	 * bolt instances.
 	 */
 	private int totalParallelismHint=0;
+	
+	
+	/*
+	 * Spouts and bolts of a prepared topology wont be opened/prepared until a start
+	 * message is received. This ensures that the topology is successfully prepared on
+	 * all Dragon daemons before triggering any topology application code. The following
+	 * classes and members maintain a list of spouts and bolts that will be opened/prepared
+	 * when the start message is received.
+	 */
 	
 	/**
 	 * Container class for bolt instances on this local cluster that need to be prepared,
@@ -272,6 +294,14 @@ public class LocalCluster {
 	 */
 	private ArrayList<SpoutOpen> spoutOpenList;
 	
+	/*
+	 * Initializers
+	 */
+	
+	
+	/**
+	 * Initializer for running in local mode.
+	 */
 	@SuppressWarnings("rawtypes")
 	public LocalCluster(){
 		this.node=null;
@@ -280,6 +310,10 @@ public class LocalCluster {
 		componentErrors = new  HashMap<Component,ArrayList<ComponentError>>();
 	}
 	
+	/**
+	 * Initializer for running in network mode.
+	 * @param node the node that is managing this local cluster instance
+	 */
 	@SuppressWarnings("rawtypes")
 	public LocalCluster(Node node) {
 		this.node=node;
@@ -313,6 +347,9 @@ public class LocalCluster {
 
 	/**
 	 * Submit a toplogy and run it if start is true, otherwise wait for a start topology message.
+	 * This method determines which spout and bolt instances will run on this local cluster, based
+	 * on the topology embedding information. In local mode, the embedding information is null, and
+	 * all instances will run on this local cluster, otherwise only selected instances will run.
 	 * @param topologyName the name of the topology
 	 * @param conf the conf for the topology
 	 * @param dragonTopology the topology

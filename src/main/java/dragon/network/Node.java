@@ -34,28 +34,93 @@ import dragon.topology.base.Component;
  * Node is the main component of the daemon (sometimes used synonymously with
  * daemon), that provides references to all other components. It initializes the
  * Comms, Router, ServiceProcessor, NodeProcessor, Operations, Metrics and
- * maintains a collection of LocalClusters.
+ * maintains a collection of LocalClusters. Methods provided by Node may be called
+ * by the processor threads and by the local clusters, and therefore need to be
+ * synchronized.
  * 
  * @author aaron
  *
  */
 public class Node {
 	private final static Log log = LogFactory.getLog(Node.class);
+	
+	/**
+	 * The communications layer that this node is using.
+	 */
 	private final IComms comms;
 
+	/**
+	 * A map from topologyId to LocalCluster for each topology that is
+	 * currently allocated on this node.
+	 */
 	private final HashMap<String, LocalCluster> localClusters;
+	
+	/**
+	 * The service processor thread.
+	 */
 	@SuppressWarnings("unused")
 	private final ServiceProcessor serviceThread;
+	
+	/**
+	 * The node processor thread.
+	 */
 	private final NodeProcessor nodeThread;
+	
+	/**
+	 * The operations processor thread.
+	 */
 	private final Ops operationsThread;
+	
+	/**
+	 * The configuration loaded by this node at startup.
+	 */
 	private final Config conf;
-	private final Metrics metrics;
+	
+	/**
+	 * The metrics thread.
+	 */
+	private final Metrics metricsThread;
+	
+	/**
+	 * The router for this node.
+	 */
 	private final Router router;
 
+	/**
+	 * The possible states that the node is in.
+	 * <li>{@link #JOINING}</li>
+	 * <li>{@link #JOIN_REQUESTED}</li>
+	 * <li>{@link #ACCEPTING_JOIN}</li>
+	 * <li>{@link #OPERATIONAL}</li>
+	 */
 	public enum NodeState {
-		JOINING, JOIN_REQUESTED, ACCEPTING_JOIN, OPERATIONAL
+		/**
+		 * The node is currently starting up and is determining whether
+		 * to join or not to an existing node. This is a transient state.
+		 */
+		JOINING, 
+		
+		/**
+		 * The node has sent a join request message and is waiting for
+		 * an accepted join message in response. This is a transient state.
+		 */
+		JOIN_REQUESTED, 
+		
+		/**
+		 * The node has accepted a join request from another node and is
+		 * waiting for a join complete message.
+		 */
+		ACCEPTING_JOIN, 
+		
+		/**
+		 * The node is available to process general messages. 
+		 */
+		OPERATIONAL
 	}
 
+	/**
+	 * The state that this node is in.
+	 */
 	private NodeState nodeState;
 
 	public Node(Config conf) throws IOException {
@@ -86,10 +151,10 @@ public class Node {
 		serviceThread = new ServiceProcessor(this);
 		nodeThread = new NodeProcessor(this);
 		if (conf.getDragonMetricsEnabled()) {
-			metrics = new Metrics(this);
-			metrics.start();
+			metricsThread = new Metrics(this);
+			metricsThread.start();
 		} else {
-			metrics = null;
+			metricsThread = null;
 		}
 	}
 
@@ -122,7 +187,7 @@ public class Node {
 		return conf;
 	}
 
-	public synchronized Ops getOperationsProcessor() {
+	public synchronized Ops getOpsProcessor() {
 		return operationsThread;
 	}
 
@@ -251,8 +316,8 @@ public class Node {
 	 * @return the metrics for the topology, or null if metrics are not available
 	 */
 	public synchronized ComponentMetricMap getMetrics(String topologyId) {
-		if (metrics != null) {
-			return metrics.getMetrics(topologyId);
+		if (metricsThread != null) {
+			return metricsThread.getMetrics(topologyId);
 		} else
 			return null;
 	}

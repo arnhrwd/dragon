@@ -49,13 +49,13 @@ import dragon.network.messages.service.ResumeTopoSMsg;
  */
 public class ServiceProcessor extends Thread {
 	private final static Log log = LogFactory.getLog(ServiceProcessor.class);
-	private boolean shouldTerminate = false;
 	private final Node node;
 	private final IComms comms;
 
 	public ServiceProcessor(Node node) {
 		this.node = node;
 		this.comms = node.getComms();
+		setName("service processor");
 		log.info("starting service processor");
 		start();
 	}
@@ -393,7 +393,7 @@ public class ServiceProcessor extends Thread {
 
 	@Override
 	public void run() {
-		while (!shouldTerminate) {
+		while (!isInterrupted()) {
 			ServiceMessage msg;
 			try {
 				msg = node.getComms().receiveServiceMsg();
@@ -430,5 +430,6 @@ public class ServiceProcessor extends Thread {
 				log.error("unrecognized command: " + msg.getType().name());
 			}
 		}
+		log.info("shut down");
 	}
 }
