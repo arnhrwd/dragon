@@ -21,7 +21,7 @@ import dragon.utils.NetworkTaskBuffer;
  * them as required to be sent to possibly multiple destination machines. A single copy
  * of the NetworkTask is sent to each machine that requires it. When received from another
  * machine, the Router is responsible for making the NetworkTask available to the LocalCluster
- * which in turns copies the enclosed tuple to the relevant bolts receiving the tuple.
+ * which in turn copies the enclosed tuple to the relevant bolts receiving the tuple.
  * 
  * @author aaron
  *
