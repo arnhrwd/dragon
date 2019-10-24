@@ -19,13 +19,18 @@ public class NodeDescriptor implements Serializable {
 	private int servicePort=-1;
 	private String hostName;
 	private String fullName;
+	private boolean primary;
+	private String partition;
 	
-	public NodeDescriptor (String hostName, int dataPort, int servicePort) throws UnknownHostException {
+	public NodeDescriptor (String hostName, int dataPort, int servicePort,
+			boolean primary, String partition) throws UnknownHostException {
 		this.host=InetAddress.getByName(hostName);
 		this.dataPort=dataPort;
 		this.servicePort=servicePort;
 		this.hostName=hostName;
 		this.fullName=toString();
+		this.primary=primary;
+		this.partition=partition;
 	}
 	
 	public String toString() {
@@ -63,6 +68,14 @@ public class NodeDescriptor implements Serializable {
 			throw new RuntimeException("service port is not set");
 		}
 		return servicePort;
+	}
+	
+	public boolean isPrimary(){
+		return primary;
+	}
+	
+	public String getPartition(){
+		return partition;
 	}
 	
 	@Override

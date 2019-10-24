@@ -115,15 +115,28 @@ Network details:
 - `dragon.network.local.host: localhost` **String** - the default advertised host name for the Dragon daemon
 - `dragon.network.local.service.port: ` **Integer** - the service port for the Dragon daemon, if not set then the default service port is used 
 - `dragon.network.local.data.port: ` **Integer** - the data port for the Dragon daemon, if not set then the default data port is used
-- `dragon.network.hosts: [{hostname:[port,port]},{hostname:[port,port]}]` **HostArray** - strictly an array of dictionaries, where the sole dictionary key in each array element is the host name of a Dragon daemon and its associated array is the service and data ports in that order, all Dragon daemons should be listed including the local one
+- `dragon.network.hosts: [{hostname:localhost,dport:4001,sport:4000,primary:true,partition:primary},...]` **HostArray** - strictly an array of dictionaries, see below for details, which is used to bootstrap a daemon
 
 The `dragon.network.hosts` parameter can also be written like this:
 
     dragon.network.remote.hosts:
-    - hostname: [port,port]
-    - hostname: [port,port]
-    
-If only one port is given, i.e. `[port]` then it is assumed to be the service port (the data port will be the default value), and if no ports are given (in which case write `[]`) then both ports take their default values.
+    - hostname: localhost
+      dport: 4001
+      sport: 4000
+      primary: true
+      partition: primary
+    - hostname: host2.example.com
+
+The `hostname` must be supplied otherwise the entry is skipped, omitted port values will take on default values, omitted `primary` will become `true`, and omitted `partition` will become `primary`.
+
+Primary daemon and network partition:
+
+- `dragon.network.primary: true` **Boolean** - only one Dragon daemon per machine should be designated as the primary
+- `dragon.network.partition: primary` **String** - the partition name for this daemon
+
+The primary daemon is responsible for starting up other daemons on the same machine, and monitoring them for liveness, restarting as needed. The primary daemon would usually be supervised, e.g. being started by `supervisord`, or started via a remote `ssh` command.
+
+Every Dragon daemon is part of a single partition, by default called the `primary` partition. When a topology is submitted, the embedding strategy can select the partition that the topology will be embedded into, which allows for complete process isolation of topologies.
 
 Parameters concerning metrics:
 
