@@ -52,39 +52,39 @@ public class Recycler<T> {
 		lock.lock();
 		try {
 			objects.put(t);
-			if(objects.size()>expansion &&
-					objects.remainingCapacity()<objects.getCapacity()*compact) {
-				final int newCapacity = (int)(objects.getCapacity()*0.5);
-				final int c1 = objects.remainingCapacity();
-				log.debug("used objects = "+c1);
-				log.warn(obj.getClass().getName()+" shrinking to "+(newCapacity));
-				CircularBlockingQueue<T> newObjects = new CircularBlockingQueue<T>(newCapacity);
-				log.debug("objects size = "+objects.size());
-				for(int i=0;i<newCapacity;i++) {
-					T t1 = objects.take();
-					if(refCount.containsKey(t1)) {
-						if(refCount.get(t1).get()!=0) {
-							System.out.println("error");
-							System.exit(-1);
-						}
-					} else {
-						System.out.println("error2");
-						System.exit(-1);
-					}
-					newObjects.put(t1); // ref counts are retained in refCount
-				}
-				log.debug("objects size = "+objects.size());
-				while(objects.size()>0) {
-					refCount.remove(objects.take()); // remove these unneeded ref counts
-				}
-				log.debug("objects size = "+objects.size());
-				objects=newObjects;
-				log.debug("finished shrinking");
-				if(c1<objects.remainingCapacity()) {
-					System.out.println("error3");
-					System.exit(-1);
-				}
-			}
+//			if(objects.size()>expansion &&
+//					objects.remainingCapacity()<objects.getCapacity()*compact) {
+//				final int newCapacity = (int)(objects.getCapacity()*0.5);
+//				final int c1 = objects.remainingCapacity();
+//				log.debug("used objects = "+c1);
+//				log.warn(obj.getClass().getName()+" shrinking to "+(newCapacity));
+//				CircularBlockingQueue<T> newObjects = new CircularBlockingQueue<T>(newCapacity);
+//				log.debug("objects size = "+objects.size());
+//				for(int i=0;i<newCapacity;i++) {
+//					T t1 = objects.take();
+//					if(refCount.containsKey(t1)) {
+//						if(refCount.get(t1).get()!=0) {
+//							System.out.println("error");
+//							System.exit(-1);
+//						}
+//					} else {
+//						System.out.println("error2");
+//						System.exit(-1);
+//					}
+//					newObjects.put(t1); // ref counts are retained in refCount
+//				}
+//				log.debug("objects size = "+objects.size());
+//				while(objects.size()>0) {
+//					refCount.remove(objects.take()); // remove these unneeded ref counts
+//				}
+//				log.debug("objects size = "+objects.size());
+//				objects=newObjects;
+//				log.debug("finished shrinking");
+//				if(c1<objects.remainingCapacity()) {
+//					System.out.println("error3");
+//					System.exit(-1);
+//				}
+//			}
 		} catch (InterruptedException e) {
 			log.error("could not recycle object");
 		} finally {
