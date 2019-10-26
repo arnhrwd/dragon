@@ -20,7 +20,7 @@ public class ReflectionUtils {
 
     public <T> T newInstanceImpl(Class<T> klass) {
         try {
-            return klass.newInstance();
+            return klass.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
