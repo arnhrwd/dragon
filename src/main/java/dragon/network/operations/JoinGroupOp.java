@@ -15,7 +15,7 @@ public class JoinGroupOp extends GroupOp {
 		// TODO Auto-generated constructor stub
 	}
 	@Override
-	protected NodeMessage initiateNodeMessage() {
+	protected NodeMessage initiateNodeMessage(NodeDescriptor desc) {
 		return new JoinRequestNMsg();
 	}
 	@Override

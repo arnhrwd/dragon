@@ -465,5 +465,9 @@ public class Node {
 			throw new DragonTopologyException("topology does not exist: " + topologyId);
 		localClusters.get(topologyId).resumeTopology();
 	}
+	
+	public synchronized void allocatePartition(String partitionId,int daemons) {
+		
+	}
 
 }

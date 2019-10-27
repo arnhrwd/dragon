@@ -1,5 +1,6 @@
 package dragon.network.operations;
 
+import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.JarReadyNMsg;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.PrepareJarErrorNMsg;
@@ -17,7 +18,7 @@ public class RunTopoGroupOp extends GroupOp {
 	}
 	
 	@Override
-	protected NodeMessage initiateNodeMessage() {
+	protected NodeMessage initiateNodeMessage(NodeDescriptor desc) {
 		return new PrepareJarNMsg(topologyId,jar);
 	}
 	@Override

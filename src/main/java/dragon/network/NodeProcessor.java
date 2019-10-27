@@ -1,6 +1,6 @@
 package dragon.network;
 
-import java.util.Collection;
+import java.util.Collections;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -9,13 +9,11 @@ import dragon.DragonRequiresClonableException;
 import dragon.network.Node.NodeState;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.IErrorMessage;
-import dragon.network.messages.node.AcceptingJoinNMsg;
 import dragon.network.messages.node.ContextUpdateNMsg;
 import dragon.network.messages.node.GetTopoInfoNMsg;
 import dragon.network.messages.node.HaltTopoErrorNMsg;
 import dragon.network.messages.node.HaltTopoNMsg;
 import dragon.network.messages.node.JarReadyNMsg;
-import dragon.network.messages.node.JoinCompleteNMsg;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.PrepareJarErrorNMsg;
 import dragon.network.messages.node.PrepareJarNMsg;
@@ -51,7 +49,7 @@ public class NodeProcessor extends Thread {
 	private final NodeContext context;
 	public NodeProcessor(Node node) {
 		this.node=node;
-		context=new NodeContext();
+		context=(NodeContext) Collections.synchronizedMap(new NodeContext());
 		nextNode=node.getComms().getMyNodeDesc();
 		log.info("next pointer = ["+this.nextNode+"]");
 		context.put(nextNode);

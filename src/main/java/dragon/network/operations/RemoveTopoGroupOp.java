@@ -1,6 +1,7 @@
 package dragon.network.operations;
 
 
+import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.TopoRemovedNMsg;
 import dragon.network.messages.node.RemoveTopoErrorNMsg;
@@ -17,7 +18,7 @@ public class RemoveTopoGroupOp extends GroupOp {
 	}
 	
 	@Override
-	protected NodeMessage initiateNodeMessage() {
+	protected NodeMessage initiateNodeMessage(NodeDescriptor desc) {
 		return new RemoveTopoNMsg(topologyId);
 	}
 	

@@ -1,5 +1,10 @@
 package dragon.network;
 
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.PriorityQueue;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -33,9 +38,12 @@ import dragon.network.operations.RemoveTopoGroupOp;
 import dragon.network.operations.TermTopoGroupOp;
 import dragon.network.operations.Ops;
 import dragon.topology.DragonTopology;
+import dragon.network.messages.service.AllocPartErrorSMsg;
+import dragon.network.messages.service.AllocPartSMsg;
 import dragon.network.messages.service.GetMetricsErrorSMsg;
 import dragon.network.messages.service.MetricsSMsg;
 import dragon.network.messages.service.NodeContextSMsg;
+import dragon.network.messages.service.PartAllocedSMsg;
 import dragon.network.messages.service.ResumeTopoErrorSMsg;
 import dragon.network.messages.service.ResumeTopoSMsg;
 
@@ -390,6 +398,109 @@ public class ServiceProcessor extends Thread {
 
 		}
 	}
+	
+	/**
+	 * Allocate a new partition.
+	 * 
+	 * @param msg contains the partition name, number of daemons and strategy to use.
+	 */
+	private void processAllocatePartition(ServiceMessage msg) {
+		final AllocPartSMsg apsm = (AllocPartSMsg) msg;
+		final String partitionId = apsm.partitionId;
+		int daemons = apsm.daemons;
+		final NodeContext context = node.getNodeProcessor().getContext();
+		final HashMap<NodeDescriptor,Integer> allocation = new HashMap<NodeDescriptor,Integer>();
+		final HashMap<NodeDescriptor,Integer> load = new HashMap<NodeDescriptor,Integer>();
+		final HashMap<String,NodeDescriptor> machines = new HashMap<String,NodeDescriptor>();
+		for(NodeDescriptor desc : context.values()) {
+			if(desc.getPartition().equals(partitionId)) {
+				try {
+					comms.sendServiceMsg(new AllocPartErrorSMsg(partitionId,0,"partition already exists"),msg);
+				} catch (DragonCommsException e) {
+					log.fatal("can't communicate with client: " + e.getMessage());
+				}
+				return;
+			}
+			if(!machines.containsKey(desc.getHostName())){
+				if(desc.isPrimary()) {
+					machines.put(desc.getHostName(),desc);
+				}
+				load.put(machines.get(desc.getHostName()),1);
+			} else {
+				load.put(machines.get(desc.getHostName()),
+						load.get(machines.get(desc.getHostName()))+1);
+			}
+		}
+		switch(apsm.strategy) {
+		case LEAST_LOADED:
+			PriorityQueue<NodeDescriptor> pQueue = 
+				new PriorityQueue<NodeDescriptor>(load.size(),
+						new Comparator<NodeDescriptor>() {
+				@Override
+				public int compare(NodeDescriptor arg0, NodeDescriptor arg1) {
+					return load.get(machines.get(arg0.getHostName()))
+							.compareTo(load.get(machines.get(arg1.getHostName())));
+				}
+			}); 
+			for(NodeDescriptor host: load.keySet()) {
+				pQueue.add(host);
+			}
+			while(daemons>0) {
+				NodeDescriptor host = pQueue.remove();
+				if(!allocation.containsKey(host)) {
+					allocation.put(host,1);
+				} else {
+					allocation.put(host,allocation.get(host)+1);
+				}
+				load.put(host,load.get(host)+1);
+				pQueue.add(host);
+				daemons--;
+			}
+			break;
+		case PER_PRIMARY:
+			for(NodeDescriptor host : load.keySet()) {
+				allocation.put(host,daemons);
+			}
+			break;
+		case UNIFORMLY:
+			while(daemons>0) {
+				int inc = daemons>load.size() ? daemons/load.size():1;
+				for(NodeDescriptor host : load.keySet()) {
+					if(!allocation.containsKey(host)) {
+						allocation.put(host,1);
+					} else {
+						allocation.put(host,allocation.get(host)+1);
+					}
+					daemons-=inc;
+					if(daemons==0) break;
+				}
+			}
+			break;
+		default:
+			try {
+				comms.sendServiceMsg(new AllocPartErrorSMsg(partitionId,0,"invalid strategy ["+apsm.strategy+"]"),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+			return;
+		}
+		
+		Ops.inst().newAllocPartGroupOp(partitionId,allocation, (op)->{
+			try {
+				comms.sendServiceMsg(new PartAllocedSMsg(partitionId,0), msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+		}, (op,error)->{
+			try {
+				comms.sendServiceMsg(new AllocPartErrorSMsg(partitionId,0,error),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+		}).onStart((op)->{
+			
+		});
+	}
 
 	@Override
 	public void run() {
@@ -425,6 +536,9 @@ public class ServiceProcessor extends Thread {
 				break;
 			case RESUME_TOPOLOGY:
 				processResumeTopology(msg);
+				break;
+			case ALLOCATE_PARTITION:
+				processAllocatePartition(msg);
 				break;
 			default:
 				log.error("unrecognized command: " + msg.getType().name());

@@ -43,6 +43,10 @@ public class NodeDescriptor implements Serializable {
 		this.host=InetAddress.getByName(host);
 	}
 	
+	public String getHostName() {
+		return hostName;
+	}
+	
 	public void setDataPort(int dataPort) {
 		this.dataPort = dataPort;
 		this.fullName = toString();

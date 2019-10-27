@@ -38,7 +38,7 @@ public class ListToposGroupOp extends GroupOp {
 	}
 
 	@Override
-	public NodeMessage initiateNodeMessage() {
+	public NodeMessage initiateNodeMessage(NodeDescriptor desc) {
 		return new GetTopoInfoNMsg();
 	}
 	

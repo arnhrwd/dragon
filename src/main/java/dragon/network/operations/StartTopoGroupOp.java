@@ -1,5 +1,6 @@
 package dragon.network.operations;
 
+import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.StartTopoErrorNMsg;
 import dragon.network.messages.node.StartTopoNMsg;
@@ -15,7 +16,7 @@ public class StartTopoGroupOp extends GroupOp {
 	}
 
 	@Override
-	protected NodeMessage initiateNodeMessage() {
+	protected NodeMessage initiateNodeMessage(NodeDescriptor desc) {
 		return new StartTopoNMsg(topologyId);
 	}
 

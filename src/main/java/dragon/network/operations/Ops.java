@@ -113,6 +113,15 @@ public class Ops extends Thread {
 		register(jgo);
 		return jgo;
 	}
+	
+	public AllocPartGroupOp newAllocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
+		AllocPartGroupOp apgo = new AllocPartGroupOp(partitionId,allocation,success,failure);
+		for(NodeDescriptor desc : allocation.keySet()) {
+			apgo.add(desc);
+		}
+		register(apgo);
+		return apgo;
+	}
 
 	private GroupOp newGroupOp(GroupOp go, String topologyId) {
 		return newGroupOp(go, node.getLocalClusters().get(topologyId).getTopology());

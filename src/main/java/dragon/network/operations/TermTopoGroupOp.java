@@ -3,6 +3,7 @@ package dragon.network.operations;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.StopTopoErrorNMsg;
 import dragon.network.messages.node.StopTopoNMsg;
@@ -20,7 +21,7 @@ public class TermTopoGroupOp extends GroupOp {
 	}
 	
 	@Override
-	protected NodeMessage initiateNodeMessage() {
+	protected NodeMessage initiateNodeMessage(NodeDescriptor desc) {
 		return new StopTopoNMsg(topologyId);
 	}
 	
