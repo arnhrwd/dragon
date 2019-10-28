@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -79,6 +80,7 @@ public class LocalCluster {
 	 * for each tuple on its input queue.
 	 */
 	private CircularBlockingQueue<Component> componentsPending;
+	private LinkedBlockingQueue<Component>[] componentMap;
 
 	/**
 	 * Map from component id to the conf for spouts, for only those instances
@@ -319,6 +321,7 @@ public class LocalCluster {
 	 * @param start whether to start the topology immediately or not
 	 * @throws DragonRequiresClonableException if the topology contains components that are not clonable
 	 */
+	@SuppressWarnings("unchecked")
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) throws DragonRequiresClonableException {
 		this.topologyName=topologyName;
 		this.conf=conf;
@@ -446,13 +449,17 @@ public class LocalCluster {
 					log.error("could not clone object: "+e.toString());
 				}
 			}
-			totalParallelismHint+=Math.ceil((double)numAllocated*boltDeclarer.getParallelismHint()/boltDeclarer.getNumTasks());
+			totalParallelismHint+=numAllocated;//Math.ceil((double)numAllocated*boltDeclarer.getParallelismHint()/boltDeclarer.getNumTasks());
 		}
 		
 		log.info("total outputs buffer size is "+totalOutputsBufferSize);
 		outputsPending = new CircularBlockingQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
 		log.info("total inputs buffer size is "+totalInputsBufferSize);
 		componentsPending = new CircularBlockingQueue<Component>(2*totalInputsBufferSize+2*spoutsAllocated);
+		componentMap =  new LinkedBlockingQueue[totalParallelismHint];
+		for(int i=0;i<totalParallelismHint;i++){
+			componentMap[i]=new LinkedBlockingQueue<Component>();
+		}
 		
 		
 		// prepare groupings
@@ -794,6 +801,8 @@ public class LocalCluster {
 	private void runComponentThreads() {
 		log.info("starting component executor threads with "+totalParallelismHint+" threads");
 		for(int i=0;i<totalParallelismHint;i++){
+			final int me = i;
+			//componentMap[i]=new CircularBlockingQueue<Component>();
 			//final int thread_id=i;
 			componentExecutorThreads.add(new Thread(){
 				@Override
@@ -817,12 +826,15 @@ public class LocalCluster {
 							continue;
 						}
 						try {
-							component = componentsPending.take();
+							component = componentMap[me].take();
 						} catch (InterruptedException e) {
 							log.info(getName()+" interrupted");
 							break;
 						}
-						//component.lock.lock();
+						//if(!component.lock.tryLock()) {
+						//	componentPending(component);
+						//	continue;
+						//}
 						//try {
 							component.run();
 						//} finally {
@@ -925,7 +937,7 @@ public class LocalCluster {
 	 */
 	public void componentPending(final Component component){
 		try {
-			componentsPending.put(component);
+			componentMap[component.hashCode()%totalParallelismHint].put(component);
 		} catch (InterruptedException e){
 			log.error("interrupted while adding component pending ["+component.getComponentId()+":"+component.getTaskId()+"]");
 		}

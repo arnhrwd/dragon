@@ -27,7 +27,7 @@ public class Bolt extends Component {
 	}
 	
 	@Override
-	public final synchronized void run() {
+	public final void run() {
 		Tuple tuple;
 		if(closed)return;
 		if(tickTuple!=null) {

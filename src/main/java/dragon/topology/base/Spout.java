@@ -15,7 +15,7 @@ public class Spout extends Component {
 	private static final Log log = LogFactory.getLog(Spout.class);
 
 	@Override
-	public final synchronized void run() {
+	public final void run() {
 		if(closed) {
 			log.warn("spout is already closed");
 			return;

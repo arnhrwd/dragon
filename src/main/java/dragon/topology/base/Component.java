@@ -12,7 +12,7 @@ import dragon.LocalCluster;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
-public class Component implements Runnable, Cloneable, Serializable{
+public class Component implements Cloneable, Serializable{
 	private static final long serialVersionUID = -3296255524018955053L;
 	@SuppressWarnings("unused")
 	private static final Log log = LogFactory.getLog(Component.class);
@@ -24,7 +24,7 @@ public class Component implements Runnable, Cloneable, Serializable{
 	private Long transferred=0L;
 	protected volatile boolean closing=false;
 	protected volatile boolean closed=false;
-	public volatile ReentrantLock lock;
+	public  volatile ReentrantLock lock;
 	
 	public final void setClosing() {
 		closing=true;
