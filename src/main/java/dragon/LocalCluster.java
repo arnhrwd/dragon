@@ -670,15 +670,15 @@ public class LocalCluster {
 			@Override
 			public void run() {
 				// cycle the spouts
-				log.debug("cycling spouts");
-				for(String componentId : spouts.keySet()) {
-					HashMap<Integer,Spout> component = spouts.get(componentId);
-					for(Integer taskId : component.keySet()) {
-						Spout spout = component.get(taskId);
-						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] pending");
-						componentPending(spout);
-					}
-				}
+//				log.debug("cycling spouts");
+//				for(String componentId : spouts.keySet()) {
+//					HashMap<Integer,Spout> component = spouts.get(componentId);
+//					for(Integer taskId : component.keySet()) {
+//						Spout spout = component.get(taskId);
+//						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] pending");
+//						componentPending(spout);
+//					}
+//				}
 				
 				// wait for spouts to close
 				log.debug("waiting for spouts to close");
@@ -989,7 +989,7 @@ public class LocalCluster {
 			HashMap<Integer,Spout> component = spouts.get(componentId);
 			for(Integer taskId : component.keySet()) {
 				Spout spout = component.get(taskId);
-				spout.setClosing();
+				spout.setClosed();
 			}
 		}
 		checkCloseCondition();
