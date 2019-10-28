@@ -36,9 +36,9 @@ public class Spout extends Component {
 			log.warn("spout ["+getComponentId()+"]: "+e.getMessage());
 			if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
 		} 
-		if(getOutputCollector().didEmit()) {
-			getLocalCluster().componentPending(this);
-		} else {
+//		if(getOutputCollector().didEmit()) {
+//			getLocalCluster().componentPending(this);
+//		} else {
 //			try {
 //				Thread.sleep(1);
 //			} catch (InterruptedException e) {
@@ -46,7 +46,7 @@ public class Spout extends Component {
 //				e.printStackTrace();
 //			}
 //			getLocalCluster().componentPending(this);
-		}
+//		}
 	}
 
 	public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
