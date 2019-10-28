@@ -22,8 +22,8 @@ public class Component implements Runnable, Cloneable, Serializable{
 	private Collector collector;
 	private Long emitted=0L;
 	private Long transferred=0L;
-	protected volatile Boolean closing=false;
-	protected volatile Boolean closed=false;
+	protected volatile boolean closing=false;
+	protected volatile boolean closed=false;
 	public volatile ReentrantLock lock;
 	
 	public final void setClosing() {
