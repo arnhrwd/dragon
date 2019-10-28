@@ -16,6 +16,7 @@ public class Spout extends Component {
 
 	@Override
 	public final void run() {
+		getOutputCollector().resetEmit();
 		if(closed) {
 			log.warn("spout is already closed");
 			return;
@@ -26,7 +27,6 @@ public class Spout extends Component {
 			closed=true;
 			return;
 		}
-		getOutputCollector().resetEmit();
 		try {
 			nextTuple();
 		} catch (DragonEmitRuntimeException e) {

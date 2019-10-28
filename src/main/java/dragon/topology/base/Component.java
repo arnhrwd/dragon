@@ -31,20 +31,15 @@ public class Component implements Cloneable, Serializable{
 	}
 	
 	public final boolean isClosing() {
-			return closing;
-		
+		return closing;
 	}
 	
 	public final void setClosed() {
-		
-			closed=true;
-			
+		closed=true;	
 	}
 	
 	public final boolean isClosed() {
-		
-			return closed;
-		
+		return closed;
 	}
 	
 	public final void setOutputCollector(Collector collector) {
