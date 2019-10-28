@@ -336,6 +336,7 @@ public class LocalCluster {
 		
 		int totalOutputsBufferSize=0;
 		int totalInputsBufferSize=0;
+		int spoutsAllocated=0;
 		
 		// allocate spouts and open them
 		spouts = new HashMap<String,HashMap<Integer,Spout>>();
@@ -363,7 +364,10 @@ public class LocalCluster {
 				boolean localtask = !(dragonTopology.getReverseEmbedding()!=null &&
 						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId,i));
 				try {
-					if(localtask) numAllocated++;
+					if(localtask) {
+						numAllocated++;
+						spoutsAllocated++;
+					}
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
 					if(localtask) hm.put(i, spout);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
@@ -448,7 +452,7 @@ public class LocalCluster {
 		log.info("total outputs buffer size is "+totalOutputsBufferSize);
 		outputsPending = new CircularBlockingQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
 		log.info("total inputs buffer size is "+totalInputsBufferSize);
-		componentsPending = new CircularBlockingQueue<Component>(2*totalInputsBufferSize);
+		componentsPending = new CircularBlockingQueue<Component>(2*totalInputsBufferSize+2*spoutsAllocated);
 		
 		
 		// prepare groupings
