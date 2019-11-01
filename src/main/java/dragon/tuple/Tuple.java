@@ -127,18 +127,18 @@ public class Tuple implements IRecyclable, Serializable {
 	}
 	
 	public void sendToStream(ObjectOutputStream out) throws IOException {
-		out.writeObject(sourceComponent);
-		out.writeObject(sourceStreamId);
-		out.writeObject(sourceTaskId);
-		out.writeObject(type);
+		out.writeUTF(sourceComponent);
+		out.writeUTF(sourceStreamId);
+		out.writeInt(sourceTaskId);
+		out.writeUTF(type.name());
 		fields.sendToStream(out);
 	}
 	
 	public static Tuple readFromStream(ObjectInputStream in) throws ClassNotFoundException, IOException {
-		String sourceComponent = (String)in.readObject();
-		String sourceStreamId = (String)in.readObject();
-		Integer sourceTaskId = (Integer)in.readObject();
-		Type type = (Type)in.readObject();
+		String sourceComponent = in.readUTF();
+		String sourceStreamId = in.readUTF();
+		Integer sourceTaskId = in.readInt();
+		Type type = Type.valueOf(in.readUTF());
 		Fields fields = Fields.readFromStream(in);
 		Tuple t = RecycleStation.getInstance().getTupleRecycler(fields.getFieldNamesAsString()).newObject();
 		t.setSourceComponent(sourceComponent);
