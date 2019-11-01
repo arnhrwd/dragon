@@ -90,108 +90,27 @@ public class Collector {
 			NetworkTask task = RecycleStation.getInstance()
 					.getNetworkTaskRecycler().newObject();
 			task.init(tuple, remoteTaskIds, componentId, localCluster.getTopologyId());
-//			try {
-//				if(tuple.getType()==Tuple.Type.TERMINATE ||  component.getComponentId().equals("numberSpout")) {
-//					log.debug("router queue");
-//				}
 			try {
 				router.put(task);
 			} catch (InterruptedException e) {
 				log.info("interrupted");
-				;
 			}
-//				while(!router.offer(task)) {
-//					// while this component is blocked, try processing some other component
-//
-//						Component anotherComponent = localCluster.getComponentsPending().poll();
-//						if(anotherComponent==null) {
-//							try {
-//								router.put(task);
-//							} catch (InterruptedException e) {
-//								log.info("interrupted");
-//								break;
-//							}
-//							break;
-//						}
-//						if(anotherComponent!=component &&
-//								!anotherComponent.lock.isHeldByCurrentThread()
-//								&& anotherComponent.lock.tryLock()) {
-//							try {
-//								anotherComponent.run();	
-//							} finally {
-//								anotherComponent.lock.unlock();
-//							}
-//						} else {
-//							localCluster.componentPending(anotherComponent);
-//						}
-//					
-//					
-////					if(localCluster.getState()==LocalCluster.State.TERMINATING || component.getComponentId().equals("numberSpout")) {
-////						log.warn("blocked on router: "+component.getComponentId()+":"+component.getTaskId());
-////					}
-//				};
-//				if(tuple.getType()==Tuple.Type.TERMINATE ||  component.getComponentId().equals("numberSpout")) {
-//					log.debug("router queue done");
-//				}
-//			} catch (InterruptedException e) {
-//				log.error("failed to emit tuple: "+e.toString());
-//			} 
 			
 		}
 		HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
 		
 		localTaskIds.removeAll(remoteTaskIds);
 		if(!localTaskIds.isEmpty()){
-//			try {
-				NetworkTask task = RecycleStation.getInstance()
-						.getNetworkTaskRecycler().newObject();
-				
-				task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
-				try {
-					getQueue(componentId,streamId).put(task);
-				} catch (InterruptedException e) {
-					log.info("interrupted");
-					
-				}
-//				while(!getQueue(componentId,streamId).offer(task)) {
-//					// while this component is blocked, try processing some other component
-//					
-//						Component anotherComponent = localCluster.getComponentsPending().poll();
-//						if(anotherComponent==null) {
-//							try {
-//								getQueue(componentId,streamId).put(task);
-//							} catch (InterruptedException e) {
-//								log.info("interrupted");
-//								break;
-//							}
-//							break;
-//						}
-//						if(anotherComponent!=component && 
-//								!anotherComponent.lock.isHeldByCurrentThread()
-//								&& anotherComponent.lock.tryLock()) {
-//							try {
-//								anotherComponent.run();
-//							} finally {
-//								anotherComponent.lock.unlock();
-//							}
-//						} else {
-//							localCluster.componentPending(anotherComponent);
-//						}
-//					
-////					if(localCluster.getState()==LocalCluster.State.TERMINATING || component.getComponentId().equals("numberSpout")) {
-////						log.warn("blocked locally: "+component.getComponentId()+":"+component.getTaskId());
-////					}
-//				}
-//				if(tuple.getType()==Tuple.Type.TERMINATE || component.getComponentId().equals("numberSpout")) {
-//					log.debug("outputs pending");
-//				}
-				localCluster.outputPending(getQueue(componentId,streamId));
-//				if(tuple.getType()==Tuple.Type.TERMINATE || component.getComponentId().equals("numberSpout")) {
-//					log.debug("outputs pending done");
-//				}
-//			} catch (InterruptedException e) {
-//				log.error("failed to emit tuple: "+e.toString());
-//			}
+			NetworkTask task = RecycleStation.getInstance()
+					.getNetworkTaskRecycler().newObject();
+			
+			task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
+			try {
+				getQueue(componentId,streamId).put(task);
+			} catch (InterruptedException e) {
+				log.info("interrupted");	
+			}
+			localCluster.outputPending(getQueue(componentId,streamId));
 		}
 	}
 	

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -72,13 +73,6 @@ public class LocalCluster {
 	 * on outputsPending for each NetworkTask it contains.
 	 */
 	private CircularBlockingQueue<NetworkTaskBuffer> outputsPending;
-	
-	/**
-	 * References to components that have tuples waiting to be processed
-	 * on their input queue. One reference to the component is on componentsPending
-	 * for each tuple on its input queue.
-	 */
-	private CircularBlockingQueue<Component> componentsPending;
 
 	/**
 	 * Map from component id to the conf for spouts, for only those instances
@@ -373,6 +367,7 @@ public class LocalCluster {
 		
 		int totalOutputsBufferSize=0;
 		int totalInputsBufferSize=0;
+		int spoutsAllocated=0;
 		
 		// allocate spouts and open them
 		spouts = new HashMap<String,HashMap<Integer,Spout>>();
@@ -400,7 +395,10 @@ public class LocalCluster {
 				boolean localtask = !(dragonTopology.getReverseEmbedding()!=null &&
 						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId,i));
 				try {
-					if(localtask) numAllocated++;
+					if(localtask) {
+						numAllocated++;
+						spoutsAllocated++;
+					}
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
 					if(localtask) hm.put(i, spout);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
@@ -479,13 +477,79 @@ public class LocalCluster {
 					log.error("could not clone object: "+e.toString());
 				}
 			}
-			totalParallelismHint+=Math.ceil((double)numAllocated*boltDeclarer.getParallelismHint()/boltDeclarer.getNumTasks());
+			totalParallelismHint+=numAllocated;//Math.ceil((double)numAllocated*boltDeclarer.getParallelismHint()/boltDeclarer.getNumTasks());
 		}
 		
 		log.info("total outputs buffer size is "+totalOutputsBufferSize);
 		outputsPending = new CircularBlockingQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
 		log.info("total inputs buffer size is "+totalInputsBufferSize);
-		componentsPending = new CircularBlockingQueue<Component>(2*totalInputsBufferSize);
+		
+		componentExecutorThreads = new ArrayList<Thread>();
+		for(HashMap<Integer,Spout> spouts : spouts.values()) {
+			for(Component component : spouts.values()) {
+				componentExecutorThreads.add(new Thread(){
+					@Override
+					public void run(){
+						Component thisComponent=component;
+						while(!isInterrupted()){
+							if(state==LocalCluster.State.HALTED) {
+								log.info(getName()+" halted");
+								try {
+									haltLock.lock();
+									try {
+										restartCondition.await();
+									} catch (InterruptedException e) {
+										log.info(getName()+" interrupted");
+										break;
+									}
+									log.info(getName()+" resuming");
+								} finally {
+									haltLock.unlock();
+								}
+								continue;
+							}
+	
+							thisComponent.run();
+							if(!thisComponent.getOutputCollector().didEmit())
+								break;
+							
+						}
+						log.info(getName()+" done");
+					}
+				});
+			}
+		}
+		for(HashMap<Integer,Bolt> bolts : bolts.values()) {
+			for(Component component : bolts.values()) {
+				componentExecutorThreads.add(new Thread(){
+					@Override
+					public void run(){
+						Component thisComponent=component;
+						while(!isInterrupted()){
+							if(state==LocalCluster.State.HALTED) {
+								log.info(getName()+" halted");
+								try {
+									haltLock.lock();
+									try {
+										restartCondition.await();
+									} catch (InterruptedException e) {
+										log.info(getName()+" interrupted");
+										break;
+									}
+									log.info(getName()+" resuming");
+								} finally {
+									haltLock.unlock();
+								}
+								continue;
+							}
+							thisComponent.run();
+						}
+						log.info(getName()+" done");
+					}
+				});
+			}
+		}
+		
 		
 		
 		// prepare groupings
@@ -636,7 +700,7 @@ public class LocalCluster {
 		
 		outputsScheduler();
 		
-		componentExecutorThreads = new ArrayList<Thread>();
+		
 		state=State.SUBMITTED;
 		if(start) {
 			scheduleSpouts();	
@@ -645,14 +709,6 @@ public class LocalCluster {
 	}
 	
 	private void scheduleSpouts() {
-		log.debug("scheduling spouts to run");
-		for(String componentId : spouts.keySet()) {
-			HashMap<Integer,Spout> component = spouts.get(componentId);
-			for(Integer taskId : component.keySet()) {
-				Spout spout = component.get(taskId);
-				componentPending(spout);
-			}
-		}
 		runComponentThreads();
 		state=State.RUNNING;
 	}
@@ -691,7 +747,6 @@ public class LocalCluster {
 			synchronized(bolt) {
 				RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).shareRecyclable(tuple, 1);
 				bolt.setTickTuple(tuple);
-				componentPending(bolt);
 			}
 		}
 		RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).crushRecyclable(tuple, 1);
@@ -703,15 +758,15 @@ public class LocalCluster {
 			@Override
 			public void run() {
 				// cycle the spouts
-				log.debug("cycling spouts");
-				for(String componentId : spouts.keySet()) {
-					HashMap<Integer,Spout> component = spouts.get(componentId);
-					for(Integer taskId : component.keySet()) {
-						Spout spout = component.get(taskId);
-						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] pending");
-						componentPending(spout);
-					}
-				}
+//				log.debug("cycling spouts");
+//				for(String componentId : spouts.keySet()) {
+//					HashMap<Integer,Spout> component = spouts.get(componentId);
+//					for(Integer taskId : component.keySet()) {
+//						Spout spout = component.get(taskId);
+//						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] pending");
+//						componentPending(spout);
+//					}
+//				}
 				
 				// wait for spouts to close
 				log.debug("waiting for spouts to close");
@@ -827,44 +882,7 @@ public class LocalCluster {
 	private void runComponentThreads() {
 		log.info("starting component executor threads with "+totalParallelismHint+" threads");
 		for(int i=0;i<totalParallelismHint;i++){
-			//final int thread_id=i;
-			componentExecutorThreads.add(new Thread(){
-				@Override
-				public void run(){
-					Component component;
-					while(!isInterrupted()){
-						if(state==LocalCluster.State.HALTED) {
-							log.info(getName()+" halted");
-							try {
-								haltLock.lock();
-								try {
-									restartCondition.await();
-								} catch (InterruptedException e) {
-									log.info(getName()+" interrupted");
-									break;
-								}
-								log.info(getName()+" resuming");
-							} finally {
-								haltLock.unlock();
-							}
-							continue;
-						}
-						try {
-							component = componentsPending.take();
-						} catch (InterruptedException e) {
-							log.info(getName()+" interrupted");
-							break;
-						}
-						//component.lock.lock();
-						//try {
-							component.run();
-						//} finally {
-						//	component.lock.unlock();
-						//}
-					}
-					log.info(getName()+" done");
-				}
-			});
+			
 			componentExecutorThreads.get(i).setName("component executor "+i);
 			componentExecutorThreads.get(i).start();
 		}
@@ -918,7 +936,7 @@ public class LocalCluster {
 											.getFieldNamesAsString()).shareRecyclable(tuple,1);
 									if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
 										doneTaskIds.add(taskId);
-										componentPending(bolts.get(name).get(taskId));
+										
 									} else {
 										RecycleStation.getInstance()
 										.getTupleRecycler(tuple.getFields()
@@ -947,21 +965,6 @@ public class LocalCluster {
 			networkExecutorThreads.get(i).start();
 		}
 		
-	}
-	
-	/**
-	 * Schedule a component to process a pending tuple on its input queue.
-	 * There will be one reference of each component for each tuple that is oustanding
-	 * on its input queue.
-	 * 
-	 * @param component the component reference to run
-	 */
-	public void componentPending(final Component component){
-		try {
-			componentsPending.put(component);
-		} catch (InterruptedException e){
-			log.error("interrupted while adding component pending ["+component.getComponentId()+":"+component.getTaskId()+"]");
-		}
 	}
 	
 	/**
@@ -1022,7 +1025,7 @@ public class LocalCluster {
 			HashMap<Integer,Spout> component = spouts.get(componentId);
 			for(Integer taskId : component.keySet()) {
 				Spout spout = component.get(taskId);
-				spout.setClosing();
+				spout.setClosed();
 			}
 		}
 		checkCloseCondition();
@@ -1037,7 +1040,7 @@ public class LocalCluster {
 	}
 	
 	/**
-	 * Resume the topology from a halted state on this locacl cluster.
+	 * Resume the topology from a halted state on this local cluster.
 	 */
 	public void resumeTopology() {
 		log.info("resuming topology");
@@ -1064,9 +1067,9 @@ public class LocalCluster {
 		return node;
 	}
 	
-	public CircularBlockingQueue<Component> getComponentsPending() {
-		return componentsPending;
-	}
+//	public CircularBlockingQueue<Component> getComponentsPending() {
+//		return componentsPending;
+//	}
 	
 	public void setGroupOperation(GroupOp go) {
 		synchronized(groupOperations) {
@@ -1108,6 +1111,4 @@ public class LocalCluster {
 	public State getState() {
 		return state;
 	}
-
-
 }

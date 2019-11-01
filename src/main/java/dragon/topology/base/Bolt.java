@@ -27,14 +27,19 @@ public class Bolt extends Component {
 	}
 	
 	@Override
-	public final synchronized void run() {
+	public final void run() {
 		Tuple tuple;
 		if(closed)return;
 		if(tickTuple!=null) {
 			tuple=tickTuple;
 			tickTuple=null;
 		} else {
-			tuple = getInputCollector().getQueue().poll();
+			try {
+				tuple = getInputCollector().getQueue().take();
+			} catch (InterruptedException e) {
+				log.debug("interrupted");
+				return;
+			}
 		}
 		if(tuple!=null){
 			switch(tuple.getType()) {
