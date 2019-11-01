@@ -98,7 +98,7 @@ public class Fields implements Serializable, Cloneable {
 				out.writeBoolean((boolean) values[i]);
 			} else {
 				out.writeByte(127);
-				((Externalizable)(values[i])).writeExternal(out);
+				out.writeObject(values[i]);
 			}
 		}
 	}
