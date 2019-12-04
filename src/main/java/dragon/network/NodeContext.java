@@ -15,17 +15,17 @@ public class NodeContext extends HashMap<String,NodeDescriptor>{
 	private static final long serialVersionUID = 6956040375029092241L;
 	private static final Log log = LogFactory.getLog(Node.class);
 	
-	public void put(NodeDescriptor desc) {
+	public synchronized void put(NodeDescriptor desc) {
 		put(desc.toString(),desc);
 		logContext();
 	}
 	
-	public void remove(NodeDescriptor desc) {
+	public synchronized void remove(NodeDescriptor desc) {
 		remove(desc.toString());
 		logContext();
 	}
 	
-	public void putAll(NodeContext context) {
+	public synchronized void putAll(NodeContext context) {
 		for(String key: context.keySet()) {
 			put(key,context.get(key));
 		}

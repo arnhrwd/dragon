@@ -78,6 +78,8 @@ public class Config extends HashMap<String, Object> {
 	
 	public static final String DRAGON_FAULTS_COMPONENT_TOLERANCE="dragon.faults.component.tolerance";
 	
+	public static final String DRAGON_JAVA_BIN="dragon.java.bin";
+	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
 	
@@ -183,6 +185,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_COMMS_RESET_COUNT,128);
 		put(DRAGON_COMMS_INCOMING_BUFFER_SIZE,1024);
 		put(DRAGON_FAULTS_COMPONENT_TOLERANCE,3);
+		put(DRAGON_JAVA_BIN,"java");
 	}
 	
 	public void drop() {
@@ -365,6 +368,10 @@ public class Config extends HashMap<String, Object> {
 	
 	public int getDragonFaultsComponentTolerance() {
 		return (Integer)get(DRAGON_FAULTS_COMPONENT_TOLERANCE);
+	}
+	
+	public String getDragonJavaBin() {
+		return (String)get(DRAGON_JAVA_BIN);
 	}
 	
  	//

@@ -49,7 +49,7 @@ public class NodeProcessor extends Thread {
 	private final NodeContext context;
 	public NodeProcessor(Node node) {
 		this.node=node;
-		context=(NodeContext) Collections.synchronizedMap(new NodeContext());
+		context=new NodeContext();
 		nextNode=node.getComms().getMyNodeDesc();
 		log.info("next pointer = ["+this.nextNode+"]");
 		context.put(nextNode);

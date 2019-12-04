@@ -3,11 +3,14 @@ package dragon.network;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -125,6 +128,11 @@ public class Node {
 	 * The state that this node is in.
 	 */
 	private NodeState nodeState;
+	
+	/**
+	 * Arguments used to start this JVM
+	 */
+	private List<String> jvmArgs;
 
 	/**
 	 * Initialize the node, will initiate a join request if possible to
@@ -133,6 +141,21 @@ public class Node {
 	 * @throws IOException
 	 */
 	public Node(Config conf) throws IOException {
+
+		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
+		jvmArgs = bean.getInputArguments();
+
+
+		// java -javaagent:dragon.jar -jar dragon.jar -d
+		// -javaagent:dragon.jar
+		for (int i = 0; i < jvmArgs.size(); i++) {
+			log.debug(jvmArgs.get(i));
+		}
+		// -classpath dragon.jar:dragon.jar
+		log.debug(" -classpath " + System.getProperty("java.class.path"));
+		// dragon.jar -d
+		log.debug(" " + System.getProperty("sun.java.command"));
+
 		this.conf = conf;
 		operationsThread = new Ops(this);
 		localClusters = new HashMap<String, LocalCluster>();
@@ -467,6 +490,25 @@ public class Node {
 	}
 	
 	public synchronized void allocatePartition(String partitionId,int daemons) {
+		
+		
+		List<String> pbArgs = new ArrayList<String>();
+		pbArgs.add(conf.getDragonJavaBin());
+		pbArgs.addAll(jvmArgs);
+		pbArgs.add("-classpath");
+		pbArgs.add(System.getProperty("java.class.path"));
+		pbArgs.add("-jar");
+		pbArgs.add("dragon.jar");
+		pbArgs.add("-d");
+		
+		ProcessBuilder pb = new ProcessBuilder(pbArgs);
+
+		try {
+			Process p = pb.start();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 	}
 
