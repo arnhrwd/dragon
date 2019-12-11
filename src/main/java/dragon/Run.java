@@ -6,6 +6,7 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
@@ -17,7 +18,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
+import org.yaml.snakeyaml.Yaml;
 
 import dragon.network.Node;
 import dragon.tuple.RecycleStation;
@@ -67,6 +68,8 @@ public class Run {
 		options.addOption(listOption);
 		Option confOption = new Option("C","conf",true,"specify the dragon conf file");
 		options.addOption(confOption);
+		Option execOption = new Option("e","exec",true,"[daemon|metrics|terminate|resume|halt|list|allocate|deallocate]");
+		options.addOption(execOption);		
 		
 		
 		CommandLineParser parser = new DefaultParser();
@@ -77,12 +80,28 @@ public class Run {
             cmd = parser.parse(options, args);
             Config conf;
             if(cmd.hasOption("conf")) {
-            	conf = new Config(cmd.getOptionValue("conf"));
+            	String val = cmd.getOptionValue("conf");
+            	if(val.startsWith("{")) {
+            		Yaml config = new Yaml();
+            		conf = new Config((Map<String,Object>) config.load(val));
+            	} else {
+            		conf = new Config(val);
+            	}
             } else {
             	conf = new Config(Constants.DRAGON_PROPERTIES);
             }
             RecycleStation.instanceInit(conf);
-            if(cmd.hasOption("metrics")){
+            
+            String exec = "";
+            if(cmd.hasOption("exec")) {
+            	exec = cmd.getOptionValue("exec");
+            }
+            
+            if(exec.equals("allocate")) {
+            	
+            } else if(exec.equals("deallocate")) {
+            	
+            } else if(exec.equals("metrics") || cmd.hasOption("metrics")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
@@ -97,7 +116,7 @@ public class Run {
     				throw new ParseException("must provide a topology name with -t option");
     			}
     			DragonSubmitter.getMetrics(conf,cmd.getOptionValue("topology"));
-            } else if(cmd.hasOption("terminate")){
+            } else if(exec.equals("terminate") || cmd.hasOption("terminate")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
@@ -112,7 +131,7 @@ public class Run {
     				throw new ParseException("must provide a topology name with -t option");
     			}
     			DragonSubmitter.terminateTopology(conf,cmd.getOptionValue("topology"));
-            } else if(cmd.hasOption("resume")){
+            } else if(exec.equals("resume") || cmd.hasOption("resume")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
@@ -127,7 +146,7 @@ public class Run {
     				throw new ParseException("must provide a topology name with -r option");
     			}
     			DragonSubmitter.resumeTopology(conf,cmd.getOptionValue("topology"));
-            } else if(cmd.hasOption("halt")){
+            } else if(exec.equals("halt") || cmd.hasOption("halt")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
@@ -142,7 +161,7 @@ public class Run {
     				throw new ParseException("must provide a topology name with -x option");
     			}
     			DragonSubmitter.haltTopology(conf,cmd.getOptionValue("topology"));
-            } else if(cmd.hasOption("list")){
+            } else if(exec.equals("list") || cmd.hasOption("list")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
@@ -154,7 +173,7 @@ public class Run {
     				log.warn("the -p option was given but list does not use that option");
     			}
     			DragonSubmitter.listTopologies(conf);
-            } else if(!cmd.hasOption("daemon")){
+            } else if(!cmd.hasOption("daemon") && !exec.equals("daemon")){
             	DragonSubmitter.node = conf.getLocalHost();
     			if(cmd.hasOption("host")) {
     				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));

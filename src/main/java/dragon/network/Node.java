@@ -133,6 +133,11 @@ public class Node {
 	 * Arguments used to start this JVM
 	 */
 	private List<String> jvmArgs;
+	
+	/**
+	 * Secondary daemons started by this primary daemon
+	 */
+	private HashMap<String,Process> daemons;
 
 	/**
 	 * Initialize the node, will initiate a join request if possible to
@@ -144,7 +149,7 @@ public class Node {
 
 		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
 		jvmArgs = bean.getInputArguments();
-
+		daemons=new HashMap<String,Process>();
 
 		// java -javaagent:dragon.jar -jar dragon.jar -d
 		// -javaagent:dragon.jar
@@ -489,27 +494,41 @@ public class Node {
 		localClusters.get(topologyId).resumeTopology();
 	}
 	
-	public synchronized void allocatePartition(String partitionId,int daemons) {
-		
-		
-		List<String> pbArgs = new ArrayList<String>();
-		pbArgs.add(conf.getDragonJavaBin());
-		pbArgs.addAll(jvmArgs);
-		pbArgs.add("-classpath");
-		pbArgs.add(System.getProperty("java.class.path"));
-		pbArgs.add("-jar");
-		pbArgs.add("dragon.jar");
-		pbArgs.add("-d");
-		
-		ProcessBuilder pb = new ProcessBuilder(pbArgs);
-
-		try {
-			Process p = pb.start();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+	/**
+	 * Start up a number numDaemons of new Dragon daemons with a given partitionId.
+	 * Service and data ports increase by 10 for each new daemon started.
+	 * @param partitionId
+	 * @param numDaemons
+	 */
+	public synchronized void allocatePartition(String partitionId,int numDaemons) {
+		for(int i=0;i<numDaemons;i++) {
+			List<String> pbArgs = new ArrayList<String>();
+			pbArgs.add(conf.getDragonJavaBin());
+			pbArgs.addAll(jvmArgs);
+			pbArgs.add("-classpath");
+			pbArgs.add(System.getProperty("java.class.path"));
+			pbArgs.add("-jar");
+			pbArgs.add("dragon.jar");
+			pbArgs.add("-d");
+			pbArgs.add("-C");
+			
+			Config c = new Config();
+			c.putAll(conf);
+			c.put(Config.DRAGON_NETWORK_PARTITION,partitionId);
+			c.put(Config.DRAGON_NETWORK_PRIMARY,false);
+			c.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,conf.getDragonNetworkLocalServicePort()+(daemons.keySet().size()+1)*10);
+			c.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,conf.getDragonNetworkLocalDataPort()+(daemons.keySet().size()+1)*10);
+			pbArgs.add(c.toYamlString());
+			ProcessBuilder pb = new ProcessBuilder(pbArgs);
+	
+			try {
+				Process p = pb.start();
+				daemons.put(c.getLocalHost().toString(),p);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
-		
 	}
 
 }

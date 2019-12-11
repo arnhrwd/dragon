@@ -13,6 +13,7 @@ import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import dragon.network.NodeDescriptor;
@@ -89,6 +90,14 @@ public class Config extends HashMap<String, Object> {
 		drop();
 	}
 	
+	public Config(Map<String,Object> conf) {
+		super();
+		defaults();
+		log.debug("using configuration supplied on command line");
+		log.debug(conf);
+		putAll(conf);
+	}
+	
 	public Config(String file) throws IOException {
 		super();
 		defaults();
@@ -149,6 +158,16 @@ public class Config extends HashMap<String, Object> {
             return this.getClass().getClassLoader().getResourceAsStream(name);
         }
     }
+	
+	public String toYamlString() {
+		DumperOptions options = new DumperOptions();
+		options.setPrettyFlow(false);
+		options.setSplitLines(false);
+		options.setDefaultFlowStyle(DumperOptions.FlowStyle.FLOW);
+		Yaml config = new Yaml(options);
+		String ret = config.dump(this);
+		return ret;
+	}
 	
 	public void defaults() {
 		put(DRAGON_OUTPUT_BUFFER_SIZE,16);
