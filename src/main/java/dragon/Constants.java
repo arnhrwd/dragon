@@ -1,5 +1,10 @@
 package dragon;
 
+/**
+ * Some constants used throughout the system.
+ * @author aaron
+ *
+ */
 public class Constants {
 	public final static String SYSTEM_TUPLE_FIELDS="SYSTEM_TUPLE_FIELDS";
 	public final static String SYSTEM_COMPONENT_ID="SYSTEM_COMPONENT_ID";

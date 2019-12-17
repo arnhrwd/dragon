@@ -19,22 +19,15 @@ import org.yaml.snakeyaml.Yaml;
 import dragon.network.NodeDescriptor;
 
 /**
- * Parameters for Dragon.
+ * Parameters for Dragon. See the README.md file for documentation.
  * @author aaron
  *
  */
 public class Config extends HashMap<String, Object> {
 	private static final long serialVersionUID = -5933157870455074368L;
 	private static final Log log = LogFactory.getLog(Config.class);
-
-	public static final String TOPOLOGY_WORKERS="topology.workers";
-	public static final String TOPOLOGY_TRIDENT_BATCH_EMIT_INTERVAL_MILLIS="topology.trident.batch.emit.interval.millis";
-	public static final String TOPOLOGY_ENABLE_MESSAGE_TIMEOUTS="topology.enable.message.timeouts";
-	public static final String TOPOLOGY_MAX_SPOUT_PENDING="topology.max.spout.pending";
-	public static final String TOPOLOGY_MESSAGE_TIMEOUT_SECS="topology.message.timeout.secs";
-	public static final String TOPOLOGY_EXECUTOR_RECEIVE_BUFFER_SIZE="topology.executor.receive.buffer.size";
-	public static final String TOPOLOGY_EXECUTOR_SEND_BUFFER_SIZE="topology.executor.send.buffer.size";
-	public static final String TOPOLOGY_TICK_TUPLE_FREQ_SECS="topology.tick.tuple.freq.secs";
+	
+	public static final String TOPOLOGY_TICK_TUPLE_FREQ_SECS="topology.tic.tuple.freq.secs";
 	
 	public static final String DRAGON_OUTPUT_BUFFER_SIZE="dragon.output.buffer.size";
 	public static final String DRAGON_INPUT_BUFFER_SIZE="dragon.input.buffer.size";
@@ -84,12 +77,19 @@ public class Config extends HashMap<String, Object> {
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
 	
+	/**
+	 * Use default config and drop parameters that are relevant to the daemon.
+	 */
 	public Config() {
 		super();
 		defaults();
 		drop();
 	}
 	
+	/**
+	 * Use default config and overwrite with supplied conf.
+	 * @param conf
+	 */
 	public Config(Map<String,Object> conf) {
 		super();
 		defaults();
@@ -98,6 +98,11 @@ public class Config extends HashMap<String, Object> {
 		putAll(conf);
 	}
 	
+	/**
+	 * Use default config and overwrite with conf from supplied file.
+	 * @param file the filename to read conf from
+	 * @throws IOException if there was a problem reading the file
+	 */
 	public Config(String file) throws IOException {
 		super();
 		defaults();
@@ -150,6 +155,13 @@ public class Config extends HashMap<String, Object> {
 		}
 	}
 	
+	/**
+	 * Construct an input stream from a supplied file name. Look in the class
+	 * loader if the file is not found on the file system.
+	 * @param name
+	 * @return the input stream for the supplied file name
+	 * @throws FileNotFoundException if the file cannot be found
+	 */
 	private InputStream loadByFileName(String name) throws FileNotFoundException {
         File f = new File(name);
         if (f.isFile()) {
@@ -159,6 +171,10 @@ public class Config extends HashMap<String, Object> {
         }
     }
 	
+	/**
+	 * Return the conf as a YAML string, without any new line characters.
+	 * @return the conf as a YAML string 
+	 */
 	public String toYamlString() {
 		DumperOptions options = new DumperOptions();
 		options.setPrettyFlow(false);
@@ -169,6 +185,9 @@ public class Config extends HashMap<String, Object> {
 		return ret;
 	}
 	
+	/**
+	 * Setup default values
+	 */
 	public void defaults() {
 		put(DRAGON_OUTPUT_BUFFER_SIZE,16);
 		put(DRAGON_INPUT_BUFFER_SIZE,16);
@@ -184,9 +203,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_COMMS_RETRY_ATTEMPTS,30);
 		put(DRAGON_NETWORK_LOCAL_HOST,"localhost");
 		put(DRAGON_NETWORK_DEFAULT_SERVICE_PORT,4000);
-		//put(DRAGON_NETWORK_LOCAL_SERVICE_PORT,4000);
 		put(DRAGON_NETWORK_DEFAULT_DATA_PORT,4001);
-		//put(DRAGON_NETWORK_LOCAL_DATA_PORT,4001);
 		put(DRAGON_NETWORK_PRIMARY,true);
 		put(DRAGON_NETWORK_PARTITION,Constants.DRAGON_PRIMARY_PARTITION);
 		put(DRAGON_METRICS_ENABLED,true);
@@ -207,6 +224,11 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_JAVA_BIN,"java");
 	}
 	
+	/**
+	 * Drop values that are relevant to daemon. This is so the user or application
+	 * programmer can specifically override these values at run time when submitting
+	 * the topology.
+	 */
 	public void drop() {
 		remove(DRAGON_OUTPUT_BUFFER_SIZE);
 		remove(DRAGON_INPUT_BUFFER_SIZE);
@@ -228,21 +250,21 @@ public class Config extends HashMap<String, Object> {
 		remove(DRAGON_RECYCLER_TASK_COMPACT);
 	}
 
-	public void setNumWorkers(int numWorkers) {
-		this.numWorkers=numWorkers;
-	}
-	
-	public int getNumberWorkers() {
-		return this.numWorkers;
-	}
-	
-	public void setMaxTaskParallelism(int maxTaskParallelism) {
-		this.maxTaskParallelism=maxTaskParallelism;
-	}
-	
-	public int getMaxTaskParallelism() {
-		return this.maxTaskParallelism;
-	}
+//	public void setNumWorkers(int numWorkers) {
+//		this.numWorkers=numWorkers;
+//	}
+//	
+//	public int getNumberWorkers() {
+//		return this.numWorkers;
+//	}
+//	
+//	public void setMaxTaskParallelism(int maxTaskParallelism) {
+//		this.maxTaskParallelism=maxTaskParallelism;
+//	}
+//	
+//	public int getMaxTaskParallelism() {
+//		return this.maxTaskParallelism;
+//	}
 	
 	//
 	// Simple Getters

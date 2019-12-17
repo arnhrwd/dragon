@@ -35,12 +35,33 @@ import dragon.network.messages.service.TopoListSMsg;
 import dragon.network.messages.service.UploadJarFailedSMsg;
 import dragon.topology.DragonTopology;
 
+/**
+ * Static class for providing stand-alone client commands.
+ * @author aaron
+ *
+ */
 public class DragonSubmitter {
 	private static Log log = LogFactory.getLog(DragonSubmitter.class);
+	
+	/**
+	 * The daemon node to contact.
+	 */
 	public static NodeDescriptor node;
+	
+	/**
+	 * The byte array of the topology JAR to submit.
+	 */
 	public static byte[] topologyJar;
+	
+	/**
+	 * Comms layer for this client.
+	 */
 	private static IComms comms;
 	
+	/**
+	 * Open the comms to the node, using the supplied conf.
+	 * @param conf the configuration to use for the client
+	 */
 	private static void initComms(Config conf){
 		comms=null;
 		try {
@@ -54,6 +75,13 @@ public class DragonSubmitter {
 			System.exit(1);
 		}
 	}
+	
+	/**
+	 * Submit a topology to a given Dragon daemon.
+	 * @param string the user defined name of the topology
+	 * @param conf parameters that override the daemon specific settings for the topology
+	 * @param topology the topology to submit
+	 */
 	public static void submitTopology(String string, Config conf, DragonTopology topology) {
 		initComms(conf);
 		log.info("requesting context from ["+node+"]");
@@ -161,6 +189,13 @@ public class DragonSubmitter {
 		comms.close();
 	}
 	
+	/**
+	 * Extract metrics for the given topology on the supplied daemon node.
+	 * @param conf
+	 * @param topologyId
+	 * @throws InterruptedException
+	 * @throws DragonCommsException
+	 */
 	public static void getMetrics(Config conf,String topologyId) throws InterruptedException, DragonCommsException{
 		initComms(conf);
 		comms.sendServiceMsg(new GetMetricsSMsg(topologyId));
@@ -183,6 +218,14 @@ public class DragonSubmitter {
 		comms.close();
 	}
 	
+	/**
+	 * Terminate the topology, which removes it from daemon completely. Will wait for
+	 * all existing data to be completely processed before terminating.
+	 * @param conf
+	 * @param topologyId
+	 * @throws InterruptedException
+	 * @throws DragonCommsException
+	 */
 	public static void terminateTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
 		comms.sendServiceMsg(new TermTopoSMsg(topologyId));
@@ -204,6 +247,13 @@ public class DragonSubmitter {
 		comms.close();
 	}
 	
+	/**
+	 * Resume a halted topology.
+	 * @param conf
+	 * @param topologyId
+	 * @throws InterruptedException
+	 * @throws DragonCommsException
+	 */
 	public static void resumeTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
 		comms.sendServiceMsg(new ResumeTopoSMsg(topologyId));
@@ -225,6 +275,13 @@ public class DragonSubmitter {
 		comms.close();
 	}
 	
+	/**
+	 * Halt a topology, which simply stops all processing with data still in place. Can be resumed.
+	 * @param conf
+	 * @param topologyId
+	 * @throws InterruptedException
+	 * @throws DragonCommsException
+	 */
 	public static void haltTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
 		comms.sendServiceMsg(new HaltTopoSMsg(topologyId));
@@ -246,6 +303,12 @@ public class DragonSubmitter {
 		comms.close();
 	}
 	
+	/**
+	 * List all of the topologies.
+	 * @param conf
+	 * @throws DragonCommsException
+	 * @throws InterruptedException
+	 */
 	public static void listTopologies(Config conf) throws DragonCommsException, InterruptedException {
 		initComms(conf);
 		comms.sendServiceMsg(new ListToposSMsg());
