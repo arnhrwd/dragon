@@ -25,6 +25,11 @@ import dragon.network.messages.service.MetricsSMsg;
 import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
 
+/**
+ * Stand-alone utility to continuously monitor metrics for the entire Dragon network.
+ * @author aaron
+ *
+ */
 public class MetricsMonitor {
 	private static Log log = LogFactory.getLog(MetricsMonitor.class);
 	private static String topologyId;
