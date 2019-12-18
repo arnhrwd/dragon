@@ -23,6 +23,11 @@ import org.yaml.snakeyaml.Yaml;
 import dragon.network.Node;
 import dragon.tuple.RecycleStation;
 
+/**
+ * Main entry point for Dragon nodes.
+ * @author aaron
+ *
+ */
 public class Run {
 	private static Log log = LogFactory.getLog(Run.class);
 	
