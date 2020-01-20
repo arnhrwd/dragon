@@ -43,6 +43,10 @@ public class ShuffleTextBolt extends BaseRichBolt {
 			System.out.println("getvalues is null");
 			System.exit(-1);
 		}
+		if(tuple.getValueByField("uuid")==null) {
+			System.out.println("incorrect field");
+			System.exit(-1);
+		}
 		collector.emit("uuid",new Values(tuple.getFields().getValues()));
 		
 	}

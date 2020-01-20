@@ -14,20 +14,4 @@ public interface IRecyclable {
 	 */
 	public IRecyclable newRecyclable();
 	
-	/**
-	 * Increment the number of references to the object.
-	 */
-	public void shareRecyclable(int n);
-	
-	/**
-	 * Decrement the number of references to the object.
-	 * @return true if the object can be recycled, i.e. there are no references to it.
-	 */
-	public void crushRecyclable(int n);
-
-	/**
-	 * Set which recycler this object uses.
-	 * @param recycler
-	 */
-	void setRecycler(Recycler<?> recycler);
 }

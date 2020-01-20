@@ -7,10 +7,6 @@ import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
 public class BaseRichSpout extends Spout implements IRichSpout {
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -4721210469464274871L;
 
 	@Override

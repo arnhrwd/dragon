@@ -14,6 +14,7 @@ public class OutputFieldsDeclarer {
 	public OutputFieldsDeclarer() {
 		streamFields = new HashMap<String,Fields>();
 		directStreamFields = new HashMap<String,Fields>();
+		declare(Constants.SYSTEM_STREAM_ID,new Fields(Constants.SYSTEM_TUPLE_FIELDS));
 	}
 	
 	public void declare(Fields fields) {

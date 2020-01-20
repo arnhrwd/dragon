@@ -6,11 +6,14 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
+import dragon.Constants;
 
 public class RecycleStation {
+	@SuppressWarnings("unused")
 	private Log log = LogFactory.getLog(RecycleStation.class);
 	private static RecycleStation recycleStation=null;
-	private Config conf;
+	private final Config conf;
+	
 	public static void instanceInit(Config conf) {
 		recycleStation=new RecycleStation(conf);
 	}
@@ -19,9 +22,8 @@ public class RecycleStation {
 		return recycleStation;
 	}
 	
-	private HashMap<String,Recycler<Tuple>> tupleRecycler;
-	private Recycler<NetworkTask> networkTaskRecycler;
-	//private Recycler<RTaskSet> taskSetRecycler;
+	private final HashMap<String,Recycler<Tuple>> tupleRecycler;
+	private final Recycler<NetworkTask> networkTaskRecycler;
 	
 	public RecycleStation(Config conf) {
 		this.conf=conf;
@@ -30,13 +32,12 @@ public class RecycleStation {
 				conf.getDragonRecyclerTaskCapacity(),
 				conf.getDragonRecyclerTaskExpansion(),
 				conf.getDragonRecyclerTaskCompact());
-		//taskSetRecycler=new Recycler<RTaskSet>(new RTaskSet(),1024,1024);
+		createTupleRecycler(new Tuple(new Fields(Constants.SYSTEM_TUPLE_FIELDS)));
 	}
 	
 	public void createTupleRecycler(Tuple tuple) {
 		String id=tuple.getFields().getFieldNamesAsString();
 		if(tupleRecycler.containsKey(id)) {
-			//log.debug("tuple recycler already exists: "+id);
 			return;
 		}
 		tupleRecycler.put(id, new Recycler<Tuple>(tuple,
@@ -51,9 +52,6 @@ public class RecycleStation {
 	
 	public Recycler<NetworkTask> getNetworkTaskRecycler(){
 		return networkTaskRecycler;
-	}
-	
-//	public Recycler<RTaskSet> getTaskSetRecycler(){
-//		return taskSetRecycler;
-//	}
+	}	
+
 }

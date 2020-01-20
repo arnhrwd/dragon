@@ -16,12 +16,9 @@ import dragon.topology.base.Bolt;
 import dragon.tuple.Fields;
 
 public class BoltDeclarer extends Declarer {
-	
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 4947955477005135498L;
-	private static Log log = LogFactory.getLog(BoltDeclarer.class);
+	@SuppressWarnings("unused")
+	private static final Log log = LogFactory.getLog(BoltDeclarer.class);
 	private Bolt bolt;
 	
 	// the components that this bolt listens to
@@ -37,13 +34,13 @@ public class BoltDeclarer extends Declarer {
 		return this;
 	}
 	
-	public BoltDeclarer(String name, int parallelismHint) {
-		super(name, parallelismHint);
+	public BoltDeclarer(int parallelismHint) {
+		super(parallelismHint);
 		groupings=new HashMap<String,StreamMap>();
 	}
 	
-	public BoltDeclarer(String name, Bolt bolt, int parallelismHint) {
-		super(name, parallelismHint);
+	public BoltDeclarer(Bolt bolt, int parallelismHint) {
+		super(parallelismHint);
 		groupings=new HashMap<String,StreamMap>();
 		this.bolt=bolt;
 	}
@@ -55,6 +52,7 @@ public class BoltDeclarer extends Declarer {
 	private void put(String componentId,String streamId,AbstractGrouping grouping) {
 		if(!groupings.containsKey(componentId)) {
 			groupings.put(componentId, new StreamMap());
+			put(componentId,Constants.SYSTEM_STREAM_ID,new AllGrouping());
 		}
 		HashMap<String,GroupingsSet> map = groupings.get(componentId);
 		if(!map.containsKey(streamId)) {

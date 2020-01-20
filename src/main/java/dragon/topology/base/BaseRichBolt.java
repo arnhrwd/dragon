@@ -8,10 +8,6 @@ import dragon.topology.OutputFieldsDeclarer;
 import dragon.tuple.Tuple;
 
 public class BaseRichBolt extends Bolt implements IRichBolt {
-	
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 9187667675571919817L;
 
 	@Override

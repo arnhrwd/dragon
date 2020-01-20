@@ -1,20 +1,21 @@
 package dragon;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import dragon.grouping.AbstractGrouping;
 import dragon.network.Node;
-import dragon.network.operations.GroupOperation;
-import dragon.network.operations.TerminateTopologyGroupOperation;
+import dragon.network.operations.GroupOp;
+import dragon.network.operations.TermTopoGroupOp;
 import dragon.spout.SpoutOutputCollector;
 import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
@@ -33,51 +34,202 @@ import dragon.topology.base.Component;
 import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
 import dragon.tuple.NetworkTask;
+import dragon.tuple.RecycleStation;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
+import dragon.utils.CircularBlockingQueue;
 import dragon.utils.NetworkTaskBuffer;
 
-
+/**
+ * LocalCluster manages the bolts and spouts for a given topology that are
+ * within this daemon.
+ * 
+ * @author aaron
+ *
+ */
 public class LocalCluster {
-	private static Log log = LogFactory.getLog(LocalCluster.class);
+	private final static Log log = LogFactory.getLog(LocalCluster.class);
+	
+	/**
+	 * A reference to the node for this daemon.
+	 */
+	private final Node node;
+	
+	/**
+	 * Map from component id to task id to instance of bolt, for only those
+	 * instances in the topology that are allocated to this daemon.
+	 */
 	private HashMap<String,HashMap<Integer,Bolt>> bolts;
+	
+	/**
+	 * Map from component id to task id to instance of spout, for only those
+	 * instances in the topology that are allocated to this daemon.
+	 */
 	private HashMap<String,HashMap<Integer,Spout>> spouts;
+	
+	/**
+	 * Queue of queues of NetworkTasks, i.e. the outputs of spouts and bolts,
+	 * that are waiting to be serviced. One reference to such a queue is placed
+	 * on outputsPending for each NetworkTask it contains.
+	 */
+	private CircularBlockingQueue<NetworkTaskBuffer> outputsPending;
+
+	/**
+	 * Map from component id to the conf for spouts, for only those instances
+	 * in the topology that are allocated to this daemon.
+	 */
 	private HashMap<String,Config> spoutConfs;
+	
+	/**
+	 * Map from component id to the conf for bolts, for only those instances
+	 * in the topology that are allocated to this daemon.
+	 */
 	private HashMap<String,Config> boltConfs;
-	//private ThreadPoolExecutor componentExecutorService;
+	
+	/**
+	 * Threads that are allocated to execute the run() methods of bolts and spouts.
+	 * There may be less threads than total number of instances of bolts and spouts
+	 * combined, allocated on this daemon. However the number of threads must be at
+	 * least one more than the number of spout instances allocated on this daemon,
+	 * because spout threads are allowed to block in the run() method.
+	 * There does not need to be more threads than the total number of bolts and
+	 * spouts combined, allocated on this daemon.
+	 */
 	private ArrayList<Thread> componentExecutorThreads;
-	//private ThreadPoolExecutor networkExecutorService;
+	
+	/**
+	 * Threads that are allocated to transfer NetworkTasks from the outputs of 
+	 * components to their destinations in this local cluster, or from the Router
+	 * (that are incoming from a remote daemon) to their destinations in this
+	 * local cluster. These threads never block when a destination buffer is full,
+	 * but rather continue to poll. Therefore the number of these threads can be as
+	 * little as one.
+	 */
 	private ArrayList<Thread> networkExecutorThreads;
 	
+	/**
+	 * Map from component reference to array list of component errors that the
+	 * component has thrown on this local cluster.
+	 */
+	private HashMap<Component,ArrayList<ComponentError>> componentErrors;
+	
+	/**
+	 * The possible states of the local cluster.
+	 *
+	 */
+	public static enum State {
+		/**
+		 * The state that is set when the local cluster is constructed.
+		 * A transient state (only held momentarily).
+		 */
+		ALLOCATED,
+		
+		/**
+		 * The local cluster is ready to use. A transient state.
+		 */
+		SUBMITTED,
+		
+		/**
+		 * The local cluster is busy doing pre-processing tasks, prior to running.
+		 * A transient state, but may take some time depending on the complexity of
+		 * the topology.
+		 */
+		PREPROCESSING,
+		
+		/**
+		 * The local cluster is now processing tuples.
+		 */
+		RUNNING,
+		
+		/**
+		 * The local cluster is terminating, no more tuples are being emitted at spouts.
+		 */
+		TERMINATING,
+		
+		/**
+		 * The local cluster's threads have been suspended and it can be resumed.
+		 */
+		HALTED
+	}
+	
+	/**
+	 * The state of the local cluster.
+	 */
+	private volatile State state;
+	
+	/**
+	 * Lock for halting the threads in the local cluster.
+	 */
+	private final ReentrantLock haltLock = new ReentrantLock();
+	
+	/**
+	 * Condition for threads in the local cluster to wait on.
+	 */
+	private final Condition restartCondition = haltLock.newCondition();
+	
+	/**
+	 * Set of outstanding group operations for this local cluster to respond to.
+	 */
 	@SuppressWarnings("rawtypes")
-	private HashMap<Class,HashSet<GroupOperation>> groupOperations;
+	private HashMap<Class,HashSet<GroupOp>> groupOperations;
 	
-	private AtomicLong totalComponentWork=new AtomicLong(0L);
-	private AtomicLong totalNetworkWork=new AtomicLong(0L);
-	private AtomicInteger componentThreadsBusy=new AtomicInteger(0);
-	private AtomicInteger networkThreadsBusy=new AtomicInteger(0);
-	
+	/**
+	 * Name of the topology on this local cluster.
+	 */
 	private String topologyName;
-	private Config conf;
-	private DragonTopology dragonTopology;
 	
-	private LinkedBlockingQueue<NetworkTaskBuffer> outputsPending;
-	private LinkedBlockingQueue<Component> componentsPending;
+	/**
+	 * Conf applied to the topology on this local cluster.
+	 */
+	private Config conf;
+	
+	/**
+	 * The complete topology, a part or all of which is allocated on this
+	 * local cluster.
+	 */
+	private DragonTopology dragonTopology;
 
+	/**
+	 * A thread that sleeps for 1 second at a time.
+	 */
 	private Thread tickThread;
+	
+	/**
+	 * A thread that generates tick tuples for bolts as required by their conf.
+	 */
 	private Thread tickCounterThread;
+	
+	/**
+	 * The number of ticks of the tick thread.
+	 */
 	private long tickTime=0;
+	
+	/**
+	 * The number of ticks that the ticker counter thread has processed.
+	 */
 	private long tickCounterTime=0;
 	
+	/**
+	 * The number of ticks that each bolt component has reached.
+	 */
 	private HashMap<String,Integer> boltTickCount;
 	
+	/**
+	 * The fields of a tick tuple.
+	 */
+	private final Fields tickFields=new Fields("tick");
+	
+	/**
+	 * The amount of parallelism for the component threads that has been computed
+	 * based on the number of spout instances and parallelism hints provided on the
+	 * bolt instances.
+	 */
 	private int totalParallelismHint=0;
 	
-	private volatile boolean shouldTerminate=false;
-	
-	private Node node;
-	
-
+	/**
+	 * Container class for bolt instances on this local cluster that need to be prepared,
+	 * when the start message is received.
+	 */
 	private class BoltPrepare {
 		public Bolt bolt;
 		public TopologyContext context;
@@ -89,8 +241,15 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * Array list of bolt instances that need to be prepared, when the start message is received. 
+	 */
 	private ArrayList<BoltPrepare> boltPrepareList;
 	
+	/**
+	 * Container class for spout instances on this local cluster that need to be prepared,
+	 * when the start message is received.
+	 */
 	private class SpoutOpen {
 		public Spout spout;
 		public TopologyContext context;
@@ -102,29 +261,64 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * Array list of spout instances that need to be prepared, when the start message is received.
+	 */
 	private ArrayList<SpoutOpen> spoutOpenList;
 	
 	@SuppressWarnings("rawtypes")
 	public LocalCluster(){
-		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
+		this.node=null;
+		state=State.ALLOCATED;
+		groupOperations = new HashMap<Class,HashSet<GroupOp>>();
+		componentErrors = new  HashMap<Component,ArrayList<ComponentError>>();
 	}
 	
 	@SuppressWarnings("rawtypes")
 	public LocalCluster(Node node) {
 		this.node=node;
-		groupOperations = new HashMap<Class,HashSet<GroupOperation>>();
+		state=State.ALLOCATED;
+		groupOperations = new HashMap<Class,HashSet<GroupOp>>();
+		componentErrors = new  HashMap<Component,ArrayList<ComponentError>>();
 	}
 	
+	/**
+	 * Submit a topology and run it immediately, useful only in local mode.
+	 * @param topologyName the name of the topology
+	 * @param conf the conf for the topology
+	 * @param dragonTopology the topology
+	 */
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
-		submitTopology(topologyName, conf, dragonTopology, true);
+		Config lconf=null;
+		try {
+			lconf = new Config(Constants.DRAGON_PROPERTIES);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		lconf.putAll(conf);
+		try {
+			submitTopology(topologyName, lconf, dragonTopology, true);
+		} catch (DragonRequiresClonableException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
-	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) {
+	/**
+	 * Submit a toplogy and run it if start is true, otherwise wait for a start topology message.
+	 * @param topologyName the name of the topology
+	 * @param conf the conf for the topology
+	 * @param dragonTopology the topology
+	 * @param start whether to start the topology immediately or not
+	 * @throws DragonRequiresClonableException if the topology contains components that are not clonable
+	 */
+	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) throws DragonRequiresClonableException {
 		this.topologyName=topologyName;
 		this.conf=conf;
 		this.dragonTopology=dragonTopology;
-		outputsPending = new LinkedBlockingQueue<NetworkTaskBuffer>();
-		componentsPending = new LinkedBlockingQueue<Component>();
+		
+		
 		//networkExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool((Integer)conf.getDragonLocalclusterThreads());
 		networkExecutorThreads = new ArrayList<Thread>();
 		if(!start) {
@@ -132,30 +326,44 @@ public class LocalCluster {
 			boltPrepareList = new ArrayList<BoltPrepare>();
 		}
 		
+		RecycleStation.getInstance().createTupleRecycler(new Tuple(tickFields));
+		
+		int totalOutputsBufferSize=0;
+		int totalInputsBufferSize=0;
+		int spoutsAllocated=0;
+		
 		// allocate spouts and open them
 		spouts = new HashMap<String,HashMap<Integer,Spout>>();
 		spoutConfs = new HashMap<String,Config>();
 		for(String spoutId : dragonTopology.getSpoutMap().keySet()) {
-			if(dragonTopology.getReverseEmbedding()!=null &&
-					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId)) continue;
-			log.debug("allocating spout ["+spoutId+"]");
-			spouts.put(spoutId, new HashMap<Integer,Spout>());
-			HashMap<Integer,Spout> hm = spouts.get(spoutId);
+			boolean localcomponent = !(dragonTopology.getReverseEmbedding()!=null &&
+					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId));
+			HashMap<Integer,Spout> hm=null;
 			SpoutDeclarer spoutDeclarer = dragonTopology.getSpoutMap().get(spoutId);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
-			Map<String,Object> bc = spoutDeclarer.getSpout().getComponentConfiguration();
-			Config spoutConf = new Config();
-			spoutConf.putAll(bc);
-			spoutConfs.put(spoutId, spoutConf);
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
 				taskIds.add(i);
 			}
+			if(localcomponent) {
+				log.debug("allocating spout ["+spoutId+"]");
+				spouts.put(spoutId, new HashMap<Integer,Spout>());
+				hm = spouts.get(spoutId);
+				Map<String,Object> bc = spoutDeclarer.getSpout().getComponentConfiguration();
+				Config spoutConf = new Config();
+				spoutConf.putAll(bc);
+				spoutConfs.put(spoutId, spoutConf);
+			}
+			int numAllocated=0;
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
-				if(dragonTopology.getReverseEmbedding()!=null &&
-						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),spoutId,i)) continue;
+				boolean localtask = !(dragonTopology.getReverseEmbedding()!=null &&
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId,i));
 				try {
+					if(localtask) {
+						numAllocated++;
+						spoutsAllocated++;
+					}
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
-					hm.put(i, spout);
+					if(localtask) hm.put(i, spout);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					spout.declareOutputFields(declarer);
 					spout.setOutputFieldsDeclarer(declarer);
@@ -163,65 +371,149 @@ public class LocalCluster {
 					spout.setTopologyContext(context);
 					spout.setLocalCluster(this);
 					SpoutOutputCollector collector = new SpoutOutputCollector(this,spout);
+					if(localtask) totalOutputsBufferSize+=collector.getTotalBufferSpace();
 					spout.setOutputCollector(collector);
-					if(start) {
-						spout.open(conf, context, collector);
-					} else {
-						openLater(spout,context,collector);
+					if(localtask) {
+						if(start) {
+							spout.open(conf, context, collector);
+						} else {
+							openLater(spout,context,collector);
+						}
 					}
 				} catch (CloneNotSupportedException e) {
-					setShouldTerminate("could not clone object: "+e.toString());
+					throw new DragonRequiresClonableException("bolts and spouts must be cloneable: "+spoutDeclarer.getSpout().getComponentId());
 				}
 			}
-			// TODO: make use of parallelism hint from topology to possibly reduce threads
-			totalParallelismHint+=spoutDeclarer.getParallelismHint();
+			// for spouts we should have one thread per instance since nextTuple() can block if the spout is waiting for more data
+			totalParallelismHint+=numAllocated;
 		}
 		
 		// allocate bolts and prepare them
 		bolts = new HashMap<String,HashMap<Integer,Bolt>>();
 		boltConfs = new HashMap<String,Config>();
 		for(String boltId : dragonTopology.getBoltMap().keySet()) {
-			if(dragonTopology.getReverseEmbedding()!=null &&
-					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId)) continue;
-			log.debug("allocating bolt ["+boltId+"]");
-			bolts.put(boltId, new HashMap<Integer,Bolt>());
-			HashMap<Integer,Bolt> hm = bolts.get(boltId);
+			boolean localcomponent = !(dragonTopology.getReverseEmbedding()!=null &&
+					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),boltId));
+			HashMap<Integer,Bolt> hm=null;
 			BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(boltId);
-			Map<String,Object> bc = boltDeclarer.getBolt().getComponentConfiguration();
-			Config boltConf = new Config();
-			boltConf.putAll(bc);
-			boltConfs.put(boltId, boltConf);
 			ArrayList<Integer> taskIds=new ArrayList<Integer>();
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
 				taskIds.add(i);
 			}
+			if(localcomponent) {
+				log.debug("allocating bolt ["+boltId+"]");
+				bolts.put(boltId, new HashMap<Integer,Bolt>());
+				hm = bolts.get(boltId);
+				Map<String,Object> bc = boltDeclarer.getBolt().getComponentConfiguration();
+				Config boltConf = new Config();
+				boltConf.putAll(bc);
+				boltConfs.put(boltId, boltConf);
+			}
+			int numAllocated=0;
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
-				if(dragonTopology.getReverseEmbedding()!=null &&
-						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDescriptor(),boltId,i)) continue;
+				boolean localtask = !(dragonTopology.getReverseEmbedding()!=null &&
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),boltId,i));
 				try {
+					if(localtask) numAllocated++;
 					Bolt bolt=(Bolt) boltDeclarer.getBolt().clone();
-					hm.put(i, bolt);
+					if(localtask) hm.put(i, bolt);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
 					bolt.declareOutputFields(declarer);
 					bolt.setOutputFieldsDeclarer(declarer);
 					TopologyContext context = new TopologyContext(boltId,i,taskIds);
 					bolt.setTopologyContext(context);
 					InputCollector inputCollector = new InputCollector(this, bolt);
+					if(localtask) totalInputsBufferSize+=getConf().getDragonInputBufferSize();
 					bolt.setInputCollector(inputCollector);
 					bolt.setLocalCluster(this);
 					OutputCollector collector = new OutputCollector(this,bolt);
+					if(localtask) totalOutputsBufferSize+=collector.getTotalBufferSpace();
 					bolt.setOutputCollector(collector);
-					if(start) {
-						bolt.prepare(conf, context, collector);
-					} else {
-						prepareLater(bolt,context,collector);
+					if(localtask) {
+						if(start) {
+							bolt.prepare(conf, context, collector);
+						} else {
+							prepareLater(bolt,context,collector);
+						}
 					}
 				} catch (CloneNotSupportedException e) {
 					log.error("could not clone object: "+e.toString());
 				}
 			}
-			totalParallelismHint+=boltDeclarer.getParallelismHint();
+			totalParallelismHint+=numAllocated;//Math.ceil((double)numAllocated*boltDeclarer.getParallelismHint()/boltDeclarer.getNumTasks());
 		}
+		
+		log.info("total outputs buffer size is "+totalOutputsBufferSize);
+		outputsPending = new CircularBlockingQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
+		log.info("total inputs buffer size is "+totalInputsBufferSize);
+		
+		componentExecutorThreads = new ArrayList<Thread>();
+		for(HashMap<Integer,Spout> spouts : spouts.values()) {
+			for(Component component : spouts.values()) {
+				componentExecutorThreads.add(new Thread(){
+					@Override
+					public void run(){
+						Component thisComponent=component;
+						while(!isInterrupted()){
+							if(state==LocalCluster.State.HALTED) {
+								log.info(getName()+" halted");
+								try {
+									haltLock.lock();
+									try {
+										restartCondition.await();
+									} catch (InterruptedException e) {
+										log.info(getName()+" interrupted");
+										break;
+									}
+									log.info(getName()+" resuming");
+								} finally {
+									haltLock.unlock();
+								}
+								continue;
+							}
+	
+							thisComponent.run();
+							if(!thisComponent.getOutputCollector().didEmit())
+								break;
+							
+						}
+						log.info(getName()+" done");
+					}
+				});
+			}
+		}
+		for(HashMap<Integer,Bolt> bolts : bolts.values()) {
+			for(Component component : bolts.values()) {
+				componentExecutorThreads.add(new Thread(){
+					@Override
+					public void run(){
+						Component thisComponent=component;
+						while(!isInterrupted()){
+							if(state==LocalCluster.State.HALTED) {
+								log.info(getName()+" halted");
+								try {
+									haltLock.lock();
+									try {
+										restartCondition.await();
+									} catch (InterruptedException e) {
+										log.info(getName()+" interrupted");
+										break;
+									}
+									log.info(getName()+" resuming");
+								} finally {
+									haltLock.unlock();
+								}
+								continue;
+							}
+							thisComponent.run();
+						}
+						log.info(getName()+" done");
+					}
+				});
+			}
+		}
+		
+		
 		
 		// prepare groupings
 		for(String fromComponentId : dragonTopology.getSpoutMap().keySet()) {
@@ -287,7 +579,22 @@ public class LocalCluster {
 		tickCounterThread = new Thread() {
 			public void run() {
 				this.setName("tick counter");
-				while(!shouldTerminate && !isInterrupted()) {
+				while(state!=LocalCluster.State.TERMINATING && !isInterrupted()) {
+					if(state==LocalCluster.State.HALTED) {
+						log.info(getName()+" halted");
+						try {
+							haltLock.lock();
+							try {
+								restartCondition.await();
+							} catch (InterruptedException e) {
+								log.info(getName()+" interrupted");
+								break;
+							}
+							log.info(getName()+" resuming");
+						} finally {
+							haltLock.unlock();
+						}
+					}
 					if(tickCounterTime==tickTime) {
 						synchronized(tickCounterThread){
 							try {
@@ -313,12 +620,28 @@ public class LocalCluster {
 				}
 			}
 		};
+		tickCounterThread.setName("tick counter");
 		tickCounterThread.start();
 		
 		tickThread = new Thread() {
 			public void run() {
 				this.setName("tick");
-				while(!shouldTerminate && !isInterrupted()) {
+				while(state!=LocalCluster.State.TERMINATING && !isInterrupted()) {
+					if(state==LocalCluster.State.HALTED) {
+						log.info(getName()+" halted");
+						try {
+							haltLock.lock();
+							try {
+								restartCondition.await();
+							} catch (InterruptedException e) {
+								log.info(getName()+" interrupted");
+								break;
+							}
+							log.info(getName()+" resuming");
+						} finally {
+							haltLock.unlock();
+						}
+					}
 					try {
 						Thread.sleep(1000);
 					} catch (InterruptedException e) {
@@ -332,35 +655,25 @@ public class LocalCluster {
 				}
 			}
 		};
+		tickThread.setName("tick");
 		tickThread.start();
 
 
+		//totalParallelismHint=1;
+		
 		outputsScheduler();
 		
 		
-		//componentExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool((Integer)totalParallelismHint);
-		componentExecutorThreads = new ArrayList<Thread>();
+		state=State.SUBMITTED;
 		if(start) {
-			scheduleSpouts();
-			
+			scheduleSpouts();	
+			state=State.RUNNING;
 		}
-		
-
-		
-		
-		
 	}
 	
 	private void scheduleSpouts() {
-		log.debug("scheduling spouts to run");
-		for(String componentId : spouts.keySet()) {
-			HashMap<Integer,Spout> component = spouts.get(componentId);
-			for(Integer taskId : component.keySet()) {
-				Spout spout = component.get(taskId);
-				componentPending(spout);
-			}
-		}
 		runComponentThreads();
+		state=State.RUNNING;
 	}
 	
 	private void prepareLater(Bolt bolt, TopologyContext context, OutputCollector collector) {
@@ -371,6 +684,9 @@ public class LocalCluster {
 		spoutOpenList.add(new SpoutOpen(spout,context,collector));
 	}
 	
+	/**
+	 * Start a topology by opening all its components and scheduling the spouts.
+	 */
 	public void openAll() {
 		log.info("opening bolts");
 		for(BoltPrepare boltPrepare : boltPrepareList) {
@@ -386,16 +702,17 @@ public class LocalCluster {
 	}
 
 	private void issueTickTuple(String boltId) {
-		Tuple tuple=new Tuple(new Fields("tick"));
+		Tuple tuple=RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).newObject();;
 		tuple.setValues(new Values("0"));
 		tuple.setSourceComponent(Constants.SYSTEM_COMPONENT_ID);
 		tuple.setSourceStreamId(Constants.SYSTEM_TICK_STREAM_ID);
 		for(Bolt bolt : bolts.get(boltId).values()) {
 			synchronized(bolt) {
+				RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).shareRecyclable(tuple, 1);
 				bolt.setTickTuple(tuple);
-				componentPending(bolt);
 			}
 		}
+		RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).crushRecyclable(tuple, 1);
 	}
 	
 	private void checkCloseCondition() {
@@ -403,38 +720,86 @@ public class LocalCluster {
 		Thread shutdownThread = new Thread() {
 			@Override
 			public void run() {
-				log.info("waiting for all work to finish");
+				// cycle the spouts
+//				log.debug("cycling spouts");
+//				for(String componentId : spouts.keySet()) {
+//					HashMap<Integer,Spout> component = spouts.get(componentId);
+//					for(Integer taskId : component.keySet()) {
+//						Spout spout = component.get(taskId);
+//						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] pending");
+//						componentPending(spout);
+//					}
+//				}
+				
+				// wait for spouts to close
+				log.debug("waiting for spouts to close");
 				while(true) {
-					long ctw=totalComponentWork.longValue();
-					long ntw=totalNetworkWork.longValue();
+					boolean spoutsClosed=true;
+					for(String componentId : spouts.keySet()) {
+						HashMap<Integer,Spout> component = spouts.get(componentId);
+						for(Integer taskId : component.keySet()) {
+							Spout spout = component.get(taskId);
+							if(!spout.isClosed()) {
+								spoutsClosed=false;
+								break;
+							} else {
+								log.debug("not closed yet: "+spout.getComponentId()+":"+spout.getTaskId());
+							}
+						}
+						if(spoutsClosed==false) {
+							break;
+						}
+					}
+					if(spoutsClosed) break;
+					log.info("waiting for spouts to close...");
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						log.warn("interrupted while waiting for spouts to close");
+						break;
+					}
+					
+				}
+				
+				// emit the terminate tuples
+				log.debug("emitting terminate tuples");
+				for(String componentId : spouts.keySet()) {
+					HashMap<Integer,Spout> component = spouts.get(componentId);
+					for(Integer taskId : component.keySet()) {
+						Spout spout = component.get(taskId);
+						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] emitting terminate tuple");
+						spout.getOutputCollector().emitTerminateTuple();
+					}
+				}
+				
+				// wait for bolts to close (they only close when they receive the
+				// terminate tuple on all of their input streams, from all tasks on
+				// those streams).
+				log.debug("waiting for bolts to close");
+				while(true) {
+					boolean alldone=true;
+					for(HashMap<Integer,Bolt> boltInstances : bolts.values()) {
+						for(Bolt bolt : boltInstances.values()) {
+							if(!bolt.isClosed()) {
+								alldone=false;
+								break;
+							}
+						}
+						if(alldone==false) {
+							break;
+						}
+					}
+					if(alldone) break;
+					log.info("waiting for work to complete...");
 					try {
 						Thread.sleep(1000);
 					} catch (InterruptedException e) {
 						log.warn("interrupted while waiting for work to complete");
 						break;
 					}
-					synchronized(totalComponentWork) {
-						synchronized(totalNetworkWork) {
-							synchronized(componentThreadsBusy) {
-								synchronized(networkThreadsBusy) {
-									if(ctw==totalComponentWork.longValue() && ntw==totalNetworkWork.longValue() &&
-											outputsPending.size()==0 && componentsPending.size()==0 &&
-											componentThreadsBusy.get()==0 && networkThreadsBusy.get()==0) {
-										break;
-									} else {
-										log.debug("totalComponentWork="+totalComponentWork);
-										log.debug("totalNetworkWork="+totalNetworkWork);
-										log.debug("output pending="+outputsPending.size());
-										log.debug("components pending="+componentsPending.size());
-										log.debug("componentThreadsBusy="+componentThreadsBusy);
-										log.debug("networkThreadsBusy="+networkThreadsBusy);
-									}
-								}
-							}
-						}
-					}
-					log.debug("waiting for work to complete");
 				}
+				
+				// interrupt all the threads 
 				log.debug("interrupting all threads");
 				for(int i=0;i<totalParallelismHint;i++) {
 					componentExecutorThreads.get(i).interrupt();
@@ -443,16 +808,6 @@ public class LocalCluster {
 					networkExecutorThreads.get(i).interrupt();
 				}
 				
-				
-				// call close on bolts
-				for(HashMap<Integer,Bolt> bolts : bolts.values()) {
-					for(Bolt bolt : bolts.values()) {
-						bolt.close();
-					}
-				}
-				// shutdown the executors and other threads
-//				componentExecutorService.shutdownNow();
-//				networkExecutorService.shutdownNow();
 				try {
 					for(Thread thread : componentExecutorThreads) {
 						thread.join();
@@ -460,17 +815,9 @@ public class LocalCluster {
 					for(Thread thread : networkExecutorThreads) {
 						thread.join();
 					}
-//					while (!componentExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
-//						  log.info("Awaiting completion of component executor threads.");
-//						}
-//					while (!networkExecutorService.awaitTermination(10, TimeUnit.SECONDS)) {
-//						  log.info("Awaiting completion of network executor threads.");
-//						}
 				} catch (InterruptedException e) {
 					log.warn("threads may not have terminated");
 				}
-//				componentExecutorService.purge();
-//				networkExecutorService.purge();
 				
 				tickThread.interrupt();
 				tickCounterThread.interrupt();
@@ -484,8 +831,8 @@ public class LocalCluster {
 				
 				// the local cluster can now be garbage collected
 				synchronized(groupOperations) {
-					for(GroupOperation go : groupOperations.get(TerminateTopologyGroupOperation.class)) {
-						node.localClusterTerminated(topologyName,(TerminateTopologyGroupOperation) go);
+					for(GroupOp go : groupOperations.get(TermTopoGroupOp.class)) {
+						node.localClusterTerminated((TermTopoGroupOp) go);
 					}
 				}
 				
@@ -498,33 +845,7 @@ public class LocalCluster {
 	private void runComponentThreads() {
 		log.info("starting component executor threads with "+totalParallelismHint+" threads");
 		for(int i=0;i<totalParallelismHint;i++){
-			//final int thread_id=i;
-			componentExecutorThreads.add(new Thread(){
-				@Override
-				public void run(){
-					Component component;
-					while(true){
-						try {
-							component = componentsPending.take();
-						} catch (InterruptedException e) {
-							log.info("component thread interrupted");
-							break;
-						}
-						totalComponentWork.incrementAndGet();
-						componentThreadsBusy.incrementAndGet();
-						// TODO:the synchronization can be switched if the component's
-						// execute/nextTuple is thread safe
-						synchronized(component) {
-							if(shouldTerminate && component instanceof Spout) {
-								component.setClosing();
-								// a closed component will not reschedule itself
-							}
-							component.run();
-						}	
-						componentThreadsBusy.decrementAndGet();
-					}
-				}
-			});
+			
 			componentExecutorThreads.get(i).setName("component executor "+i);
 			componentExecutorThreads.get(i).start();
 		}
@@ -539,44 +860,68 @@ public class LocalCluster {
 				public void run(){
 					HashSet<Integer> doneTaskIds=new HashSet<Integer>();
 					NetworkTaskBuffer queue;
-					while(true) {
+					while(!isInterrupted()) {
+						if(state==LocalCluster.State.HALTED) {
+							log.info(getName()+" halted");
+							try {
+								haltLock.lock();
+								try {
+									restartCondition.await();
+								} catch (InterruptedException e) {
+									log.info(getName()+" interrupted");
+									break;
+								}
+								log.info(getName()+" resuming");
+							} finally {
+								haltLock.unlock();
+							}
+							continue;
+						}
 						try {
 							queue = outputsPending.take();
 						} catch (InterruptedException e) {
-							log.info("network thread interrupted");
+							log.info(getName()+" interrupted");
 							break;
 						}
-						totalNetworkWork.incrementAndGet();
-						networkThreadsBusy.incrementAndGet();
-						synchronized(queue.lock) {
+						// while the queue is thread safe, we lock on it because of the use of peek
+						queue.bufferLock.lock();
+						try {
+							//if(shouldTerminate) System.out.println("count "+queue.size());
 							NetworkTask networkTask = (NetworkTask) queue.peek();
 							if(networkTask!=null) {
+								//System.out.println("processing task");
 								Tuple tuple = networkTask.getTuple();
 								String name = networkTask.getComponentId();
 								doneTaskIds.clear();
 								for(Integer taskId : networkTask.getTaskIds()) {
-									tuple.shareRecyclable(1);
+									RecycleStation.getInstance()
+									.getTupleRecycler(tuple.getFields()
+											.getFieldNamesAsString()).shareRecyclable(tuple,1);
 									if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
 										doneTaskIds.add(taskId);
-										componentPending(bolts.get(name).get(taskId));
+										
 									} else {
-										tuple.crushRecyclable(1);
+										RecycleStation.getInstance()
+										.getTupleRecycler(tuple.getFields()
+												.getFieldNamesAsString()).crushRecyclable(tuple,1);
 										//log.debug("blocked");
 									}
 								}
 								networkTask.getTaskIds().removeAll(doneTaskIds);
 								if(networkTask.getTaskIds().size()==0) {
 									queue.poll();
-									networkTask.crushRecyclable(1);
+									RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(networkTask, 1);
 								} else {
 									outputPending(queue);
 								}
 							} else {
-								log.error("queue empty!");
+								log.error(getName()+" queue empty!");
 							}	
+						} finally {
+							queue.bufferLock.unlock();
 						}
-						networkThreadsBusy.decrementAndGet();
 					}
+					log.info(getName()+" done");
 				}
 			});
 			networkExecutorThreads.get(i).setName("network executor "+i);
@@ -585,14 +930,12 @@ public class LocalCluster {
 		
 	}
 	
-	public void componentPending(final Component component){
-		try {
-			componentsPending.put(component);
-		} catch (InterruptedException e){
-			log.error("interrupted while adding component pending");
-		}
-	}
-	
+	/**
+	 * Schedule a queue that has a new NetworkTask on it to be processed. There will
+	 * be one reference of each queue for each NetworkTask that is outstanding on it.
+	 * 
+	 * @param queue the reference of the queue to process
+	 */
 	public void outputPending(final NetworkTaskBuffer queue) {
 		try {
 			outputsPending.put(queue);
@@ -602,26 +945,77 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * 
+	 * @return the name of the topology for this local cluster
+	 */
 	public String getTopologyId() {
 		return topologyName;
 	}
 	
+	/**
+	 * 
+	 * @return the topology conf for this local cluster
+	 */
 	public Config getConf(){
 		return conf;
 	}
 	
+	/**
+	 * 
+	 * @return the topology for this local cluster.
+	 */
 	public DragonTopology getTopology() {
 		return dragonTopology;
 	}
 
-	public void setShouldTerminate() {
-		shouldTerminate=true;
+	/**
+	 * Terminate the topology on this local cluster.
+	 */
+	public synchronized void setShouldTerminate() {
+		if(state==State.TERMINATING) return;
+		if(state==State.HALTED) {
+			state=State.TERMINATING;
+			try {
+				haltLock.lock();
+				restartCondition.signalAll();
+			} finally {
+				haltLock.unlock();
+			}
+		}
+		state=State.TERMINATING;
+		for(String componentId : spouts.keySet()) {
+			HashMap<Integer,Spout> component = spouts.get(componentId);
+			for(Integer taskId : component.keySet()) {
+				Spout spout = component.get(taskId);
+				spout.setClosed();
+			}
+		}
 		checkCloseCondition();
 	}
 	
-	public void setShouldTerminate(String error) {
-		setShouldTerminate();
-		throw new RuntimeException(error);
+	/**
+	 * Halt the topology on this local cluster.
+	 */
+	public void haltTopology() {
+		log.info("halting topology");
+		state=State.HALTED;
+	}
+	
+	/**
+	 * Resume the topology from a halted state on this local cluster.
+	 */
+	public void resumeTopology() {
+		log.info("resuming topology");
+		if(state==State.HALTED) {
+			state=State.RUNNING;
+			try {
+				haltLock.lock();
+				restartCondition.signalAll();
+			} finally {
+				haltLock.unlock();
+			}
+		}
 	}
 	
 	public HashMap<String,HashMap<Integer,Bolt>> getBolts(){
@@ -636,14 +1030,48 @@ public class LocalCluster {
 		return node;
 	}
 	
-	public void setGroupOperation(GroupOperation go) {
+//	public CircularBlockingQueue<Component> getComponentsPending() {
+//		return componentsPending;
+//	}
+	
+	public void setGroupOperation(GroupOp go) {
 		synchronized(groupOperations) {
 			if(!groupOperations.containsKey(go.getClass())) {
-				groupOperations.put(go.getClass(), new HashSet<GroupOperation>());
+				groupOperations.put(go.getClass(), new HashSet<GroupOp>());
 			}
-			HashSet<GroupOperation> gos = groupOperations.get(go.getClass());
+			HashSet<GroupOp> gos = groupOperations.get(go.getClass());
 			gos.add(go);
 		}
 	}
 
+	public synchronized void componentException(Component component, String message, StackTraceElement[] stackTrace) {
+		ComponentError ce = new ComponentError(message,stackTrace);
+		if(!componentErrors.containsKey(component)) {
+			componentErrors.put(component,new ArrayList<ComponentError>());
+		}
+		componentErrors.get(component).add(ce);
+		int tolerance = conf.getDragonFaultsComponentTolerance();
+		if(spoutConfs.containsKey(component.getComponentId())) {
+			if(spoutConfs.get(component.getComponentId()).containsKey(Config.DRAGON_FAULTS_COMPONENT_TOLERANCE)) {
+				tolerance=spoutConfs.get(component.getComponentId()).getDragonFaultsComponentTolerance();
+			}
+		}
+		if(boltConfs.containsKey(component.getComponentId())) {
+			if(boltConfs.get(component.getComponentId()).containsKey(Config.DRAGON_FAULTS_COMPONENT_TOLERANCE)) {
+				tolerance=boltConfs.get(component.getComponentId()).getDragonFaultsComponentTolerance();
+			}
+		}
+		if(componentErrors.get(component).size()>tolerance) {
+			log.fatal("component ["+component.getComponentId()+"] has failed more than ["+tolerance+"] times");
+			if(state==LocalCluster.State.RUNNING)node.signalHaltTopology(topologyName);
+		}
+	}
+	
+	public HashMap<Component, ArrayList<ComponentError>> getComponentErrors() {
+		return componentErrors;
+	}
+
+	public State getState() {
+		return state;
+	}
 }

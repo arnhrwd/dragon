@@ -17,12 +17,14 @@ import org.yaml.snakeyaml.Yaml;
 
 import dragon.network.NodeDescriptor;
 
+/**
+ * Parameters for Dragon.
+ * @author aaron
+ *
+ */
 public class Config extends HashMap<String, Object> {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -5933157870455074368L;
-	private static Log log = LogFactory.getLog(Config.class);
+	private static final Log log = LogFactory.getLog(Config.class);
 
 	public static final String TOPOLOGY_WORKERS="topology.workers";
 	public static final String TOPOLOGY_TRIDENT_BATCH_EMIT_INTERVAL_MILLIS="topology.trident.batch.emit.interval.millis";
@@ -72,6 +74,8 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_COMMS_RESET_COUNT="dragon.comms.reset.count";
 	public static final String DRAGON_COMMS_INCOMING_BUFFER_SIZE="dragon.comms.incoming.buffer.size";
 	
+	public static final String DRAGON_FAULTS_COMPONENT_TOLERANCE="dragon.faults.component.tolerance";
+	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
 	
@@ -119,6 +123,10 @@ public class Config extends HashMap<String, Object> {
 				log.warn("cannot find "+file+" - using defaults");
 				return;
 			}
+		}
+		if(inputStream==null){
+			log.warn("cannot find "+file+"- using default");
+			return;
 		}
 		Map<String,Object> map = config.load(inputStream);
 		if(map!=null) {
@@ -170,27 +178,28 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_RECYCLER_TASK_COMPACT,0.20);
 		put(DRAGON_COMMS_RESET_COUNT,128);
 		put(DRAGON_COMMS_INCOMING_BUFFER_SIZE,1024);
+		put(DRAGON_FAULTS_COMPONENT_TOLERANCE,3);
 	}
 	
 	public void drop() {
 		remove(DRAGON_OUTPUT_BUFFER_SIZE);
 		remove(DRAGON_INPUT_BUFFER_SIZE);
-		remove(DRAGON_BASE_DIR,"/tmp/dragon");
-		remove(DRAGON_PERSISTANCE_DIR,"persistance");
-		remove(DRAGON_JAR_DIR,"jars");
-		remove(DRAGON_LOCALCLUSTER_THREADS,5);
-		remove(DRAGON_ROUTER_INPUT_THREADS,1);
-		remove(DRAGON_ROUTER_OUTPUT_THREADS,1);
-		remove(DRAGON_ROUTER_INPUT_BUFFER_SIZE,16);
-		remove(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,16);
-		remove(DRAGON_METRICS_ENABLED,true);
-		remove(DRAGON_METRICS_SAMPLE_PERIOD_MS,60*1000);
-		remove(DRAGON_RECYCLER_TUPLE_CAPACITY,1024);
-		remove(DRAGON_RECYCLER_TUPLE_EXPANSION,1024);
-		remove(DRAGON_RECYCLER_TUPLE_COMPACT,0.20);
-		remove(DRAGON_RECYCLER_TASK_CAPACITY,1024);
-		remove(DRAGON_RECYCLER_TASK_EXPANSION,1024);
-		remove(DRAGON_RECYCLER_TASK_COMPACT,0.20);
+		remove(DRAGON_BASE_DIR);
+		remove(DRAGON_PERSISTANCE_DIR);
+		remove(DRAGON_JAR_DIR);
+		remove(DRAGON_LOCALCLUSTER_THREADS);
+		remove(DRAGON_ROUTER_INPUT_THREADS);
+		remove(DRAGON_ROUTER_OUTPUT_THREADS);
+		remove(DRAGON_ROUTER_INPUT_BUFFER_SIZE);
+		remove(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE);
+		remove(DRAGON_METRICS_ENABLED);
+		remove(DRAGON_METRICS_SAMPLE_PERIOD_MS);
+		remove(DRAGON_RECYCLER_TUPLE_CAPACITY);
+		remove(DRAGON_RECYCLER_TUPLE_EXPANSION);
+		remove(DRAGON_RECYCLER_TUPLE_COMPACT);
+		remove(DRAGON_RECYCLER_TASK_CAPACITY);
+		remove(DRAGON_RECYCLER_TASK_EXPANSION);
+		remove(DRAGON_RECYCLER_TASK_COMPACT);
 	}
 
 	public void setNumWorkers(int numWorkers) {
@@ -340,6 +349,10 @@ public class Config extends HashMap<String, Object> {
 	
 	public int getDragonCommsIncomingBufferSize() {
 		return (Integer)get(DRAGON_COMMS_INCOMING_BUFFER_SIZE);
+	}
+	
+	public int getDragonFaultsComponentTolerance() {
+		return (Integer)get(DRAGON_FAULTS_COMPONENT_TOLERANCE);
 	}
 	
  	//

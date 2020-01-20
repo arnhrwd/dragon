@@ -15,11 +15,11 @@ import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
 import dragon.network.NodeDescriptor;
-import dragon.network.messages.Message;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.service.ServiceDoneMessage;
+import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.tuple.NetworkTask;
+import dragon.utils.CircularBlockingQueue;
 
 /**
  * An initial implementation of the IComms interface. Based on simple TCP sockets.
@@ -38,7 +38,7 @@ public class TcpComms implements IComms {
 	private LinkedBlockingQueue<ServiceMessage> incomingServiceQueue;
 	//LinkedBlockingQueue<ServiceMessage> outgoingServiceQueue;
 	private LinkedBlockingQueue<NodeMessage> incomingNodeQueue;
-	private LinkedBlockingQueue<NetworkTask> incomingTaskQueue;
+	private CircularBlockingQueue<NetworkTask> incomingTaskQueue;
 	private SocketManager socketManager;
 	
 	private Long id=0L;
@@ -64,7 +64,7 @@ public class TcpComms implements IComms {
 		this.conf=conf;
 		incomingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
 		incomingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
-		incomingTaskQueue = new LinkedBlockingQueue<NetworkTask>(1024);
+		incomingTaskQueue = new CircularBlockingQueue<NetworkTask>(1024);
 		nodeInputsThreads = new HashSet<Thread>();
 		taskInputsThreads = new HashSet<Thread>();
 		resetMax=conf.getDragonCommsResetCount();
@@ -142,10 +142,10 @@ public class TcpComms implements IComms {
 										incomingServiceQueue.put(message);
 										message = (ServiceMessage) in.readObject();
 									}
-									ServiceDoneMessage r = new ServiceDoneMessage();
+									ServiceDoneSMsg r = new ServiceDoneSMsg();
 									r.setMessageId(myid.toString());
 									try {
-										sendServiceMessage(r);
+										sendServiceMsg(r);
 									} catch (DragonCommsException e) {
 										log.error(e.getMessage());
 									}
@@ -277,12 +277,12 @@ public class TcpComms implements IComms {
 		
 	}
 	
-	public NodeDescriptor getMyNodeDescriptor() {
+	public NodeDescriptor getMyNodeDesc() {
 		return me;
 		
 	}
 
-	public void sendServiceMessage(ServiceMessage response) throws DragonCommsException {
+	public void sendServiceMsg(ServiceMessage response) throws DragonCommsException {
 		// no need to retry sending service message since we cannot form a connection
 		// back to the client
 		try {
@@ -304,18 +304,18 @@ public class TcpComms implements IComms {
 		throw new DragonCommsException("service data can not be transmitted");
 	}
 	
-	public void sendServiceMessage(ServiceMessage message, Message inResponseTo) throws DragonCommsException {
+	public void sendServiceMsg(ServiceMessage message, ServiceMessage inResponseTo) throws DragonCommsException {
 		message.setMessageId(inResponseTo.getMessageId());
-		sendServiceMessage(message);
+		sendServiceMsg(message);
 	}
 
-	public ServiceMessage receiveServiceMessage() throws InterruptedException {
+	public ServiceMessage receiveServiceMsg() throws InterruptedException {
 		ServiceMessage m=incomingServiceQueue.take();
 		log.debug("received service message ["+m.getType().name()+"]");
 		return m;
 	}
 
-	public void sendNodeMessage(NodeDescriptor desc, NodeMessage command) throws DragonCommsException {
+	public void sendNodeMsg(NodeDescriptor desc, NodeMessage command) throws DragonCommsException {
 		command.setSender(me); // node messages typically require to be replied to
 		int tries=0;
 		while(tries<conf.getDragonCommsRetryAttempts()) {
@@ -341,12 +341,12 @@ public class TcpComms implements IComms {
 		throw new DragonCommsException("node data can not be transmitted");
 	}
 	
-	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message, Message inResponseTo) throws DragonCommsException {
-		message.setMessageId(inResponseTo.getMessageId());
-		sendNodeMessage(desc,message);
-	}
+//	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message) throws DragonCommsException {
+//		//message.setMessageId(inResponseTo.getMessageId());
+//		sendNodeMessage(desc,message);
+//	}
 
-	public NodeMessage receiveNodeMessage() throws InterruptedException {
+	public NodeMessage receiveNodeMsg() throws InterruptedException {
 		return incomingNodeQueue.take();
 	}
 

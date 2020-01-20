@@ -1,80 +1,119 @@
 package dragon.tuple;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import dragon.utils.CircularBlockingQueue;
+
 public class Recycler<T> {
-	private static Log log = LogFactory.getLog(Recycler.class);
-	private int capacity;
+	private final static Log log = LogFactory.getLog(Recycler.class);
 	private final int expansion;
-	private final ArrayList<T> objects;
-	private int next;
-	private final HashMap<T,Integer> map;
 	private final T obj;
-	private double compact;
+	private final double compact;
+	
+	
+//	private final AtomicInteger capacity;
+//	private AtomicReferenceArray<T> objects;
+//	private int next;
+//	private final HashMap<T,Integer> map;
+	private volatile CircularBlockingQueue<T> objects;
+	private final Map<T,AtomicInteger> refCount;
+	private final ReentrantLock lock = new ReentrantLock();
 		
 	@SuppressWarnings("unchecked")
 	public Recycler(T obj,int capacity,int expansion, double compact) {
-		next=0;
-		objects = new ArrayList<T>(capacity);
-		this.capacity=capacity;
+		objects = new CircularBlockingQueue<T>(capacity);
+		refCount = (Map<T, AtomicInteger>) Collections.synchronizedMap(new HashMap<T, AtomicInteger>(capacity));//new HashMap<T,AtomicInteger>(capacity);
+		//this.capacity=new AtomicInteger(capacity);
 		this.expansion=expansion;
 		this.obj=obj;
 		this.compact=compact;
-		map=new HashMap<T,Integer>(capacity);
+		//map=new HashMap<T,Integer>(capacity);
 		for(int i=0;i<capacity;i++) {
 			T t = (T) ((IRecyclable)obj).newRecyclable();
-			objects.add(t);
-			map.put(objects.get(i), i);
-			((IRecyclable)objects.get(i)).setRecycler(this);
+			try {
+				objects.put(t);
+			} catch (InterruptedException e) {
+				log.error("could not put on queue");
+			}
+			refCount.put(t,new AtomicInteger(0));
+			//map.put(objects.get(i), i);
 		}
 	}
 	
 	public void recycleObject(T t) {
 		((IRecyclable)t).recycle();
-		synchronized(map) {
-			int r = map.get(t);
-			next--;
-			if(r==next) return;
-			T rn = objects.get(next);
-			objects.set(next,t);
-			objects.set(r, rn);
-			map.put(t,next);
-			map.put(rn,r);
-			if(next>expansion && next<capacity*compact) {
-				log.warn(obj.getClass().getName()+" excess capacity "+((float)next/capacity));
-				int newCapacity=capacity/2;
-				for(int i=newCapacity;i<capacity;i++) {
-					map.remove(objects.get(newCapacity));
-					objects.remove(newCapacity);
+		lock.lock();
+		try {
+			objects.put(t);
+			if(objects.size()>expansion &&
+					objects.remainingCapacity()<objects.getCapacity()*compact) {
+				final int newCapacity = (int)(objects.getCapacity()*0.5);
+				final int c1 = objects.remainingCapacity();
+				log.warn(obj.getClass().getName()+" shrinking to "+(newCapacity));
+				CircularBlockingQueue<T> newObjects = new CircularBlockingQueue<T>(newCapacity);
+				for(int i=0;i<newCapacity-c1;i++) {
+					newObjects.put(objects.take()); // ref counts are retained in refCount
 				}
-				objects.trimToSize();
-				capacity=newCapacity;
+				while(objects.size()>0) {
+					refCount.remove(objects.take()); // remove these unneeded ref counts
+				}
+				objects=newObjects;
 			}
+		} catch (InterruptedException e) {
+			log.error("could not recycle object");
+		} finally {
+			lock.unlock();
 		}
+
 	}
-	
 	
 	@SuppressWarnings("unchecked")
 	public T newObject() {
-		synchronized(map) {
-			if(next==capacity) {
-				log.warn(obj.getClass().getName()+" capacity reached, expanding by "+expansion+" to "+(capacity+expansion));
-				objects.ensureCapacity(capacity+expansion);
-				for(int i=capacity;i<capacity+expansion;i++) {
-					objects.add(i, (T) ((IRecyclable)obj).newRecyclable());
-					map.put(objects.get(i),i);
-					((IRecyclable)objects.get(i)).setRecycler(this);
+		lock.lock();
+		try {
+			T t = objects.poll();
+			if(t==null) {
+				final int capacity = objects.getCapacity();
+				log.warn(obj.getClass().getName()+" expanding by "+expansion+" to "+(capacity+expansion));
+				this.objects = new CircularBlockingQueue<T>(capacity+expansion);
+				for(int i=0;i<expansion;i++) {
+					T tp = (T) ((IRecyclable)obj).newRecyclable();
+					try {
+						objects.put(tp);
+					} catch (InterruptedException e) {
+						log.error("could not put new object on queue");
+					}
+					refCount.put(tp,new AtomicInteger(0));
 				}
-				capacity+=expansion;
+				try {
+					t=objects.take();
+				} catch (InterruptedException e) {
+					log.error("could not get new object from queue");
+				}
 			}
-			T t = objects.get(next);
-			next++;
-			((IRecyclable)t).shareRecyclable(1);
+			shareRecyclable(t,1);
 			return t;
+		} finally {
+			lock.unlock();
 		}
+	}
+
+	public void shareRecyclable(T t,int n) {
+		refCount.get(t).addAndGet(n);
+	}
+
+	public void crushRecyclable(T t,int n) {
+		long c = refCount.get(t).addAndGet(-n);
+		if(c==0) {
+			recycleObject(t);
+		}
+		
 	}
 }

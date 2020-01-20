@@ -11,6 +11,7 @@ import dragon.topology.base.Collector;
 import dragon.topology.base.Spout;
 
 public class SpoutOutputCollector extends Collector {
+	@SuppressWarnings("unused")
 	private static Log log = LogFactory.getLog(SpoutOutputCollector.class);
 	
 	

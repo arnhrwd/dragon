@@ -3,10 +3,12 @@ package dragon.network.messages.service;
 import dragon.network.messages.Message;
 
 public class ServiceMessage extends Message {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -682715214185176661L;
+	
+	/**
+	 * The client id, used to identify the client to respond to.
+	 */
+	private String messageId="";
 	
 	public static enum ServiceMessageType {
 		RUN_TOPOLOGY,
@@ -24,7 +26,16 @@ public class ServiceMessage extends Message {
 		TERMINATE_TOPOLOGY,
 		UPLOAD_JAR_FAILED,
 		TERMINATE_TOPOLOGY_ERROR,
-		TOPOLOGY_TERMINATED
+		TOPOLOGY_TERMINATED,
+		LIST_TOPOLOGIES,
+		LIST_TOPOLOGIES_ERROR,
+		TOPOLOGY_LIST,
+		HALT_TOPOLOGY,
+		TOPOLOGY_HALTED,
+		HALT_TOPOLOGY_ERROR,
+		RESUME_TOPOLOGY,
+		TOPOLOGY_RESUMED,
+		RESUME_TOPOLOGY_ERROR
 	}
 	
 	private ServiceMessageType type;
@@ -35,6 +46,14 @@ public class ServiceMessage extends Message {
 	
 	public ServiceMessageType getType(){
 		return type;
+	}
+	
+	public void setMessageId(String messageId) {
+		this.messageId=messageId;
+	}
+	
+	public String getMessageId() {
+		return messageId;
 	}
 	
 }

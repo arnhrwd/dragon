@@ -10,13 +10,8 @@ import dragon.utils.NetworkTaskBuffer;
 
 public class StreamQueueMap extends HashMap<String,NetworkTaskBuffer>{
 	private static Log log = LogFactory.getLog(StreamQueueMap.class);
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 5785890558744691873L;
-
-	private int bufferSize;
+	private final int bufferSize;
 	
 	public StreamQueueMap(int bufferSize){
 		this.bufferSize=bufferSize;

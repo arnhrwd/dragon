@@ -12,10 +12,7 @@ import dragon.topology.base.BaseRichBolt;
 import dragon.tuple.Tuple;
 
 public class NumberBolt extends BaseRichBolt {
-	private static Log log = LogFactory.getLog(NumberBolt.class);
-	/**
-	 * 
-	 */
+	private static final Log log = LogFactory.getLog(NumberBolt.class);
 	private static final long serialVersionUID = -3957233181035456948L;
 	HashSet<Integer> numbers;
 	HashSet<String> text;
@@ -36,6 +33,22 @@ public class NumberBolt extends BaseRichBolt {
 			numbers.add(number);
 			if(numbers.size()==10000000)
 				log.info("received "+numbers.size()+" numbers");
+		    if(number==100) {
+		    	number=number/0;
+		    }
+		    
+		    if(number==1000) {
+		    	throw new NullPointerException("testing null pointer");
+		    }
+		    
+		    if(number==10000) {
+		    	throw new RuntimeException("testing runtime");
+		    }
+		    
+//		    if(number==100000) {
+//		    	number/=0;
+//		    }
+		    
 		} else {
 			String uuid = (String)tuple.getValueByField("uuid");
 			if(text==null) {

@@ -2,25 +2,29 @@ package dragon.topology.base;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import dragon.Config;
 import dragon.LocalCluster;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
-public class Component implements Runnable, Cloneable, Serializable{
-	/**
-	 * 
-	 */
+public class Component implements Cloneable, Serializable{
 	private static final long serialVersionUID = -3296255524018955053L;
+	@SuppressWarnings("unused")
+	private static final Log log = LogFactory.getLog(Component.class);
 	private TopologyContext context;
 	private LocalCluster localCluster;
 	private OutputFieldsDeclarer outputFieldsDeclarer;
 	private Collector collector;
-	private long emitted=0;
-	private long transferred=0;
-	private boolean closing=false;
-	private boolean closed=false;
+	private Long emitted=0L;
+	private Long transferred=0L;
+	protected volatile boolean closing=false;
+	protected volatile boolean closed=false;
+	public  volatile ReentrantLock lock;
 	
 	public final void setClosing() {
 		closing=true;
@@ -31,7 +35,7 @@ public class Component implements Runnable, Cloneable, Serializable{
 	}
 	
 	public final void setClosed() {
-		closed=true;
+		closed=true;	
 	}
 	
 	public final boolean isClosed() {
@@ -39,7 +43,12 @@ public class Component implements Runnable, Cloneable, Serializable{
 	}
 	
 	public final void setOutputCollector(Collector collector) {
+		closing=false;
+		closed=false;
+		emitted=0L;
+		transferred=0L;
 		this.collector=collector;
+		this.lock=new ReentrantLock();
 	}
 	
 	public final Collector getOutputCollector() {
@@ -89,18 +98,26 @@ public class Component implements Runnable, Cloneable, Serializable{
 	}  
 	
 	public final void incEmitted(long inc){
-		emitted+=inc;
+		
+			emitted+=inc;
+		
 	}
 	
 	public final void incTransferred(long inc){
-		transferred+=inc;
+		
+			transferred+=inc;
+		
 	}
 	
 	public final long getEmitted(){
-		return emitted;
+		
+			return emitted;
+		
 	}
 	
 	public final long getTransferred(){
-		return transferred;
+		
+			return transferred;
+		
 	}
 }

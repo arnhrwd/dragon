@@ -3,21 +3,23 @@ package dragon.task;
 import dragon.LocalCluster;
 import dragon.topology.base.Bolt;
 import dragon.tuple.Tuple;
-import dragon.utils.CircularBuffer;
+import dragon.utils.CircularBlockingQueue;
 
 public class InputCollector {
-	private CircularBuffer<Tuple> inputQueue;
-	private LocalCluster localCluster;
-	private Bolt bolt;
+	private final CircularBlockingQueue<Tuple> inputQueue;
+	@SuppressWarnings("unused")
+	private final LocalCluster localCluster;
+	@SuppressWarnings("unused")
+	private final Bolt bolt;
 	
 	public InputCollector(LocalCluster localCluster,Bolt bolt){
-		inputQueue=new CircularBuffer<Tuple>((Integer)localCluster.getConf().getDragonOutputBufferSize());
+		inputQueue=new CircularBlockingQueue<Tuple>(localCluster.getConf().getDragonInputBufferSize());
 		this.localCluster = localCluster;
 		this.bolt=bolt;
 		
 	}
 	
-	public CircularBuffer<Tuple> getQueue(){
+	public CircularBlockingQueue<Tuple> getQueue(){
 		return inputQueue;
 	}
 }

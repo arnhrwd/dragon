@@ -140,6 +140,9 @@ Parameters concerning object recycling (advanced):
 - `dragon.recycler.task.expansion: 1024` **Integer** - number of network task objects to increase the network task pool by when/if the tuple pool capacity is reached
 - `dragon.recycler.task.compact: 0.2` **Double** - fraction of capacity the network task pool size must reach to trigger compaction of the pool
 
+Parameters concerning fault tolerance:
+
+- `dragon.faults.component.tolerance: 3` **Integer** - number of faults (exceptions caught) for any component after which the topology is halted 
 
 # Network mode
 
@@ -152,6 +155,24 @@ To start a Dragon daemon, run:
 The daemon will attempt to make a connection to the first available other Dragon daemon listed in the `dragon.network.hosts` parameter. To override the host name, service and data port of the daemon being started run:
 
     dragon -d -h HOST_NAME -p DATA_PORT -s SERVICE_PORT
+    
+# Client commands
+
+- submit (inferred through the topology class itself)
+- list `-l` or `--list`
+- terminate `-X` or `--terminate`
+- halt `-x` or `--halt`
+- resume `-r` or `--resume`
+
+The state of a topology on each daemon includes:
+
+- `ALLOCATED` a transient state where the topology exists but is not yet ready for a start command 
+- `SUBMITTED` a transient state where the topology is awaiting a start command
+- `RUNNING` the topology is active
+- `HALTED` the topology is inactive and can be resumed
+- `TERMINATING` the topology is waiting for all outstanding tuples to be processed (spouts have been closed) after which the topology is deleted from memory and garbage collected
+
+Assuming there are no errors, a topology moves from `ALLOCATED` to `SUBMITTED` and then to `RUNNING` as quickly as possible. In the `RUNNING` state the topology can enter the `HALTED` state either because one or more topology components throws too many exceptions which triggers the transition to `HALTED` automatically, or because the topology receives a client command to halt. In the `HALTED` state the topology may be resumed, i.e. set back to `RUNNING` via a client command only. However if the topology continues to throw exceptions it will go back to `HALTED`. In either the `RUNNING` or `HALTED` states the topology may be terminated by a client command only.
 
 ## Submitting a topology
 
@@ -165,11 +186,33 @@ The topology JAR will be uploaded and stored at all Dragon daemons that the topo
 
 The Config settings on a daemon are first set using the defaults, then what is found in `dragon.yaml` and finally what is supplied by the submitted topology. 
 
+## Listing topology information
+
+To list information about all topologies, including their state and any exceptions thrown with stack traces:
+
+    dragon -h HOST_NAME -s SERVICE_PORT -l
+
+## Halting a topology
+
+To halt a topology:
+
+    dragon -h HOST_NAME -s SERVICE_PORT -x -t TOPOLOGY_NAME
+
+Halting the topology will suspend all of its threads and keep all data in place. It may be resumed later. A topology is also halted automatically if any of its components throw too many errors.
+
+## Resume a topology
+
+To resume a topology:
+
+    dragon -h HOST_NAME -s SERVICE_PORT -r -t TOPOLOGY_NAME
+
+Resuming a topology that was halted due to errors will likely result in it being halted again in the near future, as soon as another error is thrown.
+
 ## Terminating a topology
 
 To terminate a topology:
 
-    dragon -h HOST_NAME -s SERVICE_PORT -x -t TOPOLOGY_NAME
+    dragon -h HOST_NAME -s SERVICE_PORT -X -t TOPOLOGY_NAME
     
 For a large topology over a number of nodes you may need to wait some time for it to terminate. This is because Dragon first *closes* all Spouts, then waits for all existing data to be fully processed (all outstanding messages to be communicated, which may lead to further processing, etc.) before proceeding to close all Bolts and release all of the resources that the topology consumed. If your topology is not "well behaved" it may not terminate. A well behaved topology will cease to emit tuples, and terminate any transient threads, when the `close` method has been called on Spouts and Bolts.
 

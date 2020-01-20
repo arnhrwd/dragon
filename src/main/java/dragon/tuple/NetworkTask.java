@@ -1,17 +1,26 @@
 package dragon.tuple;
 
+import java.io.Externalizable;
 import java.io.IOException;
+import java.io.ObjectInput;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.HashSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-public class NetworkTask extends RecyclableObject implements Serializable {
+/**
+ * A container class for a tuple, that provides the destination of the
+ * tuple in terms of topology, component and tasks that the tuple must be delivered
+ * to. This class is recyclable. 
+ * @author aaron
+ *
+ */
+public class NetworkTask implements IRecyclable {
+	@SuppressWarnings("unused")
 	private static Log log = LogFactory.getLog(NetworkTask.class);
-	private static final long serialVersionUID = 6164101511657361631L;
 	private Tuple tuple;
 	private HashSet<Integer> taskIds;
 	private String componentId;
@@ -27,7 +36,7 @@ public class NetworkTask extends RecyclableObject implements Serializable {
 	
 	public void init(Tuple tuple,HashSet<Integer> taskIds,String componentId, String topologyId) {
 		this.tuple=tuple;
-		tuple.shareRecyclable(1);
+		RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).shareRecyclable(tuple, 1);
 		this.taskIds=taskIds;
 		this.componentId=componentId;
 		this.topologyId=topologyId;
@@ -56,7 +65,7 @@ public class NetworkTask extends RecyclableObject implements Serializable {
 
 	@Override
 	public void recycle() {
-		tuple.crushRecyclable(1); 
+		RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
 		tuple=null;
 		taskIds=null;
 		componentId=null;
@@ -70,20 +79,29 @@ public class NetworkTask extends RecyclableObject implements Serializable {
 	
 	public void sendToStream(ObjectOutputStream out) throws IOException {
 		tuple.sendToStream(out);
-		out.writeObject(taskIds);
-		out.writeObject(componentId);
-		out.writeObject(topologyId);
+//		out.writeObject(taskIds);
+//		out.writeObject(componentId);
+//		out.writeObject(topologyId);
+		out.writeInt(taskIds.size());
+		for(Integer taskId : taskIds) {
+			out.writeInt(taskId);
+		}
+		out.writeUTF(componentId);
+		out.writeUTF(topologyId);
 	}
-	
-	@SuppressWarnings("unchecked")
+
 	public static NetworkTask readFromStream(ObjectInputStream in) throws ClassNotFoundException, IOException {
 		Tuple t = Tuple.readFromStream(in);
-		HashSet<Integer> taskIds = (HashSet<Integer>) in.readObject();
-		String componentId = (String) in.readObject();
-		String topologyId = (String) in.readObject();
+		HashSet<Integer> taskIds = new HashSet<Integer>();
+		Integer size = in.readInt();
+		for(int i=0;i<size;i++) {
+			taskIds.add(in.readInt());
+		}
+		String componentId = (String) in.readUTF();
+		String topologyId = (String) in.readUTF();
 		NetworkTask nt = RecycleStation.getInstance().getNetworkTaskRecycler().newObject();
 		nt.init(t, taskIds, componentId, topologyId);
-		t.crushRecyclable(1);
+		RecycleStation.getInstance().getTupleRecycler(t.getFields().getFieldNamesAsString()).crushRecyclable(t, 1);
 		return nt;
 	}
 }
