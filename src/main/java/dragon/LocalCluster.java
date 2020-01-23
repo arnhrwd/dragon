@@ -373,7 +373,7 @@ public class LocalCluster {
 		spouts = new HashMap<String,HashMap<Integer,Spout>>();
 		spoutConfs = new HashMap<String,Config>();
 		for(String spoutId : dragonTopology.getSpoutMap().keySet()) {
-			boolean localcomponent = !(dragonTopology.getReverseEmbedding()!=null &&
+			boolean localcomponent = node==null || !(dragonTopology.getReverseEmbedding()!=null &&
 					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId));
 			HashMap<Integer,Spout> hm=null;
 			SpoutDeclarer spoutDeclarer = dragonTopology.getSpoutMap().get(spoutId);
@@ -392,7 +392,7 @@ public class LocalCluster {
 			}
 			int numAllocated=0;
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
-				boolean localtask = !(dragonTopology.getReverseEmbedding()!=null &&
+				boolean localtask = node==null || !(dragonTopology.getReverseEmbedding()!=null &&
 						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId,i));
 				try {
 					if(localtask) {
