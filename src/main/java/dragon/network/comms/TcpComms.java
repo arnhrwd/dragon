@@ -5,7 +5,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -29,38 +28,103 @@ import dragon.utils.CircularBlockingQueue;
 public class TcpComms implements IComms {
 	private static Log log = LogFactory.getLog(TcpComms.class);
 	
+	/**
+	 * Used when making a service connection to a daemon.
+	 */
 	private Socket serviceSocketClient;
+	
+	/**
+	 * Used for accepting service connections from a client.
+	 */
 	private ServerSocket serviceSocketServer;
+	
+	/**
+	 * Map from node descriptor string to an object output stream for that destination.
+	 */
 	private HashMap<String,ObjectOutputStream> serviceOutputStreams;
+	
+	/**
+	 * 
+	 */
 	private ObjectOutputStream serviceOutputStream;
+	
+	/**
+	 * 
+	 */
 	private Config conf;
 
+	/**
+	 * 
+	 */
 	private LinkedBlockingQueue<ServiceMessage> incomingServiceQueue;
 	//LinkedBlockingQueue<ServiceMessage> outgoingServiceQueue;
+	
+	/**
+	 * 
+	 */
 	private LinkedBlockingQueue<NodeMessage> incomingNodeQueue;
+	
+	/**
+	 * 
+	 */
 	private CircularBlockingQueue<NetworkTask> incomingTaskQueue;
+	
+	/**
+	 * 
+	 */
 	private SocketManager socketManager;
 	
+	/**
+	 * 
+	 */
 	private Long id=0L;
+	
+	/**
+	 * 
+	 */
 	private int resetCount=0;
+	
+	/**
+	 * 
+	 */
 	private int resetMax=1;
 	
+	/**
+	 * 
+	 */
 	private HashSet<Thread> nodeInputsThreads;
+	
+	/**
+	 * 
+	 */
 	private HashSet<Thread> taskInputsThreads;
 	
+	/**
+	 * 
+	 */
 	private Thread serviceThread;
+	
+	/**
+	 * 
+	 */
 	private Thread nodeThread;
+	
+	/**
+	 * 
+	 */
 	private Thread taskThread;
 	
+	/**
+	 * 
+	 */
 	private NodeDescriptor me;
 	
 	/**
 	 * This method opens comms as a Dragon daemon, using the parameters found in conf
 	 * to initialize its own NodeDescriptor.
 	 * @param conf
-	 * @throws UnknownHostException
 	 */
-	public TcpComms(Config conf) throws UnknownHostException {
+	public TcpComms(Config conf) {
 		this.conf=conf;
 		incomingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
 		incomingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
@@ -105,6 +169,9 @@ public class TcpComms implements IComms {
 		serviceThread.start();
 	}
 
+	/**
+	 * @return the next id to use for connections
+	 */
 	private Long nextId(){
 		id++;
 		return id;
@@ -263,6 +330,9 @@ public class TcpComms implements IComms {
 		
 	}
 
+	/**
+	 * Close the comms layer
+	 */
 	public void close() {
 		serviceThread.interrupt();
 		
@@ -277,11 +347,19 @@ public class TcpComms implements IComms {
 		
 	}
 	
+	/**
+	 * @return the node descriptor
+	 */
 	public NodeDescriptor getMyNodeDesc() {
 		return me;
-		
 	}
 
+	/**
+	 * Send a service message response. If the response message id is the empty
+	 * string then it will simply send the response to the generic object stream, 
+	 * else it will send to the object stream mapped to by the id.
+	 * @throws DragonCommsException if the message could not be sent
+	 */
 	public void sendServiceMsg(ServiceMessage response) throws DragonCommsException {
 		// no need to retry sending service message since we cannot form a connection
 		// back to the client
@@ -304,17 +382,34 @@ public class TcpComms implements IComms {
 		throw new DragonCommsException("service data can not be transmitted");
 	}
 	
+	/**
+	 * Send a service message in response to a given service message. This method will
+	 * set the message id message and then call sendServiceMessage.
+	 * @throws DragonCommsException if the message could not be sent
+	 */
 	public void sendServiceMsg(ServiceMessage message, ServiceMessage inResponseTo) throws DragonCommsException {
 		message.setMessageId(inResponseTo.getMessageId());
 		sendServiceMsg(message);
 	}
 
+	/**
+	 * Blocking receive to get the next service message.
+	 * @return the service message when available
+	 * @throws InterruptedException if interrupted while waiting for a service message
+	 */
 	public ServiceMessage receiveServiceMsg() throws InterruptedException {
 		ServiceMessage m=incomingServiceQueue.take();
 		log.debug("received service message ["+m.getType().name()+"]");
 		return m;
 	}
 
+	/**
+	 * Send a node message to the given destination. In case of io exception while
+	 * trying to send, will retry up to dragon.comms.retry.attempts number of times,
+	 * sleeping for dragon.comms.retry.ms time in between. Returns without sending
+	 * the data if interrupted while sleeping.
+	 * @throws DragonCommsException if finally it cannot send
+	 */
 	public void sendNodeMsg(NodeDescriptor desc, NodeMessage command) throws DragonCommsException {
 		command.setSender(me); // node messages typically require to be replied to
 		int tries=0;
@@ -340,16 +435,22 @@ public class TcpComms implements IComms {
 		log.fatal("data can not be transmitted");
 		throw new DragonCommsException("node data can not be transmitted");
 	}
-	
-//	public void sendNodeMessage(NodeDescriptor desc, NodeMessage message) throws DragonCommsException {
-//		//message.setMessageId(inResponseTo.getMessageId());
-//		sendNodeMessage(desc,message);
-//	}
 
+	/**
+	 * Blocking call to receive a node message.
+	 * @return a node message when available
+	 * @throws IterruptedException if interrupted while waiting for a node message.
+	 */
 	public NodeMessage receiveNodeMsg() throws InterruptedException {
 		return incomingNodeQueue.take();
 	}
 
+	/**
+	 * Send a network task to a destination desc. In event of io exception will
+	 * retry up to dragon.comms.retry.attempts times, pausing for dragon.comms.retry.ms milliseconds
+	 * each time. Returns without sending the data if interrupted while sleeping.
+	 * @throws DragonCommsException if the network task cannot be sent.
+	 */
 	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task) throws DragonCommsException {
 		int tries=0;
 		while(tries<conf.getDragonCommsRetryAttempts()) {
@@ -381,6 +482,11 @@ public class TcpComms implements IComms {
 		throw new DragonCommsException("task data can not be transmitted");
 	}
 
+	/**
+	 * Blocking call to receive a network task.
+	 * @return a network task when available
+	 * @throws InterruptedException if interrupted while waiting for a network task
+	 */
 	public NetworkTask receiveNetworkTask() throws InterruptedException {
 		return incomingTaskQueue.take();
 	}

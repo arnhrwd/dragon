@@ -1,7 +1,5 @@
 package dragon.network;
 
-import java.util.Collections;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
