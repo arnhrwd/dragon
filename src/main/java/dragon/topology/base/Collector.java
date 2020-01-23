@@ -34,7 +34,11 @@ public class Collector {
 	public Collector(Component component,LocalCluster localCluster,int bufSize) {
 		this.component = component;
 		this.localCluster=localCluster;
-		router=localCluster.getNode().getRouter();
+		if(localCluster.getNode()!=null) {
+			router=localCluster.getNode().getRouter();
+		} else {
+			router=null;
+		}
 		outputQueues=new ComponentTaskBuffer(bufSize);
 		DestComponentMap destComponentMap = localCluster.getTopology().getDestComponentMap(component.getComponentId());
 		int tbs=0;
