@@ -4,9 +4,6 @@ import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
 
 public class AcceptingJoinNMsg extends NodeMessage {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 2231251843142684620L;
 	public NodeDescriptor nextNode;
 	public NodeContext context;

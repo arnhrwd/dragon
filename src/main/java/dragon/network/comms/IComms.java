@@ -7,6 +7,14 @@ import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.tuple.NetworkTask;
 
+/**
+ * The comms interface allows for the easy substitution with other communication
+ * layers for Dragon. All communication with a Dragon daemon happens via the comms
+ * interface.
+ * TODO: implement a UDP based comms layer.
+ * @author aaron
+ *
+ */
 public interface IComms {
 	
 	/**
@@ -70,16 +78,38 @@ public interface IComms {
 	 * high performance, i.e. the implementation does not need to be thread safe.
 	 */
 	
+	/**
+	 * Blocking send node message to the given node desc.
+	 * @param desc the destination to send the message to
+	 * @param message the node message to send
+	 * @throws DragonCommsException if the message could not be sent.
+	 */
 	public void sendNodeMsg(NodeDescriptor desc, NodeMessage message) throws DragonCommsException;
 	
-	
+	/**
+	 * Blocking receive node message.
+	 * @return a node message when one is available
+	 * @throws InterruptedException if interrupted while waiting for a node message.
+	 */
 	public NodeMessage receiveNodeMsg() throws InterruptedException;
 	
 	/*
-	 * Network task connections are only initiated by clients. They ARE expected to be high
+	 * Network task connections are for transmitting tuple data. They ARE expected to be high
 	 * performance and the implementation MUST be thread safe.
 	 */
 	
+	/**
+	 * Blocking send network task to the given node desc.
+	 * @param desc the destination node desc to send the network task to
+	 * @param task the network task to send
+	 * @throws DragonCommsException if the network task failed to be sent
+	 */
 	public void sendNetworkTask(NodeDescriptor desc, NetworkTask task) throws DragonCommsException;
+	
+	/**
+	 * Blocking call to receive a network task.
+	 * @return the network task when one is available.
+	 * @throws InterruptedException if interrupted while waiting for a network task.
+	 */
 	public NetworkTask receiveNetworkTask() throws InterruptedException;
 }

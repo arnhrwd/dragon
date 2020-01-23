@@ -91,6 +91,7 @@ The available parameters and their defaults are listed below.
 - `dragon.jar.dir: jars` **String** - the sub-directory to store jars files within
 - `dragon.localcluster.threads: 2 ` **Integer** - the size of the thread pool that transfers tuples within a local cluster
 - `dragon.embedding.algorithm: dragon.topology.RoundRobinEmbedding` **String** - the embedding algorithm that maps a task in the topology to a host node
+- `dragon.java.bin: /usr/bin/java` **String** - the path of the Java binary
 
 ### Network mode parameters
 

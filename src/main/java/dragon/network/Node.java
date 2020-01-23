@@ -232,35 +232,67 @@ public class Node {
 		}
 	}
 
+	/**
+	 * Return the comms layer for this node.
+	 * @return
+	 */
 	public synchronized IComms getComms() {
 		return comms;
 	}
 
+	/**
+	 * Return the local cluster map for this node.
+	 * @return
+	 */
 	public synchronized HashMap<String, LocalCluster> getLocalClusters() {
 		return localClusters;
 	}
 
+	/**
+	 * Return the node state for this node.
+	 * @return
+	 */
 	public synchronized NodeState getNodeState() {
 		return nodeState;
 	}
 
+	/**
+	 * Set the node state for this node.
+	 * @param nodeState
+	 */
 	public synchronized void setNodeState(NodeState nodeState) {
 		log.info("state is now ["+nodeState+"]");
 		this.nodeState = nodeState;
 	}
 
+	/**
+	 * Return the node processor for this node.
+	 * @return
+	 */
 	public synchronized NodeProcessor getNodeProcessor() {
 		return this.nodeThread;
 	}
 
+	/**
+	 * Return the router for this node.
+	 * @return
+	 */
 	public synchronized Router getRouter() {
 		return router;
 	}
 
+	/**
+	 * Return the conf for this node.
+	 * @return
+	 */
 	public synchronized Config getConf() {
 		return conf;
 	}
 
+	/**
+	 * Return the ops processor for this node.
+	 * @return
+	 */
 	public synchronized Ops getOpsProcessor() {
 		return operationsThread;
 	}

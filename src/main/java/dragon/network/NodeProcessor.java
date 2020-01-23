@@ -442,14 +442,26 @@ public class NodeProcessor extends Thread {
 		}
 	}
 	
+	/**
+	 * Return the node context
+	 * @return
+	 */
 	public NodeContext getContext() {
 		return context;
 	}
 	
+	/**
+	 * Put all of the given context into the node's context.
+	 * @param context
+	 */
 	public synchronized void contextPutAll(NodeContext context) {
 		this.context.putAll(context);
 	}
 	
+	/**
+	 * Set the next node in the cycle to the given node.
+	 * @param desc
+	 */
 	public void setNextNode(NodeDescriptor desc) {
 		nextNode=desc;
 		log.debug("next pointer = ["+nextNode+"]");
