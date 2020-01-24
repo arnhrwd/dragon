@@ -298,7 +298,9 @@ public class NodeProcessor extends Thread {
 	
 	private synchronized void processGetTopologyInformation(NodeMessage msg) {
 		GetTopoInfoNMsg gtim = (GetTopoInfoNMsg) msg;
-		node.listTopologies((ListToposGroupOp)gtim.getGroupOp()); // sends the response for us
+		ListToposGroupOp ltgo = (ListToposGroupOp)gtim.getGroupOp();
+		node.listTopologies(ltgo); // sends the response for us
+		ltgo.sendSuccess(node.getComms());
 	}
 	
 	private synchronized void processTopologyInformation(NodeMessage msg) {

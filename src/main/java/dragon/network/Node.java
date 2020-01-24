@@ -332,14 +332,12 @@ public class Node {
 				errors.get(topologyId).put(name, localClusters.get(topologyId).getComponentErrors().get(component));
 			}
 		}
-
+		
 		/*
 		 * Store the data into the holding variables prior to sending the response.
 		 */
 		ltgo.state = state;
 		ltgo.errors = errors;
-
-		ltgo.sendSuccess(comms);
 	}
 
 	/**

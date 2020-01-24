@@ -301,6 +301,7 @@ public class ServiceProcessor extends Thread {
 			ListToposGroupOp ltgo = (ListToposGroupOp) op;
 			node.listTopologies(ltgo);
 			ltgo.aggregate(comms.getMyNodeDesc(), ltgo.state, ltgo.errors);
+			ltgo.sendSuccess(comms);
 		});
 	}
 
