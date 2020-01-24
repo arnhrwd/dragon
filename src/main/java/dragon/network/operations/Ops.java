@@ -91,7 +91,8 @@ public class Ops extends Thread {
 		NodeContext nc = new NodeContext();
 		nc.putAll(node.getNodeProcessor().getContext());
 		for (NodeDescriptor desc : nc.values()) {
-			ltgo.add(desc);
+			// we never send messages to ourselves
+			if(!desc.equals(node.getComms().getMyNodeDesc())) ltgo.add(desc);
 		}
 		register(ltgo);
 		return ltgo;

@@ -154,7 +154,9 @@ public class Op implements Serializable {
 	public void start() {
 		if(start!=null) start.start(this);
 		state=State.RUNNING;
-		if(running!=null) running.running(this);
+		if(running!=null) {
+			running.running(this);
+		}
 	}
 	
 	public void success() {
