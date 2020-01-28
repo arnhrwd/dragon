@@ -215,10 +215,25 @@ public class Config extends HashMap<String, Object> {
 	 */
 	public static final String DRAGON_JAVA_BIN="dragon.java.bin";
 
-
+	/**
+	 * the URL to use for the InfluxDB, if available
+	 * If this parameter is not given then InfluxDB will not be used.
+	 */
 	public static final String INFLUXDB_URL="influxdb.url";
+	
+	/**
+	 * the authorization token used to access the InfluxDB
+	 */
 	public static final String INFLUXDB_TOKEN="influxdb.token";
+	
+	/**
+	 * the InfluxDB bucket to use for storing data samples
+	 */
 	public static final String INFLUXDB_BUCKET="influxdb.bucket";
+	
+	/**
+	 * the organization name for storing data samples
+	 */
 	public static final String INFLUXDB_ORGANIZATION="influxdb.organization";
 
 	
@@ -689,18 +704,34 @@ public class Config extends HashMap<String, Object> {
 		return (String)get(DRAGON_JAVA_BIN);
 	}
 		
+	/**
+	 * 
+	 * @return the InfluxDB url
+	 */
 	public String getInfluxDBUrl() {
 		return (String)get(INFLUXDB_URL);
 	}
 	
+	/**
+	 * 
+	 * @return the InfluxDB authorization token
+	 */
 	public String getInfluxDBToken() {
 		return (String)get(INFLUXDB_TOKEN);
 	}
 	
+	/**
+	 * 
+	 * @return the InfluxDB bucket for data samples
+	 */
 	public String getInfluxDBBucket() {
 		return (String)get(INFLUXDB_BUCKET);
 	}
 	
+	/**
+	 * 
+	 * @return the InfluxDB organization for data samples
+	 */
 	public String getInfluxDBOrganization() {
 		return (String)get(INFLUXDB_ORGANIZATION);
 	}
