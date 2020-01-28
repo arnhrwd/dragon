@@ -1,5 +1,7 @@
 package dragon.metrics;
 
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.time.Instant;
 
 import org.apache.commons.logging.Log;
@@ -40,9 +42,17 @@ public class Metrics extends Thread {
 		}
 	}
 	
+	private long gcTime() {
+		long gcTime = 0;
+	    for (GarbageCollectorMXBean garbageCollectorMXBean : ManagementFactory.getGarbageCollectorMXBeans()) {
+	        gcTime += garbageCollectorMXBean.getCollectionTime();
+	    }
+	    return gcTime;
+	}
+	
 	@Override
 	public void run(){
-		
+		Point point;
 		while(!isInterrupted()){
 			try {
 				sleep((int)node.getConf().getDragonMetricsSamplePeriodMs());
@@ -50,6 +60,11 @@ public class Metrics extends Thread {
 				log.info("shutting down");
 			}
 			synchronized(samples){
+				
+				point = Point.measurement("gcTime").addTag("node", node.getComms().getMyNodeDesc().toString())
+						.addField("value", gcTime()).time(Instant.now().toEpochMilli(), WritePrecision.MS);
+				writeApi.writePoint(node.getConf().getInfluxDBBucket(), node.getConf().getInfluxDBOrganization(), point);
+				
 				for(String topologyId : node.getLocalClusters().keySet()){
 					log.info("sampling topology ["+topologyId+"]");
 					LocalCluster localCluster = node.getLocalClusters().get(topologyId);
