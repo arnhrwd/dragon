@@ -308,7 +308,7 @@ public class Config extends HashMap<String, Object> {
 		}
 		Map<String,Object> map = config.load(inputStream);
 		if(map!=null) {
-			log.debug(map);
+			log.debug(toYamlString());
 			putAll(map);
 		} else {
 			log.warn("empty conf file");
@@ -342,7 +342,7 @@ public class Config extends HashMap<String, Object> {
 		options.setSplitLines(false);
 		options.setDefaultFlowStyle(DumperOptions.FlowStyle.FLOW);
 		Yaml config = new Yaml(options);
-		String ret = config.dump(this);
+		String ret = config.dump(this).stripTrailing();
 		return ret;
 	}
 	
@@ -697,11 +697,17 @@ public class Config extends HashMap<String, Object> {
 	
 
 	/**
-	 * 
+	 * Returns the java binary path if provided in the configuration file,
+	 * else returns what is found in the system property java.home with "/java"
+	 * postfixed.
 	 * @return the java bin
 	 */
 	public String getDragonJavaBin() {
-		return (String)get(DRAGON_JAVA_BIN);
+		if(containsKey(DRAGON_JAVA_BIN)) {
+			return (String)get(DRAGON_JAVA_BIN);
+		} else {
+			return (String)System.getProperty("java.home")+System.getProperty("file.separator")+"java";
+		}
 	}
 		
 	/**

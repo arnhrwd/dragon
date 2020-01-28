@@ -120,7 +120,7 @@ Network details:
 
 The `dragon.network.hosts` parameter can also be written like this:
 
-    dragon.network.remote.hosts:
+    dragon.network.hosts:
     - hostname: localhost
       dport: 4001
       sport: 4000

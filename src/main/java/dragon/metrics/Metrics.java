@@ -16,6 +16,12 @@ import com.influxdb.client.write.Point;
 import dragon.LocalCluster;
 import dragon.network.Node;
 
+/**
+ * Log metrics at a regular interval. Store metrics in memory and also
+ * send to InfluxDB if that is configured.
+ * @author aaron
+ *
+ */
 public class Metrics extends Thread {
 	private static Log log = LogFactory.getLog(Metrics.class);
 	private Node node;
