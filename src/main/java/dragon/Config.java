@@ -15,6 +15,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.yaml.snakeyaml.Yaml;
 
+
 import dragon.network.NodeDescriptor;
 
 /**
@@ -75,6 +76,11 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_COMMS_INCOMING_BUFFER_SIZE="dragon.comms.incoming.buffer.size";
 	
 	public static final String DRAGON_FAULTS_COMPONENT_TOLERANCE="dragon.faults.component.tolerance";
+	
+	public static final String INFLUXDB_URL="influxdb.url";
+	public static final String INFLUXDB_TOKEN="influxdb.token";
+	public static final String INFLUXDB_BUCKET="influxdb.bucket";
+	public static final String INFLUXDB_ORGANIZATION="influxdb.organization";
 	
 	int numWorkers=1;
 	int maxTaskParallelism=1000;
@@ -353,6 +359,22 @@ public class Config extends HashMap<String, Object> {
 	
 	public int getDragonFaultsComponentTolerance() {
 		return (Integer)get(DRAGON_FAULTS_COMPONENT_TOLERANCE);
+	}
+	
+	public String getInfluxDBUrl() {
+		return (String)get(INFLUXDB_URL);
+	}
+	
+	public String getInfluxDBToken() {
+		return (String)get(INFLUXDB_TOKEN);
+	}
+	
+	public String getInfluxDBBucket() {
+		return (String)get(INFLUXDB_BUCKET);
+	}
+	
+	public String getInfluxDBOrganization() {
+		return (String)get(INFLUXDB_ORGANIZATION);
 	}
 	
  	//

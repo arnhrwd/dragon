@@ -144,6 +144,13 @@ Parameters concerning fault tolerance:
 
 - `dragon.faults.component.tolerance: 3` **Integer** - number of faults (exceptions caught) for any component after which the topology is halted 
 
+Parameters concerning InfluxDB:
+
+- `influxdb.url: ` **String** - the URL to use for the InfluxDB, if available. If this parameter is not given then InfluxDB will not be used.
+- `influxdb.token: ` **String** the authorization token used to access the InfluxDB
+- `influxdb.bucket: ` **String** the InfluxDB bucket to use for storing data samples
+- `influxdb.organization: ` **String** the organization name for storing data samples
+
 # Network mode
 
 Running in Network mode requires starting Dragon daemons on a number of hosts that are all visible to each other on the network. Multiple daemons can be started on a single host, but the service and data ports must be configured to be non-conflicting for all instances, i.e. each daemon must have its own `dragon.yaml` configuration file with `dragon.network.local.data.port` and `dragon.network.local.service.port` set appropriately. Command line options can be used to override the configuration parameters, if a single `dragon.yaml` is preferred. Each daemon is a single JVM.
