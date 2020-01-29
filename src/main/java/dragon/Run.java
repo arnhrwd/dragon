@@ -1,12 +1,14 @@
 package dragon;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,6 +29,7 @@ import org.yaml.snakeyaml.Yaml;
 
 
 import dragon.network.Node;
+import dragon.process.ProcessManager;
 import dragon.tuple.RecycleStation;
 
 /**
@@ -36,7 +39,8 @@ import dragon.tuple.RecycleStation;
  */
 public class Run {
 	private static Log log = LogFactory.getLog(Run.class);
-	
+	private static ProcessManager pm; 
+	private static int waitingFor=0;
 	@SuppressWarnings("rawtypes")
 	private static Class loadJarFileClass(String filePath, String className) throws ClassNotFoundException, IOException  {
 		File f = new File(filePath);
@@ -46,6 +50,19 @@ public class Run {
 		return c;
 	}
 	
+	/**
+	 * Put the supplied topology JAR file onto the class path and invoke the topology main method.
+	 * @param cmd
+	 * @param conf
+	 * @throws ParseException
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 * @throws NoSuchMethodException
+	 * @throws SecurityException
+	 * @throws IllegalAccessException
+	 * @throws IllegalArgumentException
+	 * @throws InvocationTargetException
+	 */
 	private static void submit(CommandLine cmd, Config conf) throws ParseException, IOException, ClassNotFoundException, NoSuchMethodException, SecurityException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 		DragonSubmitter.node = conf.getLocalHost();
 		if(cmd.hasOption("host")) {
@@ -87,6 +104,7 @@ public class Run {
 	 * @throws InterruptedException 
 	 */
 	private static void deploy(CommandLine cmd, Config conf) throws ParseException, IOException, InterruptedException {
+		
 		if(cmd.getArgs().length<2) {
 			throw new ParseException("ERROR: a package distro must be given\n try: dragon deploy [-h HOSTNAME] [-p DPORT] [-s SPORT] DRAGON-VERSION-distro.zip [USERNAME]");
 		}
@@ -99,40 +117,187 @@ public class Run {
 		if(cmd.hasOption("host")) {
 			hostname=cmd.getOptionValue("host");
 		}
+		System.out.println("copying distro...");
 		if(hostname!=null) {
+			waitingFor++;
 			scpdistro(hostname,username,distro);
 		} else {
 			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
-				hostname = (String) host.get("hostname");
-				if(hostname==null) {
+				String hostname2 = (String) host.get("hostname");
+				if(hostname2==null) {
 					System.out.println("an empty hostname was found in the configuration file: skipping");
 					continue;
 				}
-				scpdistro(hostname,username,distro);
+				waitingFor++;
+				scpdistro(hostname2,username,distro);
 			}
 		}
+		while(waitingFor>0) {
+			Thread.sleep(100);
+		}
+		System.out.println("unzipping distro...");
+		if(hostname!=null) {
+			waitingFor++;
+			sshunzipdistro(hostname,username,distro);
+		} else {
+			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
+				String hostname2 = (String) host.get("hostname");
+				if(hostname2==null) {
+					System.out.println("an empty hostname was found in the configuration file: skipping");
+					continue;
+				}
+				waitingFor++;
+				sshunzipdistro(hostname2,username,distro);
+			}
+		}
+		while(waitingFor>0) {
+			Thread.sleep(100);
+		}
+		System.out.println("configuring...");
+		Config tconf = new Config(conf);
+		if(cmd.hasOption("dport")) {
+			tconf.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,Integer.parseInt(cmd.getOptionValue("dport")));
+		}
+		if(cmd.hasOption("sport")) {
+			tconf.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,Integer.parseInt(cmd.getOptionValue("sport")));
+		}	
+		if(hostname!=null) {
+			waitingFor++;
+			tconf.put(Config.DRAGON_NETWORK_LOCAL_HOST,hostname);
+			sshconfiguredistro(hostname,username,distro,tconf);
+		} else {
+			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
+				String hostname2 = (String) host.get("hostname");
+				if(hostname2==null) {
+					System.out.println("an empty hostname was found in the configuration file: skipping");
+					continue;
+				}
+				waitingFor++;
+				tconf.put(Config.DRAGON_NETWORK_LOCAL_HOST,hostname2);
+				Config tconf2 = new Config(tconf);
+				sshconfiguredistro(hostname2,username,distro,tconf2);
+			}
+		}
+		while(waitingFor>0) {
+			Thread.sleep(100);
+		}
+		System.out.println("starting daemons...");
+		if(hostname!=null) {
+			waitingFor++;
+			sshonlinedistro(hostname,username,distro);
+		} else {
+			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
+				String hostname2 = (String) host.get("hostname");
+				if(hostname2==null) {
+					System.out.println("an empty hostname was found in the configuration file: skipping");
+					continue;
+				}
+				waitingFor++;
+				sshonlinedistro(hostname2,username,distro);
+			}
+		}
+		while(waitingFor>0) {
+			Thread.sleep(100);
+		}
+		System.out.println("done");
 		
 	}
 	
-	private static void scpdistro(String hostname,String username,String distro) throws IOException, InterruptedException {
+	private static void scpdistro(String hostname,String username,String distro) {
 		Path path = Paths.get(distro); 
 		Path fileName = path.getFileName();
-		System.out.println("scp "+distro+" "+username+"@"+hostname+":"+fileName);
+		String info="scp "+distro+" "+username+"@"+hostname+":"+fileName;
 		ProcessBuilder pb = new ProcessBuilder("scp", distro, username+"@" + hostname + ":" + fileName);
-		Process p = pb.start();
-		p.waitFor();
-		System.out.println("done");
+		pm.startProcess(pb, false, (p)->{
+			System.out.println("Running: "+info);
+		}, (pb2)->{
+			System.out.println("Could not start process: "+info);
+			System.exit(-1);
+		}, (p)->{
+			if(p.exitValue()!=0) {
+				System.out.println("Process returned ["+p.exitValue()+"]: "+info);
+			} 
+			waitingFor--;
+		});
 	}
 	
-	private static void online(CommandLine cmd, Config conf) {
-		
+	private static void sshunzipdistro(String hostname,String username,String distro) {
+		Path path = Paths.get(distro); 
+		Path fileName = path.getFileName();
+		String info="ssh "+username+"@"+hostname+" \"unzip -o "+fileName+"\"";
+		ProcessBuilder pb = new ProcessBuilder("ssh",username+"@" + hostname,"unzip -o "+fileName);
+		pm.startProcess(pb, false, (p)->{
+			System.out.println("Running: "+info);
+		}, (pb2)->{
+			System.out.println("Could not start process: "+info);
+			System.exit(-1);
+		}, (p)->{
+			if(p.exitValue()!=0) {
+				System.out.println("Process returned ["+p.exitValue()+"]: "+info);
+			}
+			waitingFor--;
+		});
 	}
 	
-	private static void offline(CommandLine cmd, Config conf) {
-		
+	private static void sshconfiguredistro(String hostname,String username,String distro,Config conf) {
+		Path path = Paths.get(distro); 
+		Path fileName = path.getFileName();
+		String baseName = fileName.toString().substring(0,fileName.toString().length() - 11);
+		String info="<CONF> | ssh "+username+"@"+hostname+" cat > "+baseName+"/conf/dragon.yaml";
+		ProcessBuilder pb = new ProcessBuilder("ssh",username+"@" + hostname,"cat > "+baseName+"/conf/dragon.yaml");
+		pm.startProcess(pb, false, (p)->{
+			System.out.println("Running: "+info);
+			OutputStream stdin = p.getOutputStream();
+			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(stdin));
+			try {
+				writer.write(conf.toYamlStringNice());
+			} catch (IOException e) {
+				System.out.println("Could not send conf to machine: "+info);
+				System.exit(-1);
+			} finally {
+				try {
+					writer.close();
+				} catch (IOException e) {
+					log.warn("error closing connection to machine: "+info);
+				}
+				try {
+					stdin.close();
+				} catch (IOException e) {
+					log.warn("error closing connection to machine: "+info);
+				}
+			}
+		}, (pb2)->{
+			System.out.println("Could not start process: "+info);
+			System.exit(-1);
+		}, (p)->{
+			if(p.exitValue()!=0) {
+				System.out.println("Process returned ["+p.exitValue()+"]: "+info);
+			}
+			waitingFor--;
+		});
 	}
 	
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static void sshonlinedistro(String hostname,String username,String distro) {
+		Path path = Paths.get(distro); 
+		Path fileName = path.getFileName();
+		String baseName = fileName.toString().substring(0,fileName.toString().length() - 11);
+		String command="nohup "+baseName+"/bin/dragon.sh -d -C "+baseName+"/conf/dragon.yaml"+" > "+baseName+"/log/dragon.stdout 2> "+baseName+"/log/dragon.stderr &";
+		String info="ssh "+username+"@"+hostname+" "+command;
+		ProcessBuilder pb = new ProcessBuilder("ssh",username+"@" + hostname,command);
+		pm.startProcess(pb, false, (p)->{
+			System.out.println("Running: "+info);
+		}, (pb2)->{
+			System.out.println("Could not start process: "+info);
+			System.exit(-1);
+		}, (p)->{
+			if(p.exitValue()!=0) {
+				System.out.println("Process returned ["+p.exitValue()+"]: "+info);
+			}
+			waitingFor--;
+		});
+	}
+	
+	@SuppressWarnings({ "unchecked" })
 	public static void main(String[] args) throws Exception {
 		final Properties properties = new Properties();
 		properties.load(Run.class.getClassLoader().getResourceAsStream("project.properties"));
@@ -188,7 +353,7 @@ public class Run {
             	conf = new Config(Constants.DRAGON_PROPERTIES);
             }
             RecycleStation.instanceInit(conf);
-            
+            pm = new ProcessManager(conf);
             
             /*
              * First check to see if we are submitting a topology using the
@@ -350,8 +515,11 @@ public class Run {
             help+="Other commands are listed below, see README.md";
             formatter.printHelp(help, options);
             System.exit(1);
+        } finally {
+        	pm.interrupt();
         }
 		
+     
 		
 	}
 

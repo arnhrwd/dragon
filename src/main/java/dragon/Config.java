@@ -238,6 +238,11 @@ public class Config extends HashMap<String, Object> {
 
 	
 	/**
+	 * maximum bounded processes running at any one time
+	 */
+	public static final String DRAGON_PROCESSES_MAX="dragon.processes.max";
+	
+	/**
 	 * Use default config and drop parameters that are relevant to the daemon.
 	 */
 	public Config() {
@@ -308,8 +313,8 @@ public class Config extends HashMap<String, Object> {
 		}
 		Map<String,Object> map = config.load(inputStream);
 		if(map!=null) {
-			log.debug(toYamlString());
 			putAll(map);
+			log.debug(toYamlString());
 		} else {
 			log.warn("empty conf file");
 		}
@@ -343,6 +348,20 @@ public class Config extends HashMap<String, Object> {
 		options.setDefaultFlowStyle(DumperOptions.FlowStyle.FLOW);
 		Yaml config = new Yaml(options);
 		String ret = config.dump(this).stripTrailing();
+		return ret;
+	}
+	
+	/**
+	 * Return the conf as a YAML string, Useful
+	 * for writing to a file that will be human readable.
+	 * @return the conf as a YAML string 
+	 */
+	public String toYamlStringNice() {
+		DumperOptions options = new DumperOptions();
+		options.setPrettyFlow(false);
+		options.setSplitLines(false);
+		Yaml config = new Yaml(options);
+		String ret = config.dump(this);
 		return ret;
 	}
 	
@@ -383,6 +402,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_COMMS_INCOMING_BUFFER_SIZE,1024);
 		put(DRAGON_FAULTS_COMPONENT_TOLERANCE,3);
 		put(DRAGON_JAVA_BIN,"java");
+		put(DRAGON_PROCESSES_MAX,10);
 	}
 	
 	/**
@@ -740,6 +760,14 @@ public class Config extends HashMap<String, Object> {
 	 */
 	public String getInfluxDBOrganization() {
 		return (String)get(INFLUXDB_ORGANIZATION);
+	}
+	
+	/**
+	 * 
+	 * @return the maximum number of bounded processes running at once
+	 */
+	public Integer getDragonProcessesMax() {
+		return (Integer)get(DRAGON_PROCESSES_MAX);
 	}
 	
  	//

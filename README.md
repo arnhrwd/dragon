@@ -16,7 +16,9 @@ The Dragon distribution has the following directory structure and relevant files
     |   |   dragon.yaml
     |
     └───lib
-        |   dragon.jar
+    |   |   dragon.jar
+    |
+    └───log
 
 To see simple help on using Dragon:
 

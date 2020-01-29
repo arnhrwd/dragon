@@ -33,6 +33,7 @@ import dragon.network.operations.JoinGroupOp;
 import dragon.network.operations.ListToposGroupOp;
 import dragon.network.operations.Ops;
 import dragon.network.operations.TermTopoGroupOp;
+import dragon.process.ProcessManager;
 import dragon.topology.DragonTopology;
 import dragon.topology.base.Component;
 
@@ -137,8 +138,13 @@ public class Node {
 	/**
 	 * Secondary daemons started by this primary daemon
 	 */
-	private HashMap<String,Process> daemons;
+	private HashMap<String,Process> daemons;	
 
+	/**
+	 * Process manager
+	 */
+	private ProcessManager processManager;
+	
 	/**
 	 * Initialize the node, will initiate a join request if possible to
 	 * join to existing daemons.
@@ -150,6 +156,7 @@ public class Node {
 		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
 		jvmArgs = bean.getInputArguments();
 		daemons=new HashMap<String,Process>();
+		processManager = new ProcessManager(conf);
 
 		// java -javaagent:dragon.jar -jar dragon.jar -d
 		// -javaagent:dragon.jar
@@ -233,24 +240,32 @@ public class Node {
 	}
 
 	/**
-	 * Return the comms layer for this node.
-	 * @return
+	 *  
+	 * @return the comms layer for this node.
 	 */
 	public synchronized IComms getComms() {
 		return comms;
 	}
+	
+	/**
+	 * 
+	 * @return the process manager for this node.
+	 */
+	public synchronized ProcessManager getProcessManager() {
+		return processManager;
+	}
 
 	/**
-	 * Return the local cluster map for this node.
-	 * @return
+	 *  
+	 * @return the local cluster map for this node.
 	 */
 	public synchronized HashMap<String, LocalCluster> getLocalClusters() {
 		return localClusters;
 	}
 
 	/**
-	 * Return the node state for this node.
-	 * @return
+	 * 
+	 * @return the node state for this node.
 	 */
 	public synchronized NodeState getNodeState() {
 		return nodeState;
@@ -266,32 +281,32 @@ public class Node {
 	}
 
 	/**
-	 * Return the node processor for this node.
-	 * @return
+	 *  
+	 * @return the node processor for this node.
 	 */
 	public synchronized NodeProcessor getNodeProcessor() {
 		return this.nodeThread;
 	}
 
 	/**
-	 * Return the router for this node.
-	 * @return
+	 * 
+	 * @return he router for this node.
 	 */
 	public synchronized Router getRouter() {
 		return router;
 	}
 
 	/**
-	 * Return the conf for this node.
-	 * @return
+	 * 
+	 * @return the conf for this node.
 	 */
 	public synchronized Config getConf() {
 		return conf;
 	}
 
 	/**
-	 * Return the ops processor for this node.
-	 * @return
+	 * 
+	 *  @return the ops processor for this node.
 	 */
 	public synchronized Ops getOpsProcessor() {
 		return operationsThread;

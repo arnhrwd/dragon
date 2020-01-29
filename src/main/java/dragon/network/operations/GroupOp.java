@@ -59,6 +59,7 @@ public abstract class GroupOp extends Op implements Serializable {
 	}
 
 	public void initiate(IComms comms) {
+		super.start(); //??? should this come before message sending
 		for(NodeDescriptor desc : group) {
 			if(!desc.equals(getSourceDesc())) {
 				try {
@@ -68,7 +69,7 @@ public abstract class GroupOp extends Op implements Serializable {
 				}
 			}
 		}
-		super.start();
+		
 	}
 	
 	public void sendSuccess(IComms comms) {

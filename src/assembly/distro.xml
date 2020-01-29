@@ -35,5 +35,9 @@
       <directory>${project.basedir}/src/conf</directory>
       <outputDirectory>/conf</outputDirectory>
     </fileSet>
+    <fileSet>
+      <directory>${project.basedir}/src/log</directory>
+      <outputDirectory>/log</outputDirectory>
+    </fileSet>
   </fileSets>
 </assembly>

@@ -12,7 +12,6 @@ public class JoinGroupOp extends GroupOp {
 	public transient NodeContext context;
 	public JoinGroupOp(IOpSuccess success, IOpFailure failure) {
 		super(success, failure);
-		// TODO Auto-generated constructor stub
 	}
 	@Override
 	protected NodeMessage initiateNodeMessage(NodeDescriptor desc) {
