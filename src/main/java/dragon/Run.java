@@ -117,6 +117,24 @@ public class Run {
 		if(cmd.hasOption("host")) {
 			hostname=cmd.getOptionValue("host");
 		}
+		System.out.println("setting up machines...");
+		if(hostname!=null) {
+			waitingFor++;
+			sshsetup(hostname,username);
+		} else {
+			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
+				String hostname2 = (String) host.get("hostname");
+				if(hostname2==null) {
+					System.out.println("an empty hostname was found in the configuration file: skipping");
+					continue;
+				}
+				waitingFor++;
+				sshsetup(hostname2,username);
+			}
+		}
+		while(waitingFor>0) {
+			Thread.sleep(100);
+		}
 		System.out.println("copying distro...");
 		if(hostname!=null) {
 			waitingFor++;
@@ -174,6 +192,17 @@ public class Run {
 				}
 				waitingFor++;
 				tconf.put(Config.DRAGON_NETWORK_LOCAL_HOST,hostname2);
+				if(host.containsKey("dport")) {
+					tconf.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,(Integer)host.get("dport"));
+				}
+				if(host.containsKey("sport")) {
+					tconf.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,(Integer)host.get("sport"));
+				}
+				tconf.put(Config.DRAGON_NETWORK_PRIMARY,true);
+				tconf.put(Config.DRAGON_NETWORK_PARTITION,Constants.DRAGON_PRIMARY_PARTITION);
+				if(host.containsKey("partition")) {
+					tconf.put(Config.DRAGON_NETWORK_PARTITION,(String)host.get("partition"));
+				}
 				Config tconf2 = new Config(tconf);
 				sshconfiguredistro(hostname2,username,distro,tconf2);
 			}
@@ -203,11 +232,27 @@ public class Run {
 		
 	}
 	
+	private static void sshsetup(String hostname,String username) {
+		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" \"sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip monitorix && sudo apt autoremove\"";
+		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,"sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip monitorix && sudo apt autoremove");
+		pm.startProcess(pb, false, (p)->{
+			System.out.println("Running: "+info);
+		}, (pb2)->{
+			System.out.println("Could not start process: "+info);
+			System.exit(-1);
+		}, (p)->{
+			if(p.exitValue()!=0) {
+				System.out.println("Process returned ["+p.exitValue()+"]: "+info);
+			} 
+			waitingFor--;
+		});
+	}
+	
 	private static void scpdistro(String hostname,String username,String distro) {
 		Path path = Paths.get(distro); 
 		Path fileName = path.getFileName();
-		String info="scp "+distro+" "+username+"@"+hostname+":"+fileName;
-		ProcessBuilder pb = new ProcessBuilder("scp", distro, username+"@" + hostname + ":" + fileName);
+		String info="scp -oStrictHostKeyChecking=no "+distro+" "+username+"@"+hostname+":"+fileName;
+		ProcessBuilder pb = new ProcessBuilder("scp","-oStrictHostKeyChecking=no", distro, username+"@" + hostname + ":" + fileName);
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 		}, (pb2)->{
@@ -224,8 +269,8 @@ public class Run {
 	private static void sshunzipdistro(String hostname,String username,String distro) {
 		Path path = Paths.get(distro); 
 		Path fileName = path.getFileName();
-		String info="ssh "+username+"@"+hostname+" \"unzip -o "+fileName+"\"";
-		ProcessBuilder pb = new ProcessBuilder("ssh",username+"@" + hostname,"unzip -o "+fileName);
+		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" \"unzip -o "+fileName+"\"";
+		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,"unzip -o "+fileName);
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 		}, (pb2)->{
@@ -243,8 +288,8 @@ public class Run {
 		Path path = Paths.get(distro); 
 		Path fileName = path.getFileName();
 		String baseName = fileName.toString().substring(0,fileName.toString().length() - 11);
-		String info="<CONF> | ssh "+username+"@"+hostname+" cat > "+baseName+"/conf/dragon.yaml";
-		ProcessBuilder pb = new ProcessBuilder("ssh",username+"@" + hostname,"cat > "+baseName+"/conf/dragon.yaml");
+		String info="<CONF> | ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" cat > "+baseName+"/conf/dragon.yaml";
+		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,"cat > "+baseName+"/conf/dragon.yaml");
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 			OutputStream stdin = p.getOutputStream();
@@ -282,8 +327,8 @@ public class Run {
 		Path fileName = path.getFileName();
 		String baseName = fileName.toString().substring(0,fileName.toString().length() - 11);
 		String command="nohup "+baseName+"/bin/dragon.sh -d -C "+baseName+"/conf/dragon.yaml"+" > "+baseName+"/log/dragon.stdout 2> "+baseName+"/log/dragon.stderr &";
-		String info="ssh "+username+"@"+hostname+" "+command;
-		ProcessBuilder pb = new ProcessBuilder("ssh",username+"@" + hostname,command);
+		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" "+command;
+		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,command);
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 		}, (pb2)->{
@@ -296,6 +341,7 @@ public class Run {
 			waitingFor--;
 		});
 	}
+	
 	
 	@SuppressWarnings({ "unchecked" })
 	public static void main(String[] args) throws Exception {

@@ -59,17 +59,17 @@ public abstract class GroupOp extends Op implements Serializable {
 	}
 
 	public void initiate(IComms comms) {
-		super.start(); //??? should this come before message sending
 		for(NodeDescriptor desc : group) {
 			if(!desc.equals(getSourceDesc())) {
 				try {
 					sendGroupNodeMessage(comms,desc, initiateNodeMessage(desc));
 				} catch (DragonCommsException e) {
 					fail("network errors prevented group operation");
+					return;
 				}
 			}
 		}
-		
+		super.start();
 	}
 	
 	public void sendSuccess(IComms comms) {

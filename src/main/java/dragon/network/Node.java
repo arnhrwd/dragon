@@ -185,7 +185,11 @@ public class Node {
 		}
 		
 		final ArrayList<NodeDescriptor> hosts = conf.getHosts();
-		sendJoinRequest(hosts);
+		if(hosts.size()>0 && !hosts.get(0).equals(comms.getMyNodeDesc())) {
+			sendJoinRequest(hosts);
+		} else {
+			setNodeState(NodeState.OPERATIONAL);
+		}
 	}
 	
 	/**
