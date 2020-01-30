@@ -553,6 +553,11 @@ public class Run {
 		});
 	}
 	
+	/**
+	 * Main
+	 * @param args
+	 * @throws Exception
+	 */
 	@SuppressWarnings({ "unchecked" })
 	public static void main(String[] args) throws Exception {
 		final Properties properties = new Properties();
@@ -587,7 +592,7 @@ public class Run {
 		Option confOption = new Option("C","conf",true,"specify the dragon conf file");
 		options.addOption(confOption);
 		Option execOption = new Option("e","exec",true,"[daemon|metrics|terminate|resume|halt|"
-		+"list|allocate|deallocate|deploy|setup|distro|unzip|config|online]");
+		+"list|allocate|deallocate|deploy|setup|distro|unzip|config|online|offline]");
 		options.addOption(execOption);		
 		
 		

@@ -25,6 +25,50 @@ To see simple help on using Dragon:
     cd dragon/bin
     ./dragon.sh -h
  
+## Quick setup on a cluster
+
+Dragon is recommended to run on a cluster of Ubuntu machines. Ensure that you have SSH access, preferably using a public key and key agent, to all Ubuntu machines upon which you want to deploy Dragon. You may deploy from your laptop/PC or from a main node of the cluster.
+
+### Configure a dragon.yaml
+
+Unpack the distribution into a directory that will not be the deployment directory. Configure a `dragon.yaml` file with the set of Ubuntu machines. In the example below we have 3 Ubuntu machines, and the first one will have two Dragon daemons deployed to it, where we have given different data port (`dport`) and service port (`sport`) numbers for those two. The others have default port numbers which are 4001 and 4000 resp. The `dragon.distro.base` is the directory to put the distribution installation on each Ubuntu machine.
+
+    dragon.network.hosts:
+    - {hostname: 45.113.235.125, dport: 4001, sport: 4000 } 
+    - {hostname: 45.113.235.125, dport: 4101, sport: 4100 }
+    - hostname: 45.113.235.146
+    - hostname: 45.113.235.116
+    dragon.distro.base: dragon
+
+Dragon has a number of deployment commands available, with `deploy` bundling a number of them together. It takes the original distro package as a command line parameter.
+
+    ./dragon.sh deploy PATH_TO_DISTRO/dragon-VERSION-distro.zip [USERNAME]
+
+The distro must be one of `-distro.zip`, `-distro.tar.gz` or `-distro.tar.bz2`. The `USERNAME` is an optional parameter that is the username to login to the Ubuntu machines as, otherwise the user's login name will be used. The `deploy` command will install software on each Ubuntu machine:
+
+    mkdir -p dragon && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip && sudo apt autoremove
+
+It will then copy the distribution into the distro base dir (`dragon` in this example), unpack it and configure it. The configuration file and other related files like log files will have the data port appended to them, so that they are unique when multiple Dragon daemons are on the same machine, e.g.:
+
+    |
+    └───conf
+    |   |   dragon-4001.yaml
+    |   |   dragon-4101.yaml
+
+It will also bring the daemons online using a command like:
+
+    nohup dragon/dragon/bin/dragon.sh -d -C dragon/dragon/conf/dragon-4001.yaml > dragon/dragon/log/dragon-4001.stdout 2> dragon/dragon/log/dragon-4001.stderr &
+
+Now you can submit a topology to the Dragon cluster. Other commands that are useful for controlling deployment are:
+
+    ./dragon.sh offline [USERNAME]
+    ./dragon.sh online [USERNAME]
+    ./dragon.sh config [USERNAME]
+    
+These allow you to kill all Dragon daemons (bring them offline), bring them back online and to redo their configuration file, e.g. if you have added more Ubuntu machines, or parameters, etc.
+
+# Detailed Usage
+ 
 Detailed usage instructions are below.
 
 # Compiling
@@ -89,7 +133,7 @@ The available parameters and their defaults are listed below.
 
 - `dragon.output.buffer.size: 16` **Integer** - the size of the buffers on Spout and Bolt outputs
 - `dragon.input.buffer.size: 16` **Integer** - the size of the buffers on Spout and Bolt inputs
-- `dragon.base.dir: /tmp/dragon` **String** - the base directory where Dragon can store files such as submitted jar files and check point data
+- `dragon.data.dir: /tmp/dragon` **String** - the data directory where Dragon can store files such as submitted jar files and check point data
 - `dragon.jar.dir: jars` **String** - the sub-directory to store jars files within
 - `dragon.localcluster.threads: 2 ` **Integer** - the size of the thread pool that transfers tuples within a local cluster
 - `dragon.embedding.algorithm: dragon.topology.RoundRobinEmbedding` **String** - the embedding algorithm that maps a task in the topology to a host node
@@ -134,10 +178,10 @@ The `hostname` must be supplied otherwise the entry is skipped, omitted port val
 
 Primary daemon and network partition:
 
-- `dragon.network.primary: true` **Boolean** - only one Dragon daemon per machine should be designated as the primary
+- `dragon.network.primary: true` **Boolean** - Dragon daemons listed in the `dragon.yaml` must all be listed as `true` (in fact, they will be set true anyway). A primary daemon is one which was set online by the command line interface. Non-primary daemons are created by primary daemons, when allocating new partitions and so on, as explained further in.
 - `dragon.network.partition: primary` **String** - the partition name for this daemon
 
-The primary daemon is responsible for starting up other daemons on the same machine, and monitoring them for liveness, restarting as needed. The primary daemon would usually be supervised, e.g. being started by `supervisord`, or started via a remote `ssh` command.
+The primary daemon is responsible for starting up other daemons on the same machine, and monitoring them for liveness, restarting as needed. The primary daemon would usually be started via a remote `ssh` command. It is not necessary to use `supervisord` since the daemons will supervise each other.
 
 Every Dragon daemon is part of a single partition, by default called the `primary` partition. When a topology is submitted, the embedding strategy can select the partition that the topology will be embedded into, which allows for complete process isolation of topologies.
 
