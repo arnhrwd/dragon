@@ -34,7 +34,8 @@ import dragon.process.ProcessManager;
 import dragon.tuple.RecycleStation;
 
 /**
- * Main entry point for Dragon nodes.
+ * Main entry point for Dragon nodes. Parses the command line and 
+ * runs appropriate commands.
  * @author aaron
  *
  */
@@ -93,11 +94,11 @@ public class Run {
 	}
 	
 	/**
-	 * 
+	 * Utility function
 	 * @param cmd
 	 * @param conf
-	 * @return a list of _unique_ hostnames in order found in the conf file,
-	 * or the hostnames as given  on the command line
+	 * @return a list of <i>unique</i> hostnames in order found in the conf file,
+	 * or, if supplied with -h, the hostname as given  on the command line
 	 */
 	private static ArrayList<String> hostnames(CommandLine cmd, Config conf){
 		ArrayList<String> hostnames = new ArrayList<String>();
@@ -153,6 +154,13 @@ public class Run {
 		onlinedistro(hostnames,username,cmd,conf);
 	}
 	
+	/**
+	 * Setup a set of Ubuntu machines with appropriate software.
+	 * @param hostnames list of hostnames to ssh to
+	 * @param username the username to login as
+	 * @param conf provides the distro base dir to use
+	 * @throws InterruptedException
+	 */
 	private static void setup(ArrayList<String> hostnames,String username,Config conf) throws InterruptedException {
 		System.out.println("setting up machines...");
 		for(String hostname : hostnames) {
@@ -164,6 +172,15 @@ public class Run {
 		}
 	}
 	
+	/**
+	 * Copy a distribution to a set of Ubuntu machines.
+	 * @param hostnames list of hostnames to scp to
+	 * @param username the username to login as
+	 * @param distro the name of the package, which must be a 
+	 * dragon package ending in -distro.zip | -distro.tar.gz | -distro.tar.bz2
+	 * @param conf provides the distro base dir to use
+	 * @throws InterruptedException
+	 */
 	private static void distro(ArrayList<String> hostnames,String username,String distro,Config conf) throws InterruptedException {
 		System.out.println("copying distro...");
 		for(String hostname: hostnames) {
@@ -175,6 +192,15 @@ public class Run {
 		}
 	}
 	
+	/**
+	 * Unzip a distribution on a set of Ubuntu machines.
+	 * @param hostnames list of hostnames to ssh to
+	 * @param username the username to login as
+	 * @param distro the name of the package, which must be a 
+	 * dragon package ending in -distro.zip | -distro.tar.gz | -distro.tar.bz2
+	 * @param conf provides the distro base dir to use
+	 * @throws InterruptedException
+	 */
 	private static void unzipdistro(ArrayList<String> hostnames,String username,String distro,Config conf) throws InterruptedException {
 		System.out.println("unzipping distro...");
 		for(String hostname: hostnames) {
@@ -186,6 +212,13 @@ public class Run {
 		}
 	}
 	
+	/**
+	 * Utility function.
+	 * @param cmd
+	 * @param conf
+	 * @param i
+	 * @return a conf that is specific to a given host
+	 */
 	private static Config specificConf(CommandLine cmd,Config conf,int i) {
 		Config tconf = new Config(conf);
 		ArrayList<String> hostnames = hostnames(cmd,conf);
@@ -215,6 +248,15 @@ public class Run {
 		return tconf;
 	}
 	
+	/**
+	 * Create configuration files for Dragon daemons on a set of Ubuntu machines.
+	 * @param hostnames list of hostnames to ssh to
+	 * @param username the username to login as
+	 * @param cmd is the command line parameters
+	 * @param conf provides the default conf to use, which is overridden with the specific
+	 * port numbers and hostname for each deamon
+	 * @throws InterruptedException
+	 */
 	private static void configuredistro(ArrayList<String> hostnames,String username,CommandLine cmd, Config conf) throws InterruptedException {
 		System.out.println("configuring...");
 		if(cmd.hasOption("host")) {
@@ -239,6 +281,14 @@ public class Run {
 		}
 	}
 	
+	/**
+	 * Bring online, using nohup, Dragon daemons on a set of Ubuntu machines.
+	 * @param hostnames list of hostnames to ssh to
+	 * @param username the username to login as
+	 * @param cmd is the command line parameters
+	 * @param conf provides the host information for each host to bring online
+	 * @throws InterruptedException
+	 */
 	private static void onlinedistro(ArrayList<String> hostnames,String username,CommandLine cmd,Config conf) throws InterruptedException {
 		System.out.println("bringing Dragon daemons online...");
 		if(cmd.hasOption("host")) {
@@ -263,6 +313,14 @@ public class Run {
 		}
 	}
 	
+	/**
+	 * Bring offline, using kill, Dragon daemons on a set of Ubuntu machines.
+	 * @param hostnames list of hostnames to ssh to
+	 * @param username the username to login as
+	 * @param cmd is the command line parameters
+	 * @param conf provides the host information for each host to bring offline
+	 * @throws InterruptedException
+	 */
 	private static void offlinedistro(ArrayList<String> hostnames,String username,CommandLine cmd,Config conf) throws InterruptedException {
 		System.out.println("bringing Dragon daemons offline...");
 		if(cmd.hasOption("host")) {
@@ -287,6 +345,12 @@ public class Run {
 		}
 	}
 	
+	/**
+	 * Utility function to ssh setup a Ubuntu machine.
+	 * @param hostname
+	 * @param username
+	 * @param base
+	 */
 	private static void sshsetup(String hostname,String username,String base) {
 		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+
 				" \"mkdir -p "+base+
@@ -306,6 +370,13 @@ public class Run {
 		});
 	}
 	
+	/**
+	 * Utility function to scp a distro to a Ubuntu machine.
+	 * @param hostname
+	 * @param username
+	 * @param distro
+	 * @param base
+	 */
 	private static void scpdistro(String hostname,String username,String distro,String base) {
 		Path path = Paths.get(distro); 
 		Path fileName = path.getFileName();
@@ -325,6 +396,11 @@ public class Run {
 		});
 	}
 	
+	/**
+	 * Utility function to remove the archive suffix from a distro filename.
+	 * @param fileName
+	 * @return the stripped filename
+	 */
 	private static String removeArchiveSuffix(String fileName) {
 		if(fileName.endsWith("-distro.zip")) {
 			return fileName.toString().substring(0,fileName.toString().length() - 11);
@@ -339,6 +415,11 @@ public class Run {
 		return null;
 	}
 	
+	/**
+	 * Utility function to return the command that will unpack the distro
+	 * @param fileName
+	 * @return the command that will unpack the distro
+	 */
 	private static String uncompressCommand(String fileName) {
 		if(fileName.endsWith("-distro.zip")) {
 			return "unzip -o";
@@ -353,7 +434,13 @@ public class Run {
 		return null;
 	}
 	
-	
+	/**
+	 * Utility function to ssh into a Ubuntu machine an unzip a distro.
+	 * @param hostname
+	 * @param username
+	 * @param distro
+	 * @param base
+	 */
 	private static void sshunzipdistro(String hostname,String username,String distro,String base) {
 		Path path = Paths.get(distro); 
 		Path fileName = path.getFileName();
@@ -375,6 +462,12 @@ public class Run {
 		});
 	}
 	
+	/**
+	 * Utility function to ssh into a Ubuntu machine and configure a Dragon daemon.
+	 * @param hostname
+	 * @param username
+	 * @param conf
+	 */
 	private static void sshconfiguredistro(String hostname,String username,Config conf) {
 		String info="<CONF> | ssh -oStrictHostKeyChecking=no "+username+
 				"@"+hostname+" \"cat > "+conf.getDragonDistroBase()+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml\"";
@@ -412,6 +505,12 @@ public class Run {
 		});
 	}
 	
+	/**
+	 * Utility function to ssh into a Ubuntu machine and bring a Dragon daemon online.
+	 * @param hostname
+	 * @param username
+	 * @param conf
+	 */
 	private static void sshonlinedistro(String hostname,String username,Config conf) {
 		String base=conf.getDragonDistroBase();
 		String command="nohup "+base+"/dragon/bin/dragon.sh -d -C "+base+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml"+" > "+
@@ -431,6 +530,12 @@ public class Run {
 		});
 	}
 	
+	/**
+	 * Utility function to ssh into a Ubuntu machine and bring a Dragon daemon offline.
+	 * @param hostname
+	 * @param username
+	 * @param conf
+	 */
 	private static void sshofflinedistro(String hostname,String username,Config conf) { 
 		String command="kill `cat "+conf.getDragonDataDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort()+".pid`";
 		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" \""+command+"\"";
