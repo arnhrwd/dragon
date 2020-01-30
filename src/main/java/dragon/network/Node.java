@@ -1,8 +1,10 @@
 package dragon.network;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
@@ -147,12 +149,21 @@ public class Node {
 	
 	/**
 	 * Initialize the node, will initiate a join request if possible to
-	 * join to existing daemons.
+	 * join to existing daemons, unless it is the first listed host in the
+	 * host list, in which case it will just wait for others to join to it.
 	 * @param conf provides the configuration to use
 	 * @throws IOException
 	 */
 	public Node(Config conf) throws IOException {
-
+		Long pid = ProcessHandle.current().pid();
+		log.debug("pid = "+pid);
+		log.debug("writing pid to ["+conf.getDragonDataDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort()+".pid]");
+		File fout = new File(conf.getDragonDataDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort()+".pid");
+		FileOutputStream fos = new FileOutputStream(fout);
+		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+		bw.write(pid.toString());
+		bw.newLine();
+		bw.close();
 		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
 		jvmArgs = bean.getInputArguments();
 		daemons=new HashMap<String,Process>();

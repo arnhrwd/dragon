@@ -46,10 +46,10 @@ public class Config extends HashMap<String, Object> {
 	/**
 	 * the base directory where Dragon can store files such as submitted jar files and check point data
 	 */
-	public static final String DRAGON_BASE_DIR="dragon.base.dir";
+	public static final String DRAGON_DATA_DIR="dragon.data.dir";
 	
 	/**
-	 * the sub-directory to store jars files within
+	 * the sub-directory to store jars files within the data dir
 	 */
 	public static final String DRAGON_JAR_DIR="dragon.jar.dir";
 	
@@ -243,6 +243,11 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_PROCESSES_MAX="dragon.processes.max";
 	
 	/**
+	 * distribution basename
+	 */
+	public static final String DRAGON_DISTRO_BASE="dragon.distro.base";
+	
+	/**
 	 * Use default config and drop parameters that are relevant to the daemon.
 	 */
 	public Config() {
@@ -371,7 +376,7 @@ public class Config extends HashMap<String, Object> {
 	public void defaults() {
 		put(DRAGON_OUTPUT_BUFFER_SIZE,16);
 		put(DRAGON_INPUT_BUFFER_SIZE,16);
-		put(DRAGON_BASE_DIR,"/tmp/dragon");
+		put(DRAGON_DATA_DIR,"/tmp/dragon");
 		put(DRAGON_PERSISTENCE_DIR,"persistance");
 		put(DRAGON_JAR_DIR,"jars");
 		put(DRAGON_LOCALCLUSTER_THREADS,5);
@@ -403,6 +408,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_FAULTS_COMPONENT_TOLERANCE,3);
 		put(DRAGON_JAVA_BIN,"java");
 		put(DRAGON_PROCESSES_MAX,10);
+		put(DRAGON_DISTRO_BASE,"dragon");
 	}
 	
 	/**
@@ -413,7 +419,7 @@ public class Config extends HashMap<String, Object> {
 	public void drop() {
 		remove(DRAGON_OUTPUT_BUFFER_SIZE);
 		remove(DRAGON_INPUT_BUFFER_SIZE);
-		remove(DRAGON_BASE_DIR);
+		remove(DRAGON_DATA_DIR);
 		remove(DRAGON_PERSISTENCE_DIR);
 		remove(DRAGON_JAR_DIR);
 		remove(DRAGON_LOCALCLUSTER_THREADS);
@@ -455,8 +461,8 @@ public class Config extends HashMap<String, Object> {
 	 *  
 	 * @return the base directory.
 	 */
-	public String getDragonBaseDir() {
-		return (String)get(DRAGON_BASE_DIR);
+	public String getDragonDataDir() {
+		return (String)get(DRAGON_DATA_DIR);
 	}
 	
 	/**
@@ -770,6 +776,14 @@ public class Config extends HashMap<String, Object> {
 		return (Integer)get(DRAGON_PROCESSES_MAX);
 	}
 	
+	/**
+	 * 
+	 * @return the base of the distro installation
+	 */
+	public String getDragonDistroBase() {
+		return (String)get(DRAGON_DISTRO_BASE);
+	}
+	
  	//
 	// Advanced Getters
 	//
@@ -779,7 +793,7 @@ public class Config extends HashMap<String, Object> {
 	 * @return the jar path
 	 */
 	public String getJarPath() {
-		return getDragonBaseDir()+"/"+getDragonJarDir();
+		return getDragonDataDir()+"/"+getDragonJarDir();
 	}
 	
 	/**

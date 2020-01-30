@@ -12,6 +12,7 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -92,7 +93,38 @@ public class Run {
 	}
 	
 	/**
+	 * 
+	 * @param cmd
+	 * @param conf
+	 * @return a list of _unique_ hostnames in order found in the conf file,
+	 * or the hostnames as given  on the command line
+	 */
+	private static ArrayList<String> hostnames(CommandLine cmd, Config conf){
+		ArrayList<String> hostnames = new ArrayList<String>();
+		if(cmd.hasOption("host")) {
+			hostnames.add(cmd.getOptionValue("host"));
+		} else {
+			String hostname="";
+			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
+				if(!host.containsKey("hostname")) {
+					System.out.println("an empty hostname was found in the configuration file: skipping");
+					continue;
+				} else {
+					String nextHostname = (String) host.get("hostname");
+					if(!nextHostname.equals(hostname)) {
+						hostnames.add(nextHostname);
+					}
+					hostname=nextHostname;
+				}
+				
+			}
+		}
+		return hostnames;
+	}
+	
+	/**
 	 * dragon deploy [-h HOSTNAME] [-p DPORT] [-s SPORT] DRAGON-VERSION-distro.zip [USERNAME]
+	 * Setup a machine to make it ready for dragon. Installs java 11 and unzip using apt.
 	 * Copy the package to each of the hosts in dragon.network.hosts, unzip it, prepare its
 	 * configuration file with a copy of the locally used conf modified to suit the specific
 	 * host, and put it online. If a host is given using -h then that host is specifically
@@ -113,128 +145,154 @@ public class Run {
 		if(cmd.getArgs().length==3) {
 			username=cmd.getArgs()[2];
 		}
-		String hostname=null;
-		if(cmd.hasOption("host")) {
-			hostname=cmd.getOptionValue("host");
-		}
+		ArrayList<String> hostnames = hostnames(cmd,conf);
+		setup(hostnames,username,conf);
+		distro(hostnames,username,distro,conf);
+		unzipdistro(hostnames,username,distro,conf);
+		configuredistro(hostnames,username,cmd,conf);
+		onlinedistro(hostnames,username,cmd,conf);
+	}
+	
+	private static void setup(ArrayList<String> hostnames,String username,Config conf) throws InterruptedException {
 		System.out.println("setting up machines...");
-		if(hostname!=null) {
+		for(String hostname : hostnames) {
 			waitingFor++;
-			sshsetup(hostname,username);
-		} else {
-			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
-				String hostname2 = (String) host.get("hostname");
-				if(hostname2==null) {
-					System.out.println("an empty hostname was found in the configuration file: skipping");
-					continue;
-				}
-				waitingFor++;
-				sshsetup(hostname2,username);
-			}
+			sshsetup(hostname,username,conf.getDragonDistroBase());
 		}
 		while(waitingFor>0) {
 			Thread.sleep(100);
 		}
+	}
+	
+	private static void distro(ArrayList<String> hostnames,String username,String distro,Config conf) throws InterruptedException {
 		System.out.println("copying distro...");
-		if(hostname!=null) {
+		for(String hostname: hostnames) {
 			waitingFor++;
-			scpdistro(hostname,username,distro);
-		} else {
-			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
-				String hostname2 = (String) host.get("hostname");
-				if(hostname2==null) {
-					System.out.println("an empty hostname was found in the configuration file: skipping");
-					continue;
-				}
-				waitingFor++;
-				scpdistro(hostname2,username,distro);
-			}
+			scpdistro(hostname,username,distro,conf.getDragonDistroBase());
 		}
 		while(waitingFor>0) {
 			Thread.sleep(100);
 		}
+	}
+	
+	private static void unzipdistro(ArrayList<String> hostnames,String username,String distro,Config conf) throws InterruptedException {
 		System.out.println("unzipping distro...");
-		if(hostname!=null) {
+		for(String hostname: hostnames) {
 			waitingFor++;
-			sshunzipdistro(hostname,username,distro);
-		} else {
-			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
-				String hostname2 = (String) host.get("hostname");
-				if(hostname2==null) {
-					System.out.println("an empty hostname was found in the configuration file: skipping");
-					continue;
-				}
-				waitingFor++;
-				sshunzipdistro(hostname2,username,distro);
-			}
+			sshunzipdistro(hostname,username,distro,conf.getDragonDistroBase());
 		}
 		while(waitingFor>0) {
 			Thread.sleep(100);
 		}
-		System.out.println("configuring...");
+	}
+	
+	private static Config specificConf(CommandLine cmd,Config conf,int i) {
 		Config tconf = new Config(conf);
+		ArrayList<String> hostnames = hostnames(cmd,conf);
 		if(cmd.hasOption("dport")) {
 			tconf.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,Integer.parseInt(cmd.getOptionValue("dport")));
 		}
 		if(cmd.hasOption("sport")) {
 			tconf.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,Integer.parseInt(cmd.getOptionValue("sport")));
 		}	
-		if(hostname!=null) {
-			waitingFor++;
-			tconf.put(Config.DRAGON_NETWORK_LOCAL_HOST,hostname);
-			sshconfiguredistro(hostname,username,distro,tconf);
+		if(cmd.hasOption("host")) {
+			tconf.put(Config.DRAGON_NETWORK_LOCAL_HOST,hostnames.get(0));
 		} else {
-			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
-				String hostname2 = (String) host.get("hostname");
-				if(hostname2==null) {
-					System.out.println("an empty hostname was found in the configuration file: skipping");
-					continue;
-				}
-				waitingFor++;
-				tconf.put(Config.DRAGON_NETWORK_LOCAL_HOST,hostname2);
-				if(host.containsKey("dport")) {
-					tconf.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,(Integer)host.get("dport"));
-				}
-				if(host.containsKey("sport")) {
-					tconf.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,(Integer)host.get("sport"));
-				}
-				tconf.put(Config.DRAGON_NETWORK_PRIMARY,true);
-				tconf.put(Config.DRAGON_NETWORK_PARTITION,Constants.DRAGON_PRIMARY_PARTITION);
-				if(host.containsKey("partition")) {
-					tconf.put(Config.DRAGON_NETWORK_PARTITION,(String)host.get("partition"));
-				}
-				Config tconf2 = new Config(tconf);
-				sshconfiguredistro(hostname2,username,distro,tconf2);
+			HashMap<String,?> host = conf.getDragonNetworkHosts().get(i);
+			tconf.put(Config.DRAGON_NETWORK_LOCAL_HOST,(String) host.get("hostname"));
+			if(host.containsKey("dport")) {
+				tconf.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,(Integer)host.get("dport"));
+			}
+			if(host.containsKey("sport")) {
+				tconf.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,(Integer)host.get("sport"));
+			}
+			tconf.put(Config.DRAGON_NETWORK_PRIMARY,true);
+			tconf.put(Config.DRAGON_NETWORK_PARTITION,Constants.DRAGON_PRIMARY_PARTITION);
+			if(host.containsKey("partition")) {
+				tconf.put(Config.DRAGON_NETWORK_PARTITION,(String)host.get("partition"));
 			}
 		}
-		while(waitingFor>0) {
-			Thread.sleep(100);
-		}
-		System.out.println("starting daemons...");
-		if(hostname!=null) {
-			waitingFor++;
-			sshonlinedistro(hostname,username,distro);
-		} else {
-			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
-				String hostname2 = (String) host.get("hostname");
-				if(hostname2==null) {
-					System.out.println("an empty hostname was found in the configuration file: skipping");
-					continue;
-				}
-				waitingFor++;
-				sshonlinedistro(hostname2,username,distro);
-			}
-		}
-		while(waitingFor>0) {
-			Thread.sleep(100);
-		}
-		System.out.println("done");
-		
+		return tconf;
 	}
 	
-	private static void sshsetup(String hostname,String username) {
-		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" \"sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip monitorix && sudo apt autoremove\"";
-		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,"sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip monitorix && sudo apt autoremove");
+	private static void configuredistro(ArrayList<String> hostnames,String username,CommandLine cmd, Config conf) throws InterruptedException {
+		System.out.println("configuring...");
+		if(cmd.hasOption("host")) {
+			waitingFor++;
+			sshconfiguredistro(hostnames.get(0),username,specificConf(cmd,conf,0));
+		} else {
+			int i=0;
+			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
+				String hostname2 = (String) host.get("hostname");
+				if(hostname2==null) {
+					System.out.println("an empty hostname was found in the configuration file: skipping");
+					i++;
+					continue;
+				}
+				waitingFor++;
+				sshconfiguredistro(hostname2,username,specificConf(cmd,conf,i));
+				i++;
+			}
+		}
+		while(waitingFor>0) {
+			Thread.sleep(100);
+		}
+	}
+	
+	private static void onlinedistro(ArrayList<String> hostnames,String username,CommandLine cmd,Config conf) throws InterruptedException {
+		System.out.println("bringing Dragon daemons online...");
+		if(cmd.hasOption("host")) {
+			waitingFor++;
+			sshonlinedistro(hostnames.get(0),username,specificConf(cmd,conf,0));
+		} else {
+			int i=0;
+			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
+				String hostname2 = (String) host.get("hostname");
+				if(hostname2==null) {
+					System.out.println("an empty hostname was found in the configuration file: skipping");
+					i++;
+					continue;
+				}
+				waitingFor++;
+				sshonlinedistro(hostname2,username,specificConf(cmd,conf,i));
+				i++;
+			}
+		}
+		while(waitingFor>0) {
+			Thread.sleep(100);
+		}
+	}
+	
+	private static void offlinedistro(ArrayList<String> hostnames,String username,CommandLine cmd,Config conf) throws InterruptedException {
+		System.out.println("bringing Dragon daemons offline...");
+		if(cmd.hasOption("host")) {
+			waitingFor++;
+			sshofflinedistro(hostnames.get(0),username,specificConf(cmd,conf,0));
+		} else {
+			int i=0;
+			for(HashMap<String,?> host : conf.getDragonNetworkHosts()) {
+				String hostname2 = (String) host.get("hostname");
+				if(hostname2==null) {
+					System.out.println("an empty hostname was found in the configuration file: skipping");
+					i++;
+					continue;
+				}
+				waitingFor++;
+				sshofflinedistro(hostname2,username,specificConf(cmd,conf,i));
+				i++;
+			}
+		}
+		while(waitingFor>0) {
+			Thread.sleep(100);
+		}
+	}
+	
+	private static void sshsetup(String hostname,String username,String base) {
+		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+
+				" \"mkdir -p "+base+
+				" && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip && sudo apt autoremove\"";
+		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,
+				"mkdir -p "+base+" && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip monitorix && sudo apt autoremove");
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 		}, (pb2)->{
@@ -248,11 +306,12 @@ public class Run {
 		});
 	}
 	
-	private static void scpdistro(String hostname,String username,String distro) {
+	private static void scpdistro(String hostname,String username,String distro,String base) {
 		Path path = Paths.get(distro); 
 		Path fileName = path.getFileName();
-		String info="scp -oStrictHostKeyChecking=no "+distro+" "+username+"@"+hostname+":"+fileName;
-		ProcessBuilder pb = new ProcessBuilder("scp","-oStrictHostKeyChecking=no", distro, username+"@" + hostname + ":" + fileName);
+		String info="scp -oStrictHostKeyChecking=no "+distro+" "+username+"@"+hostname+":"+base+"/"+fileName;
+		ProcessBuilder pb = new ProcessBuilder("scp","-oStrictHostKeyChecking=no", distro,
+				username+"@" + hostname + ":" + base+"/"+fileName);
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 		}, (pb2)->{
@@ -266,11 +325,43 @@ public class Run {
 		});
 	}
 	
-	private static void sshunzipdistro(String hostname,String username,String distro) {
+	private static String removeArchiveSuffix(String fileName) {
+		if(fileName.endsWith("-distro.zip")) {
+			return fileName.toString().substring(0,fileName.toString().length() - 11);
+		} else if(fileName.endsWith("-distro.tar.gz")) {
+			return fileName.toString().substring(0,fileName.toString().length() - 14);
+		} else if(fileName.endsWith("-distro.tar.bz2")) {
+			return fileName.toString().substring(0,fileName.toString().length() - 15);
+		} else {
+			System.out.println("The distro must be one of *-distro.zip | *-distro.tar.gz | *-distro.tar.bz2");
+			System.exit(-1);
+		}
+		return null;
+	}
+	
+	private static String uncompressCommand(String fileName) {
+		if(fileName.endsWith("-distro.zip")) {
+			return "unzip -o";
+		} else if(fileName.endsWith("-distro.tar.gz")) {
+			return "tar xfa";
+		} else if(fileName.endsWith("-distro.tar.bz2")) {
+			return "tar xfa";
+		} else {
+			System.out.println("The distro must be one of *-distro.zip | *-distro.tar.gz | *-distro.tar.bz2");
+			System.exit(-1);
+		}
+		return null;
+	}
+	
+	
+	private static void sshunzipdistro(String hostname,String username,String distro,String base) {
 		Path path = Paths.get(distro); 
 		Path fileName = path.getFileName();
-		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" \"unzip -o "+fileName+"\"";
-		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,"unzip -o "+fileName);
+		String baseName = removeArchiveSuffix(fileName.toString());
+		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" \"cd "+base+
+				" && "+uncompressCommand(fileName.toString())+" "+fileName+" && rm -f dragon && ln -s "+baseName+" dragon\"";
+		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+
+				"@" + hostname,"cd "+base+" && "+uncompressCommand(fileName.toString())+" "+fileName+" && rm -f dragon && ln -s "+baseName+" dragon");
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 		}, (pb2)->{
@@ -284,12 +375,11 @@ public class Run {
 		});
 	}
 	
-	private static void sshconfiguredistro(String hostname,String username,String distro,Config conf) {
-		Path path = Paths.get(distro); 
-		Path fileName = path.getFileName();
-		String baseName = fileName.toString().substring(0,fileName.toString().length() - 11);
-		String info="<CONF> | ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" cat > "+baseName+"/conf/dragon.yaml";
-		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,"cat > "+baseName+"/conf/dragon.yaml");
+	private static void sshconfiguredistro(String hostname,String username,Config conf) {
+		String info="<CONF> | ssh -oStrictHostKeyChecking=no "+username+
+				"@"+hostname+" \"cat > "+conf.getDragonDistroBase()+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml\"";
+		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",
+				username+"@" + hostname,"cat > "+conf.getDragonDistroBase()+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml");
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 			OutputStream stdin = p.getOutputStream();
@@ -322,12 +412,11 @@ public class Run {
 		});
 	}
 	
-	private static void sshonlinedistro(String hostname,String username,String distro) {
-		Path path = Paths.get(distro); 
-		Path fileName = path.getFileName();
-		String baseName = fileName.toString().substring(0,fileName.toString().length() - 11);
-		String command="nohup "+baseName+"/bin/dragon.sh -d -C "+baseName+"/conf/dragon.yaml"+" > "+baseName+"/log/dragon.stdout 2> "+baseName+"/log/dragon.stderr &";
-		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" "+command;
+	private static void sshonlinedistro(String hostname,String username,Config conf) {
+		String base=conf.getDragonDistroBase();
+		String command="nohup "+base+"/dragon/bin/dragon.sh -d -C "+base+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml"+" > "+
+				base+"/dragon/log/dragon-"+conf.getDragonNetworkLocalDataPort()+".stdout 2> "+base+"/dragon/log/dragon-"+conf.getDragonNetworkLocalDataPort()+".stderr &";
+		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" \""+command+"\"";
 		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,command);
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
@@ -342,6 +431,22 @@ public class Run {
 		});
 	}
 	
+	private static void sshofflinedistro(String hostname,String username,Config conf) { 
+		String command="kill `cat "+conf.getDragonDataDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort()+".pid`";
+		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" \""+command+"\"";
+		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,command);
+		pm.startProcess(pb, false, (p)->{
+			System.out.println("Running: "+info);
+		}, (pb2)->{
+			System.out.println("Could not start process: "+info);
+			System.exit(-1);
+		}, (p)->{
+			if(p.exitValue()!=0) {
+				System.out.println("Process returned ["+p.exitValue()+"]: "+info);
+			}
+			waitingFor--;
+		});
+	}
 	
 	@SuppressWarnings({ "unchecked" })
 	public static void main(String[] args) throws Exception {
@@ -376,7 +481,8 @@ public class Run {
 		options.addOption(listOption);
 		Option confOption = new Option("C","conf",true,"specify the dragon conf file");
 		options.addOption(confOption);
-		Option execOption = new Option("e","exec",true,"[daemon|metrics|terminate|resume|halt|list|allocate|deallocate|deploy]");
+		Option execOption = new Option("e","exec",true,"[daemon|metrics|terminate|resume|halt|"
+		+"list|allocate|deallocate|deploy|setup|distro|unzip|config|online]");
 		options.addOption(execOption);		
 		
 		
@@ -446,6 +552,68 @@ public class Run {
 	            case "deploy":
 	            	deploy(cmd,conf);
 	            	break;
+	            case "setup": {
+	            	ArrayList<String> hostnames = hostnames(cmd,conf);
+	            	String username=System.getProperty("user.name");
+	        		if(cmd.getArgs().length==2) {
+	        			username=cmd.getArgs()[1];
+	        		}
+	            	setup(hostnames,username,conf);
+	            	break;
+	            }
+	            case "distro":{
+	            	ArrayList<String> hostnames = hostnames(cmd,conf);
+	            	if(cmd.getArgs().length<2) {
+	        			throw new ParseException("ERROR: a package distro must be given\n try: dragon deploy [-h HOSTNAME] [-p DPORT] [-s SPORT] DRAGON-VERSION-distro.zip [USERNAME]");
+	        		}
+	        		String distro = cmd.getArgList().get(1);
+	        		String username=System.getProperty("user.name");
+	        		if(cmd.getArgs().length==3) {
+	        			username=cmd.getArgs()[2];
+	        		}
+	            	distro(hostnames,username,distro,conf);
+	            	break;
+	            }
+	            case "unzip":{
+	            	ArrayList<String> hostnames = hostnames(cmd,conf);
+	            	if(cmd.getArgs().length<2) {
+	        			throw new ParseException("ERROR: a package distro must be given\n try: dragon deploy [-h HOSTNAME] [-p DPORT] [-s SPORT] DRAGON-VERSION-distro.zip [USERNAME]");
+	        		}
+	        		String distro = cmd.getArgList().get(1);
+	        		String username=System.getProperty("user.name");
+	        		if(cmd.getArgs().length==3) {
+	        			username=cmd.getArgs()[2];
+	        		}
+	            	unzipdistro(hostnames,username,distro,conf);
+	            	break;
+	            }
+	            case "config":{
+	            	ArrayList<String> hostnames = hostnames(cmd,conf);
+	            	String username=System.getProperty("user.name");
+	        		if(cmd.getArgs().length==2) {
+	        			username=cmd.getArgs()[1];
+	        		}
+	            	configuredistro(hostnames,username,cmd,conf);
+	            	break;
+	            }
+	            case "online":{
+	            	ArrayList<String> hostnames = hostnames(cmd,conf);
+	            	String username=System.getProperty("user.name");
+	        		if(cmd.getArgs().length==2) {
+	        			username=cmd.getArgs()[1];
+	        		}
+	            	onlinedistro(hostnames,username,cmd,conf);
+	            	break;
+	            }
+	            case "offline":{
+	            	ArrayList<String> hostnames = hostnames(cmd,conf);
+	            	String username=System.getProperty("user.name");
+	        		if(cmd.getArgs().length==2) {
+	        			username=cmd.getArgs()[1];
+	        		}
+	            	offlinedistro(hostnames,username,cmd,conf);
+	            	break;
+	            }
 	            case "allocate":
 	            	break;
 	            case "metrics":{
