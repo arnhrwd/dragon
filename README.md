@@ -8,6 +8,7 @@ A high performance, distributed stream processing system, loosely based on the A
 The Dragon distribution has the following directory structure and relevant files:
 
     dragon
+    |   LICENSE
     |   README.md
     └───bin
     |   |   dragon.sh
