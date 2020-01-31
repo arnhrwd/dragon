@@ -58,22 +58,9 @@ public class Run {
 	 * @param logFile the place to write the log file
 	 */
 	public static void updateLog4jConfiguration(String logFile) { 
-//	    Properties props = new Properties(); 
-//	    try { 
-//	        InputStream configStream = Run.class.getResourceAsStream( "/log4j.properties"); 
-//	        props.load(configStream); 
-//	        configStream.close(); 
-//	    } catch (IOException e) { 
-//	        System.err.println("Error: Cannot load configuration file"); 
-//	    } 
-//	    props.setProperty("log4j.appender.file.File", logFile); 
-	    //PropertyConfigurator.configure(props); 
-
+		Properties props = System.getProperties();
+		props.setProperty("logFile",logFile);
 	    LoggerContext context = (LoggerContext)LogManager.getContext(false);
-	    Configuration config = context.getConfiguration();
-	    config.getProperties().put("appender.rolling.fileName",logFile+".log");
-	    config.getProperties().put("appender.rolling.filePattern",logFile+"-%i.log.gz");
-	    context.updateLoggers();
 	    context.reconfigure();
 	     
 	 }
