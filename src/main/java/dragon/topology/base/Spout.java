@@ -2,8 +2,8 @@ package dragon.topology.base;
 
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.LocalCluster;
 import dragon.spout.SpoutOutputCollector;
@@ -12,7 +12,7 @@ import dragon.topology.OutputFieldsDeclarer;
 
 public class Spout extends Component {
 	private static final long serialVersionUID = -2734635234747476875L;
-	private static final Log log = LogFactory.getLog(Spout.class);
+	private static final Logger log = LogManager.getLogger(Spout.class);
 
 	@Override
 	public final void run() {

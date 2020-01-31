@@ -1,7 +1,7 @@
 package dragon.task;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.Config;
 
@@ -15,7 +15,7 @@ import dragon.tuple.Tuple;
 
 public class OutputCollector extends Collector {
 	@SuppressWarnings("unused")
-	private final static Log log = LogFactory.getLog(OutputCollector.class);
+	private final static Logger log = LogManager.getLogger(OutputCollector.class);
 	
 	public OutputCollector(LocalCluster localCluster,Component component) {
 		super(component,localCluster,(Integer)localCluster.getConf().get(Config.DRAGON_OUTPUT_BUFFER_SIZE));

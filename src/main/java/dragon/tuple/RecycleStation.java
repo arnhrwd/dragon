@@ -2,15 +2,15 @@ package dragon.tuple;
 
 import java.util.HashMap;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.Config;
 import dragon.Constants;
 
 public class RecycleStation {
 	@SuppressWarnings("unused")
-	private Log log = LogFactory.getLog(RecycleStation.class);
+	private Logger log = LogManager.getLogger(RecycleStation.class);
 	private static RecycleStation recycleStation=null;
 	private final Config conf;
 	

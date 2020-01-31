@@ -2,8 +2,8 @@ package dragon.topology;
 
 import dragon.Config;
 import dragon.network.NodeContext;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
  *
  */
 public class FileBasedCustomEmbedding implements IEmbeddingAlgo {
-    private static Log log = LogFactory.getLog(FileBasedCustomEmbedding.class);
+    private static Logger log = LogManager.getLogger(FileBasedCustomEmbedding.class);
 
     @Override
     public ComponentEmbedding generateEmbedding(DragonTopology topology, NodeContext context, Config config) {

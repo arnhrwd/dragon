@@ -24,10 +24,11 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
 import org.yaml.snakeyaml.Yaml;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.network.Node;
 import dragon.process.ProcessManager;
@@ -40,7 +41,7 @@ import dragon.tuple.RecycleStation;
  *
  */
 public class Run {
-	private static Log log = LogFactory.getLog(Run.class);
+	private static Logger log = LogManager.getLogger(Run.class);
 	private static ProcessManager pm; 
 	private static int waitingFor=0;
 	@SuppressWarnings("rawtypes")
@@ -51,6 +52,31 @@ public class Run {
 		classLoader.close();
 		return c;
 	}
+	
+	/**
+	 * Utility class to change where the log file is sent.
+	 * @param logFile the place to write the log file
+	 */
+	public static void updateLog4jConfiguration(String logFile) { 
+//	    Properties props = new Properties(); 
+//	    try { 
+//	        InputStream configStream = Run.class.getResourceAsStream( "/log4j.properties"); 
+//	        props.load(configStream); 
+//	        configStream.close(); 
+//	    } catch (IOException e) { 
+//	        System.err.println("Error: Cannot load configuration file"); 
+//	    } 
+//	    props.setProperty("log4j.appender.file.File", logFile); 
+	    //PropertyConfigurator.configure(props); 
+
+	    LoggerContext context = (LoggerContext)LogManager.getContext(false);
+	    Configuration config = context.getConfiguration();
+	    config.getProperties().put("appender.rolling.fileName",logFile+".log");
+	    config.getProperties().put("appender.rolling.filePattern",logFile+"-%i.log.gz");
+	    context.updateLoggers();
+	    context.reconfigure();
+	     
+	 }
 	
 	/**
 	 * Put the supplied topology JAR file onto the class path and invoke the topology main method.
@@ -149,7 +175,7 @@ public class Run {
 		ArrayList<String> hostnames = hostnames(cmd,conf);
 		setup(hostnames,username,conf);
 		distro(hostnames,username,distro,conf);
-		unzipdistro(hostnames,username,distro,conf);
+		//unzipdistro(hostnames,username,distro,conf);
 		configuredistro(hostnames,username,cmd,conf);
 		onlinedistro(hostnames,username,cmd,conf);
 	}
@@ -190,6 +216,8 @@ public class Run {
 		while(waitingFor>0) {
 			Thread.sleep(100);
 		}
+		// also unzip it
+		unzipdistro(hostnames,username,distro,conf);
 	}
 	
 	/**
@@ -554,16 +582,36 @@ public class Run {
 	}
 	
 	/**
+	 * Utility class to get the configuration.
+	 * @param cmd
+	 * @param logon
+	 * @return
+	 * @throws IOException
+	 */
+	@SuppressWarnings("unchecked")
+	private static Config getConf(CommandLine cmd,boolean logon) throws IOException {
+		Config conf;
+        if(cmd.hasOption("conf")) {
+        	String val = cmd.getOptionValue("conf");
+        	if(val.startsWith("{")) {
+        		Yaml config = new Yaml();
+        		conf = new Config((Map<String,Object>) config.load(val));
+        		if(logon) log.debug("using conf "+conf.toYamlString());
+        	} else {
+        		conf = new Config(val,logon);
+        	}
+        } else {
+        	conf = new Config(Constants.DRAGON_PROPERTIES,logon);
+        }
+        return conf;
+	}
+	
+	/**
 	 * Main
 	 * @param args
 	 * @throws Exception
 	 */
-	@SuppressWarnings({ "unchecked" })
 	public static void main(String[] args) throws Exception {
-		final Properties properties = new Properties();
-		properties.load(Run.class.getClassLoader().getResourceAsStream("project.properties"));
-		log.info("dragon version "+properties.getProperty("project.version"));
-		
 		Options options = new Options();
 		Option jarOption = new Option("j", "jar", true, "path to topology jar file");
 		options.addOption(jarOption);
@@ -602,18 +650,12 @@ public class Run {
         
         try {
             cmd = parser.parse(options, args);
-            Config conf;
-            if(cmd.hasOption("conf")) {
-            	String val = cmd.getOptionValue("conf");
-            	if(val.startsWith("{")) {
-            		Yaml config = new Yaml();
-            		conf = new Config((Map<String,Object>) config.load(val));
-            	} else {
-            		conf = new Config(val);
-            	}
-            } else {
-            	conf = new Config(Constants.DRAGON_PROPERTIES);
-            }
+            Config conf = getConf(cmd,false);
+            Run.updateLog4jConfiguration(conf.getDragonLogDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort());
+            final Properties properties = new Properties();
+    		properties.load(Run.class.getClassLoader().getResourceAsStream("project.properties"));
+    		log.info("dragon version "+properties.getProperty("project.version"));
+            conf = getConf(cmd,true);
             RecycleStation.instanceInit(conf);
             pm = new ProcessManager(conf);
             
@@ -658,9 +700,11 @@ public class Run {
 	            	throw new ParseException("no command was given");
 	            case "submit":
 	            	submit(cmd,conf);
+	            	pm.interrupt();
 	            	break;
 	            case "deploy":
 	            	deploy(cmd,conf);
+	            	pm.interrupt();
 	            	break;
 	            case "setup": {
 	            	ArrayList<String> hostnames = hostnames(cmd,conf);
@@ -669,6 +713,7 @@ public class Run {
 	        			username=cmd.getArgs()[1];
 	        		}
 	            	setup(hostnames,username,conf);
+	            	pm.interrupt();
 	            	break;
 	            }
 	            case "distro":{
@@ -682,6 +727,7 @@ public class Run {
 	        			username=cmd.getArgs()[2];
 	        		}
 	            	distro(hostnames,username,distro,conf);
+	            	pm.interrupt();
 	            	break;
 	            }
 	            case "unzip":{
@@ -695,6 +741,7 @@ public class Run {
 	        			username=cmd.getArgs()[2];
 	        		}
 	            	unzipdistro(hostnames,username,distro,conf);
+	            	pm.interrupt();
 	            	break;
 	            }
 	            case "config":{
@@ -704,6 +751,7 @@ public class Run {
 	        			username=cmd.getArgs()[1];
 	        		}
 	            	configuredistro(hostnames,username,cmd,conf);
+	            	pm.interrupt();
 	            	break;
 	            }
 	            case "online":{
@@ -713,6 +761,7 @@ public class Run {
 	        			username=cmd.getArgs()[1];
 	        		}
 	            	onlinedistro(hostnames,username,cmd,conf);
+	            	pm.interrupt();
 	            	break;
 	            }
 	            case "offline":{
@@ -722,6 +771,7 @@ public class Run {
 	        			username=cmd.getArgs()[1];
 	        		}
 	            	offlinedistro(hostnames,username,cmd,conf);
+	            	pm.interrupt();
 	            	break;
 	            }
 	            case "allocate":
@@ -741,6 +791,7 @@ public class Run {
 	    				throw new ParseException("must provide a topology name with -t option");
 	    			}
 	    			DragonSubmitter.getMetrics(conf,cmd.getOptionValue("topology"));
+	    			pm.interrupt();
 	    			break;
 	            }
 	            case "terminate":{
@@ -758,6 +809,7 @@ public class Run {
 	    				throw new ParseException("must provide a topology name with -t option");
 	    			}
 	    			DragonSubmitter.terminateTopology(conf,cmd.getOptionValue("topology"));
+	    			pm.interrupt();
 	    			break;
 	            }
 	            case "resume":{
@@ -775,6 +827,7 @@ public class Run {
 	    				throw new ParseException("must provide a topology name with -r option");
 	    			}
 	    			DragonSubmitter.resumeTopology(conf,cmd.getOptionValue("topology"));
+	    			pm.interrupt();
 	    			break;
 	            }
 	            case "halt":{
@@ -792,6 +845,7 @@ public class Run {
 	    				throw new ParseException("must provide a topology name with -x option");
 	    			}
 	    			DragonSubmitter.haltTopology(conf,cmd.getOptionValue("topology"));
+	    			pm.interrupt();
 	    			break;
 	            }
 	            case "list":{
@@ -806,6 +860,7 @@ public class Run {
 	    				log.warn("the -p option was given but list does not use that option");
 	    			}
 	    			DragonSubmitter.listTopologies(conf);
+	    			pm.interrupt();
 	    			break;
 	            }
 	            case "daemon":{
@@ -839,11 +894,7 @@ public class Run {
             help+="Other commands are listed below, see README.md";
             formatter.printHelp(help, options);
             System.exit(1);
-        } finally {
-        	pm.interrupt();
-        }
-		
-     
+        } 
 		
 	}
 

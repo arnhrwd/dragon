@@ -5,8 +5,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.PriorityQueue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.DragonRequiresClonableException;
 import dragon.metrics.ComponentMetricMap;
@@ -56,7 +56,7 @@ import dragon.network.messages.service.ResumeTopoSMsg;
  *
  */
 public class ServiceProcessor extends Thread {
-	private final static Log log = LogFactory.getLog(ServiceProcessor.class);
+	private final static Logger log = LogManager.getLogger(ServiceProcessor.class);
 	private final Node node;
 	private final IComms comms;
 

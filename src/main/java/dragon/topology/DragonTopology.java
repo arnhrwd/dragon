@@ -5,8 +5,8 @@ import java.util.HashMap;
 
 
 import dragon.Config;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.network.NodeContext;
 
@@ -16,7 +16,7 @@ public class DragonTopology implements Serializable {
 	 * 
 	 */
 	private static final long serialVersionUID = 5759609228559061827L;
-	private static Log log = LogFactory.getLog(DragonTopology.class);
+	private static Logger log = LogManager.getLogger(DragonTopology.class);
 	private HashMap<String,SpoutDeclarer> spoutMap;
 	private HashMap<String,BoltDeclarer> boltMap;
 	

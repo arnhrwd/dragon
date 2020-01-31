@@ -9,8 +9,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.Config;
 import dragon.network.NodeDescriptor;
@@ -26,7 +26,7 @@ import dragon.utils.CircularBlockingQueue;
  *
  */
 public class TcpComms implements IComms {
-	private static Log log = LogFactory.getLog(TcpComms.class);
+	private static Logger log = LogManager.getLogger(TcpComms.class);
 	
 	/**
 	 * Used when making a service connection to a daemon.

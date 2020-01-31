@@ -2,8 +2,8 @@ package dragon.network;
 
 import java.util.HashMap;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * A map of node names "hostname:dport" to NodeDescriptors.
@@ -13,7 +13,7 @@ import org.apache.commons.logging.LogFactory;
  */
 public class NodeContext extends HashMap<String,NodeDescriptor>{
 	private static final long serialVersionUID = 6956040375029092241L;
-	private static final Log log = LogFactory.getLog(Node.class);
+	private static final Logger log = LogManager.getLogger(Node.class);
 	
 	public synchronized void put(NodeDescriptor desc) {
 		put(desc.toString(),desc);

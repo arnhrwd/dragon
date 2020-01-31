@@ -12,8 +12,8 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.metrics.Sample;
 import dragon.network.NodeDescriptor;
@@ -31,7 +31,7 @@ import dragon.network.messages.service.ServiceMessage;
  *
  */
 public class MetricsMonitor {
-	private static Log log = LogFactory.getLog(MetricsMonitor.class);
+	private static Logger log = LogManager.getLogger(MetricsMonitor.class);
 	private static String topologyId;
 	private static IComms comms;
 	private static Config conf;
@@ -104,7 +104,7 @@ public class MetricsMonitor {
 		final Properties properties = new Properties();
 		properties.load(Run.class.getClassLoader().getResourceAsStream("project.properties"));
 		log.debug("metrics monitor version "+properties.getProperty("project.version"));
-		conf = new Config(Constants.DRAGON_PROPERTIES);
+		conf = new Config(Constants.DRAGON_PROPERTIES,true);
 		Options options = new Options();
 		Option topologyOption = new Option("t","topology",true,"name of the topology");
 		topologyOption.setRequired(false);

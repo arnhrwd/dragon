@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.Constants;
 import dragon.LocalCluster;
@@ -23,7 +23,7 @@ import dragon.utils.ComponentTaskBuffer;
 import dragon.utils.NetworkTaskBuffer;
 
 public class Collector {
-	private static final Log log = LogFactory.getLog(Collector.class);
+	private static final Logger log = LogManager.getLogger(Collector.class);
 	private final ComponentTaskBuffer outputQueues;
 	private final LocalCluster localCluster;
 	private final Component component;

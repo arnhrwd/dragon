@@ -4,8 +4,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.comms.DragonCommsException;
@@ -21,7 +21,7 @@ import dragon.network.messages.node.NodeMessage;
  */
 public abstract class GroupOp extends Op implements Serializable {
 	private static final long serialVersionUID = 7500196228211761411L;
-	private static final Log log = LogFactory.getLog(GroupOp.class);
+	private static final Logger log = LogManager.getLogger(GroupOp.class);
 	
 	/**
 	 * The group of nodes that will be sent an initiate message when the

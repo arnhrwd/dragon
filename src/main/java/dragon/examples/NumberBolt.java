@@ -3,8 +3,8 @@ package dragon.examples;
 import java.util.HashSet;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
@@ -12,7 +12,7 @@ import dragon.topology.base.BaseRichBolt;
 import dragon.tuple.Tuple;
 
 public class NumberBolt extends BaseRichBolt {
-	private static final Log log = LogFactory.getLog(NumberBolt.class);
+	private static final Logger log = LogManager.getLogger(NumberBolt.class);
 	private static final long serialVersionUID = -3957233181035456948L;
 	HashSet<Integer> numbers;
 	HashSet<String> text;

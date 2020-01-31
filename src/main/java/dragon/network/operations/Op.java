@@ -2,8 +2,8 @@ package dragon.network.operations;
 
 import java.io.Serializable;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.network.NodeDescriptor;
 
@@ -19,7 +19,7 @@ import dragon.network.NodeDescriptor;
 public class Op implements Serializable {
 	private static final long serialVersionUID = -2761109390357720762L;
 	@SuppressWarnings("unused")
-	private static final Log log = LogFactory.getLog(Op.class);
+	private static final Logger log = LogManager.getLogger(Op.class);
 	
 	/**
 	 * Called when the operation starts, i.e. the first callback that will

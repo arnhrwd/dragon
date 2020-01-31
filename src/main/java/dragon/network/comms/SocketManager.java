@@ -8,8 +8,8 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.network.NodeDescriptor;
 
@@ -19,7 +19,7 @@ import dragon.network.NodeDescriptor;
  *
  */
 public class SocketManager {
-	private static Log log = LogFactory.getLog(SocketManager.class);
+	private static Logger log = LogManager.getLogger(SocketManager.class);
 
 	ServerSocket server;
 	TcpStreamMap<ObjectInputStream> inputStreamMap;

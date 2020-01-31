@@ -3,8 +3,8 @@ package dragon.topology.base;
 import java.util.HashSet;
 import java.util.Map;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.LocalCluster;
 import dragon.task.InputCollector;
@@ -16,7 +16,7 @@ import dragon.tuple.Tuple;
 
 public class Bolt extends Component {
 	private static final long serialVersionUID = 6696004781292813419L;
-	private static final Log log = LogFactory.getLog(Bolt.class);
+	private static final Logger log = LogManager.getLogger(Bolt.class);
 	private Tuple tickTuple=null;
 	private long processed=0;
 	private InputCollector inputCollector;

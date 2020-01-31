@@ -2,8 +2,8 @@ package dragon.topology;
 
 import java.util.HashMap;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.Constants;
 import dragon.grouping.AbstractGrouping;
@@ -18,7 +18,7 @@ import dragon.tuple.Fields;
 public class BoltDeclarer extends Declarer {
 	private static final long serialVersionUID = 4947955477005135498L;
 	@SuppressWarnings("unused")
-	private static final Log log = LogFactory.getLog(BoltDeclarer.class);
+	private static final Logger log = LogManager.getLogger(BoltDeclarer.class);
 	private Bolt bolt;
 	
 	// the components that this bolt listens to

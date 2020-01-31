@@ -9,8 +9,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.grouping.AbstractGrouping;
 import dragon.network.Node;
@@ -48,7 +48,7 @@ import dragon.utils.NetworkTaskBuffer;
  *
  */
 public class LocalCluster {
-	private final static Log log = LogFactory.getLog(LocalCluster.class);
+	private final static Logger log = LogManager.getLogger(LocalCluster.class);
 	
 	/**
 	 * A reference to the node for this daemon.
@@ -325,7 +325,7 @@ public class LocalCluster {
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
 		Config lconf=null;
 		try {
-			lconf = new Config(Constants.DRAGON_PROPERTIES);
+			lconf = new Config(Constants.DRAGON_PROPERTIES,true);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

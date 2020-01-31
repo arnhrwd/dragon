@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.Config;
 
@@ -19,7 +19,7 @@ import dragon.Config;
  *
  */
 public class ProcessManager extends Thread {
-	private final static Log log = LogFactory.getLog(ProcessManager.class);
+	private final static Logger log = LogManager.getLogger(ProcessManager.class);
 	
 	/**
 	 * 

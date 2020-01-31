@@ -2,14 +2,14 @@ package dragon.network;
 
 import java.util.HashMap;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.tuple.NetworkTask;
 import dragon.utils.NetworkTaskBuffer;
 
 public class StreamQueueMap extends HashMap<String,NetworkTaskBuffer>{
-	private static Log log = LogFactory.getLog(StreamQueueMap.class);
+	private static Logger log = LogManager.getLogger(StreamQueueMap.class);
 	private static final long serialVersionUID = 5785890558744691873L;
 	private final int bufferSize;
 	

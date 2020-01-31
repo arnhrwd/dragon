@@ -1,7 +1,7 @@
 package dragon.spout;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.LocalCluster;
 
@@ -12,7 +12,7 @@ import dragon.topology.base.Spout;
 
 public class SpoutOutputCollector extends Collector {
 	@SuppressWarnings("unused")
-	private static Log log = LogFactory.getLog(SpoutOutputCollector.class);
+	private static Logger log = LogManager.getLogger(SpoutOutputCollector.class);
 	
 	
 	public SpoutOutputCollector(LocalCluster localCluster,Spout spout) {

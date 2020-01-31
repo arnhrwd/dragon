@@ -5,12 +5,12 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 public class Tuple implements IRecyclable, Serializable {
 	@SuppressWarnings("unused")
-	private final static Log log = LogFactory.getLog(Tuple.class);
+	private final static Logger log = LogManager.getLogger(Tuple.class);
 	private static final long serialVersionUID = -8616313770722910200L;
 	private String sourceComponent;
 	private String sourceStreamId;

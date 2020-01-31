@@ -2,14 +2,14 @@ package dragon.topology;
 
 import java.util.HashMap;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.topology.base.Bolt;
 import dragon.topology.base.Spout;
 
 public class TopologyBuilder {
-	private static Log log = LogFactory.getLog(TopologyBuilder.class);
+	private static Logger log = LogManager.getLogger(TopologyBuilder.class);
 	private HashMap<String,SpoutDeclarer> spoutMap;
 	private HashMap<String,BoltDeclarer> boltMap;
 	

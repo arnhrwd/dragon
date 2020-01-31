@@ -6,13 +6,13 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.utils.CircularBlockingQueue;
 
 public class Recycler<T> {
-	private final static Log log = LogFactory.getLog(Recycler.class);
+	private final static Logger log = LogManager.getLogger(Recycler.class);
 	private final int expansion;
 	private final T obj;
 	private final double compact;

@@ -14,14 +14,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.Agent;
 import dragon.ComponentError;
 import dragon.Config;
 import dragon.DragonRequiresClonableException;
 import dragon.LocalCluster;
+import dragon.Run;
 import dragon.metrics.ComponentMetricMap;
 import dragon.metrics.Metrics;
 import dragon.network.comms.DragonCommsException;
@@ -51,7 +52,7 @@ import dragon.topology.base.Component;
  *
  */
 public class Node {
-	private final static Log log = LogFactory.getLog(Node.class);
+	private final static Logger log = LogManager.getLogger(Node.class);
 	
 	/**
 	 * The communications layer that this node is using.
@@ -159,6 +160,8 @@ public class Node {
 		log.debug("pid = "+pid);
 		log.debug("writing pid to ["+conf.getDragonDataDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort()+".pid]");
 		File fout = new File(conf.getDragonDataDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort()+".pid");
+		File datadir = new File(conf.getDragonDataDir());
+		datadir.mkdirs();
 		FileOutputStream fos = new FileOutputStream(fout);
 		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
 		bw.write(pid.toString());

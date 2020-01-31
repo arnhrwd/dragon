@@ -4,8 +4,8 @@ import java.io.Serializable;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.Config;
 import dragon.LocalCluster;
@@ -15,7 +15,7 @@ import dragon.topology.OutputFieldsDeclarer;
 public class Component implements Cloneable, Serializable{
 	private static final long serialVersionUID = -3296255524018955053L;
 	@SuppressWarnings("unused")
-	private static final Log log = LogFactory.getLog(Component.class);
+	private static final Logger log = LogManager.getLogger(Component.class);
 	private TopologyContext context;
 	private LocalCluster localCluster;
 	private OutputFieldsDeclarer outputFieldsDeclarer;

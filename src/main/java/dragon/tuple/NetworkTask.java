@@ -8,8 +8,8 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.HashSet;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 /**
  * A container class for a tuple, that provides the destination of the
@@ -20,7 +20,7 @@ import org.apache.commons.logging.LogFactory;
  */
 public class NetworkTask implements IRecyclable {
 	@SuppressWarnings("unused")
-	private static Log log = LogFactory.getLog(NetworkTask.class);
+	private static Logger log = LogManager.getLogger(NetworkTask.class);
 	private Tuple tuple;
 	private HashSet<Integer> taskIds;
 	private String componentId;

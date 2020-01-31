@@ -11,8 +11,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.ArrayList;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -26,7 +26,7 @@ import dragon.network.NodeDescriptor;
  */
 public class Config extends HashMap<String, Object> {
 	private static final long serialVersionUID = -5933157870455074368L;
-	private static final Log log = LogFactory.getLog(Config.class);
+	private static Logger log; 
 	
 	/**
 	 * legacy parameter from storm to indicate when tick tuples should be sent
@@ -248,6 +248,11 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_DISTRO_BASE="dragon.distro.base";
 	
 	/**
+	 * log directory, if not given will be BASE/log
+	 */
+	public static final String DRAGON_LOG_DIR="dragon.log.dir";
+	
+	/**
 	 * Use default config and drop parameters that are relevant to the daemon.
 	 */
 	public Config() {
@@ -263,8 +268,6 @@ public class Config extends HashMap<String, Object> {
 	public Config(Map<String,Object> conf) {
 		super();
 		defaults();
-		log.debug("using configuration supplied on command line");
-		log.debug(conf);
 		putAll(conf);
 	}
 	
@@ -273,22 +276,23 @@ public class Config extends HashMap<String, Object> {
 	 * @param file the filename to read conf from
 	 * @throws IOException if there was a problem reading the file
 	 */
-	public Config(String file) throws IOException {
+	public Config(String file,boolean logon) throws IOException {
 		super();
+		if(logon) log = LogManager.getLogger(Config.class);
 		defaults();
 		
 		Yaml config = new Yaml();
 		//Properties props = new Properties();
 		InputStream inputStream=null;
 		try {
-			log.debug("looking for "+file+" in working directory");
+			if(logon) log.debug("looking for "+file+" in working directory");
 			inputStream = loadByFileName(file);
 		} catch (FileNotFoundException e) {
 			
 		}
 		if(inputStream==null) {
 			try {
-				log.debug("looking for "+file+" in ../conf");
+				if(logon) log.debug("looking for "+file+" in ../conf");
 				inputStream =loadByFileName("../conf/"+file);
 			} catch (FileNotFoundException e) {
 				
@@ -296,7 +300,7 @@ public class Config extends HashMap<String, Object> {
 		}
 		if(inputStream==null) {
 			try {
-				log.debug("looking for "+file+" in /etc/dragon");
+				if(logon) log.debug("looking for "+file+" in /etc/dragon");
 				inputStream = loadByFileName("/etc/dragon/"+file);
 			} catch (FileNotFoundException e) {
 				
@@ -305,23 +309,23 @@ public class Config extends HashMap<String, Object> {
 		if(inputStream==null) {
 			try {
 				String home = System.getenv("HOME");
-				log.debug("looking for "+file+" in "+home+"/.dragon");
+				if(logon) log.debug("looking for "+file+" in "+home+"/.dragon");
 				inputStream = loadByFileName(home+"/.dragon/"+file);
 			} catch (FileNotFoundException e) {
-				log.warn("cannot find "+file+" - using defaults");
+				if(logon) log.warn("cannot find "+file+" - using defaults");
 				return;
 			}
 		}
 		if(inputStream==null){
-			log.warn("cannot find "+file+"- using default");
+			if(logon) log.warn("cannot find "+file+"- using default");
 			return;
 		}
 		Map<String,Object> map = config.load(inputStream);
 		if(map!=null) {
 			putAll(map);
-			log.debug(toYamlString());
+			if(logon) log.debug(toYamlString());
 		} else {
-			log.warn("empty conf file");
+			if(logon) log.warn("empty conf file");
 		}
 	}
 	
@@ -782,6 +786,17 @@ public class Config extends HashMap<String, Object> {
 	 */
 	public String getDragonDistroBase() {
 		return (String)get(DRAGON_DISTRO_BASE);
+	}
+	
+	/**
+	 * If the log dir is not set then it will be BASE/dragon/log
+	 * @return the log dir
+	 */
+	public String getDragonLogDir() {
+		if(containsKey(DRAGON_LOG_DIR)) {
+			return (String)get(DRAGON_LOG_DIR);
+		}
+		return get(DRAGON_DISTRO_BASE)+"/dragon/log";
 	}
 	
  	//

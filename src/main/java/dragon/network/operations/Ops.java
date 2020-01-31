@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.network.Node;
 import dragon.network.NodeContext;
@@ -23,7 +23,7 @@ import dragon.topology.DragonTopology;
  *
  */
 public class Ops extends Thread {
-	private static final Log log = LogFactory.getLog(Ops.class);
+	private static final Logger log = LogManager.getLogger(Ops.class);
 	private long opCounter = 0;
 	private final HashMap<Long, Op> groupOps;
 	private final Node node;

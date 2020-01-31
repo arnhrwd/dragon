@@ -6,8 +6,8 @@ import java.util.HashSet;
 
 import dragon.topology.IEmbeddingAlgo;
 import dragon.utils.ReflectionUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
@@ -41,7 +41,7 @@ import dragon.topology.DragonTopology;
  *
  */
 public class DragonSubmitter {
-	private static Log log = LogFactory.getLog(DragonSubmitter.class);
+	private static Logger log = LogManager.getLogger(DragonSubmitter.class);
 	
 	/**
 	 * The daemon node to contact.
@@ -318,6 +318,10 @@ public class DragonSubmitter {
 		HashSet<String> topologies = new HashSet<String>();
 		for(String descid : message.descState.keySet()) {
 			topologies.addAll(message.descState.get(descid).keySet());
+		}
+		if(topologies.isEmpty()) {
+			System.out.println("there are no topologies running");
+			return;
 		}
 		for(String topologyId: topologies) {
 			System.out.println("\n# "+topologyId+"\n");

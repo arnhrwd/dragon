@@ -4,8 +4,8 @@ import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.time.Instant;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
@@ -23,7 +23,7 @@ import dragon.network.Node;
  *
  */
 public class Metrics extends Thread {
-	private static Log log = LogFactory.getLog(Metrics.class);
+	private static Logger log = LogManager.getLogger(Metrics.class);
 	private Node node;
 	
 	private TopologyMetricMap samples;

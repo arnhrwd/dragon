@@ -5,8 +5,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.Config;
 import dragon.network.comms.DragonCommsException;
@@ -27,7 +27,7 @@ import dragon.utils.NetworkTaskBuffer;
  *
  */
 public class Router {
-	private final static Log log = LogFactory.getLog(Router.class);
+	private final static Logger log = LogManager.getLogger(Router.class);
 	private final Node node;
 	private final ArrayList<Thread> outgoingThreads;
 	private final ArrayList<Thread> incomingThreads;

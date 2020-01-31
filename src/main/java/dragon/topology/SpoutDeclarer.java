@@ -1,7 +1,7 @@
 package dragon.topology;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 
 import dragon.topology.base.Spout;
@@ -9,7 +9,7 @@ import dragon.topology.base.Spout;
 public class SpoutDeclarer extends Declarer {
 	private static final long serialVersionUID = 2076109957656227105L;
 	@SuppressWarnings("unused")
-	private static Log log = LogFactory.getLog(SpoutDeclarer.class);
+	private static Logger log = LogManager.getLogger(SpoutDeclarer.class);
 	private Spout spout;
 	
 	public SpoutDeclarer(int parallelismHint) {

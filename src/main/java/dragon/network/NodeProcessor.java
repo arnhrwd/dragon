@@ -1,7 +1,7 @@
 package dragon.network;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import dragon.DragonRequiresClonableException;
 import dragon.network.Node.NodeState;
@@ -41,7 +41,7 @@ import dragon.network.operations.ListToposGroupOp;
  *
  */
 public class NodeProcessor extends Thread {
-	private final static Log log = LogFactory.getLog(NodeProcessor.class);
+	private final static Logger log = LogManager.getLogger(NodeProcessor.class);
 	private final Node node;
 	private NodeDescriptor nextNode=null;
 	private final NodeContext context;
