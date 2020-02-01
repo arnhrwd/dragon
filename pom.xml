@@ -2,9 +2,9 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>au.edu.unimelb.cis</groupId>
+	<groupId>tech.streamsoft</groupId>
 	<artifactId>dragon</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1-alpha.1</version>
 	<name>${project.groupId}:${project.artifactId}</name>
 	<description>A high performance, distributed stream processing system, loosely based on the Apache Storm API.</description>
 	<url>http://people.eng.unimelb.edu.au/aharwood</url>
@@ -33,6 +33,12 @@
 	  <developerConnection>scm:git:ssh://sunrise.cis.unimelb.edu.au:aaron/dragon.git</developerConnection>
 	  <url>https://sunrise.cis.unimelb.edu.au/aaron/dragon/tree/master</url>
 	</scm>
+	<distributionManagement>
+	  <snapshotRepository>
+	    <id>ossrh</id>
+	    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+	  </snapshotRepository>
+	</distributionManagement>
 	<dependencies>
 		<dependency>
 			<groupId>commons-logging</groupId>
@@ -80,6 +86,68 @@
 			</resource>
 		</resources>
 		<plugins>
+			<plugin>
+		      <groupId>org.sonatype.plugins</groupId>
+		      <artifactId>nexus-staging-maven-plugin</artifactId>
+		      <version>1.6.7</version>
+		      <extensions>true</extensions>
+		      <configuration>
+		        <serverId>ossrh</serverId>
+		        <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+		        <autoReleaseAfterClose>true</autoReleaseAfterClose>
+		      </configuration>
+		    </plugin>
+		    <plugin>
+		      <groupId>org.apache.maven.plugins</groupId>
+		      <artifactId>maven-source-plugin</artifactId>
+		      <version>2.2.1</version>
+		      <executions>
+		        <execution>
+		          <id>attach-sources</id>
+		          <goals>
+		            <goal>jar-no-fork</goal>
+		          </goals>
+		        </execution>
+		      </executions>
+		    </plugin>
+		    <plugin>
+		      <groupId>org.apache.maven.plugins</groupId>
+		      <artifactId>maven-javadoc-plugin</artifactId>
+		      <version>3.1.1</version>
+		      <executions>
+		        <execution>
+		          <id>attach-javadocs</id>
+		          <goals>
+		            <goal>jar</goal>
+		          </goals>
+		        </execution>
+		      </executions>
+		    </plugin>
+		    <plugin>
+		      <groupId>org.apache.maven.plugins</groupId>
+		      <artifactId>maven-gpg-plugin</artifactId>
+		      <version>1.5</version>
+		      <executions>
+		        <execution>
+		          <id>sign-artifacts</id>
+		          <phase>verify</phase>
+		          <goals>
+		            <goal>sign</goal>
+		          </goals>
+		        </execution>
+		      </executions>
+		    </plugin>
+		    <plugin>
+			  <groupId>org.sonatype.plugins</groupId>
+			  <artifactId>nexus-staging-maven-plugin</artifactId>
+			  <version>1.6.7</version>
+			  <extensions>true</extensions>
+			  <configuration>
+			     <serverId>ossrh</serverId>
+			     <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+			     <autoReleaseAfterClose>true</autoReleaseAfterClose>
+			  </configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
