@@ -1,27 +1,53 @@
 package dragon.metrics;
 
 import java.io.Serializable;
-import java.lang.management.GarbageCollectorMXBean;
-import java.lang.management.ManagementFactory;
 
 import dragon.topology.base.Bolt;
 import dragon.topology.base.Spout;
 import dragon.utils.ComponentTaskBuffer;
 import dragon.utils.Time;
 
+/**
+ * Sample container class, that records a sample from a given bolt or spout.
+ * @author aaron
+ *
+ */
 public class Sample implements Serializable {
+	private static final long serialVersionUID = 8919792917425064566L;
+	
+	/**
+	 * the time the sample was taken
+	 */
+	public long timestamp;
+	
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 8919792917425064566L;
-	public long timestamp;
 	public int inputQueueSize;
-	public int outputQueueSize;
-	public long processed;
-	public long emitted;
-	public long transferred;
-	public long gcTime;
 	
+	/**
+	 * 
+	 */
+	public int outputQueueSize;
+	
+	/**
+	 * 
+	 */
+	public long processed;
+	
+	/**
+	 * 
+	 */
+	public long emitted;
+	
+	/**
+	 * 
+	 */
+	public long transferred;
+	
+	/**
+	 * @param bolt
+	 */
 	public Sample(Bolt bolt){
 		timestamp = Time.currentTimeMillis();
 		inputQueueSize = bolt.getInputCollector().getQueue().size();
@@ -38,6 +64,9 @@ public class Sample implements Serializable {
 		
 	}
 	
+	/**
+	 * @param spout
+	 */
 	public Sample(Spout spout){
 		timestamp = Time.currentTimeMillis();
 		inputQueueSize=0;
@@ -53,12 +82,18 @@ public class Sample implements Serializable {
 		transferred = spout.getTransferred();
 	}
 	
+	/**
+	 * 
+	 */
 	public Sample() {
 		// TODO Auto-generated constructor stub
 	}
 	
 	
 
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
 	public String toString(){
 		String out = "";
 		out+="timestamp="+timestamp+"\n";
@@ -67,7 +102,6 @@ public class Sample implements Serializable {
 		out+="processed="+processed+"\n";
 		out+="emitted="+emitted+"\n";
 		out+="transferred="+transferred+"\n";
-		out+="gcTime="+gcTime+"\n";
 		return out;
 	}
 	

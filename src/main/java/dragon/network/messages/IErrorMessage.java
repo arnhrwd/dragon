@@ -6,5 +6,8 @@ package dragon.network.messages;
  *
  */
 public interface IErrorMessage {
+	/**
+	 * @return the error for the message
+	 */
 	public String getError();
 }

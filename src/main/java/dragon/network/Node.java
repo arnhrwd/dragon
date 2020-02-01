@@ -22,7 +22,6 @@ import dragon.ComponentError;
 import dragon.Config;
 import dragon.DragonRequiresClonableException;
 import dragon.LocalCluster;
-import dragon.Run;
 import dragon.metrics.ComponentMetricMap;
 import dragon.metrics.Metrics;
 import dragon.network.comms.DragonCommsException;

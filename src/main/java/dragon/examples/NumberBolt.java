@@ -11,16 +11,36 @@ import dragon.task.TopologyContext;
 import dragon.topology.base.BaseRichBolt;
 import dragon.tuple.Tuple;
 
+/**
+ * 
+ * @author aaron
+ *
+ */
 public class NumberBolt extends BaseRichBolt {
 	private static final Logger log = LogManager.getLogger(NumberBolt.class);
 	private static final long serialVersionUID = -3957233181035456948L;
+	
+	/**
+	 * 
+	 */
 	HashSet<Integer> numbers;
+	
+	/**
+	 * 
+	 */
 	HashSet<String> text;
+	
+	/**
+	 * 
+	 */
 	public void prepare(@SuppressWarnings("rawtypes") Map conf, TopologyContext context, OutputCollector collector) {
 		numbers=new HashSet<Integer>();
 		text=new HashSet<String>();
 	}
 	
+	/**
+	 * 
+	 */
 	public void execute(Tuple tuple) {
 		//log.debug("executing tuple "+tuple);
 		if(tuple.getSourceStreamId().equals("odd")||tuple.getSourceStreamId().equals("even")) {

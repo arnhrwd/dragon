@@ -1,20 +1,41 @@
 package dragon.tuple;
 
-
-import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.HashMap;
 
+/**
+ * @author aaron
+ *
+ */
 public class Fields implements Serializable, Cloneable {
 	private static final long serialVersionUID = -134149710944581963L;
+	
+	/**
+	 * 
+	 */
 	private final Object[] values;
+	
+	/**
+	 * 
+	 */
 	private transient HashMap<String,Integer> fieldMap;  // save a little bit on network bandwidth
+	
+	/**
+	 * 
+	 */
 	private final String[] fieldNames;
+	
+	/**
+	 * 
+	 */
 	private transient String name; // save a little bit more
 
+	/**
+	 * @param fieldNames
+	 */
 	public Fields(String...fieldNames) {
 		this.fieldNames=fieldNames;
 		fieldMap = new HashMap<String,Integer>(fieldNames.length);
@@ -26,38 +47,64 @@ public class Fields implements Serializable, Cloneable {
 		name=buildName();
 	}
 
+	/**
+	 * @param i
+	 * @return
+	 */
 	public Object get(int i) {
 		return values[i];
 	}
 
+	/**
+	 * @param i
+	 * @param value
+	 */
 	public void set(int i,Object value) {
 		values[i]=value;
 	}
 	
+	/**
+	 * @param values
+	 */
 	public void set(Object[] values) {
 		for(int i=0;i<values.length;i++) {
 			set(i,values[i]);
 		}
 	}
 
+	/**
+	 * @return
+	 */
 	public HashMap<String,Integer> getFieldMap(){
 		return fieldMap;
 	}
 
+	/**
+	 * @return
+	 */
 	public Fields copy() {
 		Fields f = new Fields(this.fieldNames);
 		name=buildName();
 		return f;
 	}
 
+	/**
+	 * @return
+	 */
 	public Object[] getValues() {
 		return values;
 	}
 
+	/**
+	 * @return
+	 */
 	public String[] getFieldNames() {
 		return fieldNames;
 	}
 	
+	/**
+	 * @return
+	 */
 	private String buildName() {
 		String names="<";
 		for(String name : fieldNames) {
@@ -66,14 +113,24 @@ public class Fields implements Serializable, Cloneable {
 		return names+">";
 	}
 
+	/**
+	 * @return
+	 */
 	public String getFieldNamesAsString() {
 		return name;
 	}
 
+	/**
+	 * @return
+	 */
 	public int size(){
 		return fieldNames.length;
 	}
 	
+	/**
+	 * @param out
+	 * @throws IOException
+	 */
 	public void sendToStream(ObjectOutputStream out) throws IOException {
 		out.writeInt(fieldNames.length);
 		for(int i=0;i<fieldNames.length;i++) {
@@ -103,6 +160,12 @@ public class Fields implements Serializable, Cloneable {
 		}
 	}
 	
+	/**
+	 * @param in
+	 * @return
+	 * @throws ClassNotFoundException
+	 * @throws IOException
+	 */
 	public static Fields readFromStream(ObjectInputStream in) throws ClassNotFoundException, IOException {
 		Integer size = in.readInt();
 		String[] fieldNames = new String[size];

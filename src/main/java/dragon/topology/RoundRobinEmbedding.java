@@ -5,8 +5,15 @@ import java.util.ArrayList;
 import dragon.Config;
 import dragon.network.NodeContext;
 
+/**
+ * @author aaron
+ *
+ */
 public class RoundRobinEmbedding  implements IEmbeddingAlgo {
 
+	/* (non-Javadoc)
+	 * @see dragon.topology.IEmbeddingAlgo#generateEmbedding(dragon.topology.DragonTopology, dragon.network.NodeContext, dragon.Config)
+	 */
 	public ComponentEmbedding generateEmbedding(DragonTopology topology, NodeContext context, Config config) {
 		ComponentEmbedding componentEmbedding = new ComponentEmbedding();
 		ArrayList<String> nodes = new ArrayList<String>(context.keySet());

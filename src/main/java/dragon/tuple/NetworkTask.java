@@ -1,10 +1,7 @@
 package dragon.tuple;
 
-import java.io.Externalizable;
 import java.io.IOException;
-import java.io.ObjectInput;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.HashSet;
 
@@ -21,19 +18,50 @@ import org.apache.logging.log4j.LogManager;
 public class NetworkTask implements IRecyclable {
 	@SuppressWarnings("unused")
 	private static Logger log = LogManager.getLogger(NetworkTask.class);
+	
+	/**
+	 * 
+	 */
 	private Tuple tuple;
+	
+	/**
+	 * 
+	 */
 	private HashSet<Integer> taskIds;
+	
+	/**
+	 * 
+	 */
 	private String componentId;
+	
+	/**
+	 * 
+	 */
 	private String topologyId;
 
+	/**
+	 * 
+	 */
 	public NetworkTask() {
 	
 	}
 	
+	/**
+	 * @param tuple
+	 * @param taskIds
+	 * @param componentId
+	 * @param topologyId
+	 */
 	public NetworkTask(Tuple tuple,HashSet<Integer> taskIds,String componentId, String topologyId) {
 		init(tuple,taskIds,componentId,topologyId);
 	}
 	
+	/**
+	 * @param tuple
+	 * @param taskIds
+	 * @param componentId
+	 * @param topologyId
+	 */
 	public void init(Tuple tuple,HashSet<Integer> taskIds,String componentId, String topologyId) {
 		this.tuple=tuple;
 		RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).shareRecyclable(tuple, 1);
@@ -42,27 +70,45 @@ public class NetworkTask implements IRecyclable {
 		this.topologyId=topologyId;
 	}
 	
+	/**
+	 * @return
+	 */
 	public Tuple getTuple() {
 		return tuple;
 	}
 	
+	/**
+	 * @return
+	 */
 	public HashSet<Integer> getTaskIds(){
 		return taskIds;
 	}
 	
+	/**
+	 * @return
+	 */
 	public String getComponentId() {
 		return componentId;
 	}
 	
+	/**
+	 * @return
+	 */
 	public String getTopologyId() {
 		return topologyId;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Object#toString()
+	 */
 	@Override
 	public String toString() {
 		return tuple.toString();
 	}
 
+	/* (non-Javadoc)
+	 * @see dragon.tuple.IRecyclable#recycle()
+	 */
 	@Override
 	public void recycle() {
 		RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
@@ -72,11 +118,18 @@ public class NetworkTask implements IRecyclable {
 		topologyId=null;
 	}
 
+	/* (non-Javadoc)
+	 * @see dragon.tuple.IRecyclable#newRecyclable()
+	 */
 	@Override
 	public IRecyclable newRecyclable() {
 		return new NetworkTask();
 	}
 	
+	/**
+	 * @param out
+	 * @throws IOException
+	 */
 	public void sendToStream(ObjectOutputStream out) throws IOException {
 		tuple.sendToStream(out);
 //		out.writeObject(taskIds);
@@ -90,6 +143,12 @@ public class NetworkTask implements IRecyclable {
 		out.writeUTF(topologyId);
 	}
 
+	/**
+	 * @param in
+	 * @return
+	 * @throws ClassNotFoundException
+	 * @throws IOException
+	 */
 	public static NetworkTask readFromStream(ObjectInputStream in) throws ClassNotFoundException, IOException {
 		Tuple t = Tuple.readFromStream(in);
 		HashSet<Integer> taskIds = new HashSet<Integer>();

@@ -42,6 +42,10 @@ public class ProcessManager extends Thread {
 	private Config conf;
 	
 	
+	/**
+	 * @author aaron
+	 *
+	 */
 	private class ProcessContainer {
 		public IProcessOnStart pos;
 		public IProcessOnFail pof;
@@ -73,6 +77,13 @@ public class ProcessManager extends Thread {
 		start();
 	}
 	
+	/**
+	 * @param pb
+	 * @param isUnbounded
+	 * @param pos
+	 * @param pof
+	 * @param poe
+	 */
 	public void startProcess(ProcessBuilder pb,boolean isUnbounded,
 			IProcessOnStart pos,
 			IProcessOnFail pof,
@@ -99,6 +110,9 @@ public class ProcessManager extends Thread {
 		}
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.lang.Thread#run()
+	 */
 	@Override
 	public void run() {
 		log.info("starting up");

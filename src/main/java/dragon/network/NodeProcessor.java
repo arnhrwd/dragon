@@ -42,17 +42,33 @@ import dragon.network.operations.ListToposGroupOp;
  */
 public class NodeProcessor extends Thread {
 	private final static Logger log = LogManager.getLogger(NodeProcessor.class);
+	
+	/**
+	 * The node that this node processor belongs to.
+	 */
 	private final Node node;
+	
+	/**
+	 * The next node pointer.
+	 */
 	private NodeDescriptor nextNode=null;
+	
+	/**
+	 * The set of node descriptors that this node processor knows about.
+	 */
 	private final NodeContext context;
+	
+	/**
+	 * 
+	 * @param node
+	 */
 	public NodeProcessor(Node node) {
 		this.node=node;
 		context=new NodeContext();
 		nextNode=node.getComms().getMyNodeDesc();
-		log.info("next pointer = ["+this.nextNode+"]");
+		
 		context.put(nextNode);
-		setName("node processor");
-		log.info("starting node processor");
+		
 		start();
 	}
 	
@@ -105,6 +121,9 @@ public class NodeProcessor extends Thread {
 	 * Processes that require a node state other than OPERATIONAL
 	 */
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processAcceptingJoin(NodeMessage msg) {
 		if(node.getNodeState()!=NodeState.JOIN_REQUESTED) {
 			log.error("unexpected message: "+NodeMessage.NodeMessageType.ACCEPTING_JOIN.name());
@@ -113,6 +132,9 @@ public class NodeProcessor extends Thread {
 		}
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processJoinComplete(NodeMessage msg) {
 		if(node.getNodeState()!=NodeState.ACCEPTING_JOIN) {
 			log.error("unexpected message: "+NodeMessage.NodeMessageType.JOIN_COMPLETE.name());
@@ -125,6 +147,9 @@ public class NodeProcessor extends Thread {
 	 * Processes that require OPERATIONAL node state.
 	 */
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processJoinRequest(NodeMessage msg) {
 		node.setNodeState(NodeState.ACCEPTING_JOIN);
 		context.put(msg.getSender());
@@ -136,6 +161,9 @@ public class NodeProcessor extends Thread {
 		log.debug("next pointer = ["+nextNode+"]");
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processContextUpdate(NodeMessage msg) {
 		ContextUpdateNMsg cu = (ContextUpdateNMsg) msg;
 		boolean hit=false;
@@ -155,6 +183,9 @@ public class NodeProcessor extends Thread {
 		if(!hit) context.putAll(cu.context);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processPrepareJar(NodeMessage msg) {
 		PrepareJarNMsg pjf = (PrepareJarNMsg) msg;
 		if(!node.storeJarFile(pjf.topologyId,pjf.topologyJar)) {
@@ -167,16 +198,25 @@ public class NodeProcessor extends Thread {
 		sendSuccess(pjf);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processPrepareJarError(NodeMessage msg) {
 		PrepareJarErrorNMsg pjem = (PrepareJarErrorNMsg) msg;
 		receiveError(pjem);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processJarReady(NodeMessage msg) {
 		JarReadyNMsg jrm = (JarReadyNMsg) msg;
 		receiveSuccess(jrm);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processPrepareTopology(NodeMessage msg) {
 		PrepareTopoNMsg pt = (PrepareTopoNMsg) msg;
 		try {
@@ -191,11 +231,17 @@ public class NodeProcessor extends Thread {
 		}
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processTopologyReady(NodeMessage msg) {
 		TopoReadyNMsg tr = (TopoReadyNMsg) msg;
 		receiveSuccess(tr);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processStartTopology(NodeMessage msg) {
 		StartTopoNMsg st = (StartTopoNMsg) msg;
 		try {
@@ -207,11 +253,17 @@ public class NodeProcessor extends Thread {
 		
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processTopologyStarted(NodeMessage msg) {
 		TopoStartedNMsg tsm = (TopoStartedNMsg) msg;
 		receiveSuccess(tsm);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processStopTopology(NodeMessage msg) {
 		StopTopoNMsg stm = (StopTopoNMsg) msg;
 		try {
@@ -223,16 +275,25 @@ public class NodeProcessor extends Thread {
 		} 
 	}
 		
+	/**
+	 * @param msg
+	 */
 	private synchronized void processTopologyStopped(NodeMessage msg) {
 		TopoStoppedNMsg tsm = (TopoStoppedNMsg) msg;
 		receiveSuccess(tsm);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processStopTopologyError(NodeMessage msg) {
 		StopTopoErrorNMsg stem = (StopTopoErrorNMsg) msg;
 		receiveError(stem);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processRemoveTopology(NodeMessage msg) {
 		RemoveTopoNMsg trm = (RemoveTopoNMsg) msg;
 		try {
@@ -243,16 +304,25 @@ public class NodeProcessor extends Thread {
 		}
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processTopologyRemoved(NodeMessage msg) {
 		TopoRemovedNMsg rtm = (TopoRemovedNMsg) msg;
 		receiveSuccess(rtm);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processRemoveTopologyError(NodeMessage msg) {
 		RemoveTopoErrorNMsg trm = (RemoveTopoErrorNMsg) msg;
 		receiveError(trm);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processHaltTopology(NodeMessage msg) {
 		HaltTopoNMsg htm = (HaltTopoNMsg) msg;
 		try {
@@ -263,16 +333,25 @@ public class NodeProcessor extends Thread {
 		}
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processTopologyHalted(NodeMessage msg) {
 		TopoHaltedNMsg thm = (TopoHaltedNMsg) msg;
 		receiveSuccess(thm);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processHaltTopologyError(NodeMessage msg) {
 		HaltTopoErrorNMsg htem = (HaltTopoErrorNMsg) msg;
 		receiveError(htem);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processResumeTopology(NodeMessage msg) {
 		ResumeTopoNMsg htm = (ResumeTopoNMsg) msg;
 		try {
@@ -283,16 +362,25 @@ public class NodeProcessor extends Thread {
 		}
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processTopologyResumed(NodeMessage msg) {
 		TopoResumedNMsg thm = (TopoResumedNMsg) msg;
 		receiveSuccess(thm);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processResumeTopologyError(NodeMessage msg) {
 		ResumeTopoErrorNMsg htem = (ResumeTopoErrorNMsg) msg;
 		receiveError(htem);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processGetTopologyInformation(NodeMessage msg) {
 		GetTopoInfoNMsg gtim = (GetTopoInfoNMsg) msg;
 		ListToposGroupOp ltgo = (ListToposGroupOp)gtim.getGroupOp();
@@ -300,6 +388,9 @@ public class NodeProcessor extends Thread {
 		ltgo.sendSuccess(node.getComms());
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private synchronized void processTopologyInformation(NodeMessage msg) {
 		TopoInfoNMsg tim = (TopoInfoNMsg) msg;
 		((ListToposGroupOp)(node.getOpsProcessor()
@@ -308,6 +399,9 @@ public class NodeProcessor extends Thread {
 		receiveSuccess(tim);
 	}
 	
+	/**
+	 * @param msg
+	 */
 	private void processOperationalMsgs(NodeMessage msg) {
 		switch(msg.getType()) {
 		case JOIN_REQUEST:
@@ -384,8 +478,14 @@ public class NodeProcessor extends Thread {
 		}
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.lang.Thread#run()
+	 */
 	@Override
 	public void run() {
+		setName("node proc");
+		log.info("starting");
+		log.info("next pointer = ["+this.nextNode+"]");
 		while(!isInterrupted()) {
 			NodeMessage msg;
 			try {
@@ -443,8 +543,8 @@ public class NodeProcessor extends Thread {
 	}
 	
 	/**
-	 * Return the node context
-	 * @return
+	 * 
+	 * @return the node context
 	 */
 	public NodeContext getContext() {
 		return context;

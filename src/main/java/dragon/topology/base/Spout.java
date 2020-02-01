@@ -10,10 +10,21 @@ import dragon.spout.SpoutOutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
+/**
+ * @author aaron
+ *
+ */
 public class Spout extends Component {
 	private static final long serialVersionUID = -2734635234747476875L;
+
+	/**
+	 * 
+	 */
 	private static final Logger log = LogManager.getLogger(Spout.class);
 
+	/* (non-Javadoc)
+	 * @see dragon.topology.base.Component#run()
+	 */
 	@Override
 	public final void run() {
 		getOutputCollector().resetEmit();
@@ -49,19 +60,33 @@ public class Spout extends Component {
 //		}
 	}
 
+	/**
+	 * @param conf
+	 * @param context
+	 * @param collector
+	 */
 	public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
 			SpoutOutputCollector collector) {
 		
 	}
 	
+	/**
+	 * 
+	 */
 	public void nextTuple() {
 		
 	}
 	
+	/**
+	 * 
+	 */
 	public void close() {
 		
 	}
 	
+	/**
+	 * @param declarer
+	 */
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		
 	}

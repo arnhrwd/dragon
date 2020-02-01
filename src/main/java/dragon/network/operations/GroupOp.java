@@ -21,6 +21,10 @@ import dragon.network.messages.node.NodeMessage;
  */
 public abstract class GroupOp extends Op implements Serializable {
 	private static final long serialVersionUID = 7500196228211761411L;
+	
+	/**
+	 * 
+	 */
 	private static final Logger log = LogManager.getLogger(GroupOp.class);
 	
 	/**
@@ -36,21 +40,38 @@ public abstract class GroupOp extends Op implements Serializable {
 	 */
 	protected transient final ArrayList<NodeMessage> received; // not necessary at the group members
 	
+	/**
+	 * @param success
+	 * @param failure
+	 */
 	public GroupOp(IOpSuccess success,IOpFailure failure) {
 		super(success,failure);
 		group = new HashSet<NodeDescriptor>();
 		received=new ArrayList<NodeMessage>();
 	}
 	
+	/**
+	 * @param desc
+	 */
 	public void add(NodeDescriptor desc) {
 		group.add(desc);
 	}
 	
+	/**
+	 * @param desc
+	 * @return
+	 */
 	protected boolean remove(NodeDescriptor desc) {
 		group.remove(desc);
 		return group.isEmpty();
 	}
 
+	/**
+	 * @param comms
+	 * @param desc
+	 * @param message
+	 * @throws DragonCommsException
+	 */
 	private void sendGroupNodeMessage(IComms comms,
 			NodeDescriptor desc, NodeMessage message) 
 					throws DragonCommsException {
@@ -58,6 +79,9 @@ public abstract class GroupOp extends Op implements Serializable {
 		comms.sendNodeMsg(desc,message);
 	}
 
+	/**
+	 * @param comms
+	 */
 	public void initiate(IComms comms) {
 		for(NodeDescriptor desc : group) {
 			if(!desc.equals(getSourceDesc())) {
@@ -72,6 +96,9 @@ public abstract class GroupOp extends Op implements Serializable {
 		super.start();
 	}
 	
+	/**
+	 * @param comms
+	 */
 	public void sendSuccess(IComms comms) {
 		if(!getSourceDesc().equals(comms.getMyNodeDesc())) {
 			NodeMessage tsm = successNodeMessage();
@@ -85,6 +112,10 @@ public abstract class GroupOp extends Op implements Serializable {
 		}
 	}
 	
+	/**
+	 * @param comms
+	 * @param error
+	 */
 	public void sendError(IComms comms,String error) {
 		try {
 			comms.sendNodeMsg(getSourceDesc(),errorNodeMessage(error));
@@ -93,27 +124,48 @@ public abstract class GroupOp extends Op implements Serializable {
 		}
 	}
 	
+	/**
+	 * @param comms
+	 * @param msg
+	 */
 	public void receiveSuccess(IComms comms, NodeMessage msg) {
 		received.add(0,msg);
 		receiveSuccess(comms,msg.getSender());
 	}
 	
+	/**
+	 * @param comms
+	 * @param desc
+	 */
 	public void receiveSuccess(IComms comms, NodeDescriptor desc) {
 		if(remove(desc)) {
 			success();
 		}
 	}
 	
+	/**
+	 * @param comms
+	 * @param msg
+	 * @param error
+	 */
 	public void receiveError(IComms comms, NodeMessage msg, String error) {
 		received.add(0,msg);
 		receiveError(comms,msg.getSender(),error);
 	}
 	
+	/**
+	 * @param comms
+	 * @param desc
+	 * @param error
+	 */
 	public void receiveError(IComms comms, NodeDescriptor desc,String error) {
 		remove(desc);
 		fail(error);
 	}
 	
+	/**
+	 * @return
+	 */
 	public ArrayList<NodeMessage> getReceived() {
 		return received;
 	}
@@ -124,8 +176,21 @@ public abstract class GroupOp extends Op implements Serializable {
 	 * message need not be provided.
 	 */
 
+	/**
+	 * @param desc
+	 * @return
+	 */
 	protected abstract NodeMessage initiateNodeMessage(NodeDescriptor desc);
+	
+	/**
+	 * @return
+	 */
 	protected abstract NodeMessage successNodeMessage();
+	
+	/**
+	 * @param error
+	 * @return
+	 */
 	protected abstract NodeMessage errorNodeMessage(String error);
 
 }

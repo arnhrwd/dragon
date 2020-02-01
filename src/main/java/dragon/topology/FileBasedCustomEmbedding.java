@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  * Config.DRAGON_EMBEDDING_CUSTOM_FILE property and the {@link FileBasedCustomEmbedding} will try to
  * first load the file from the current directory and then from the classpath of the topology jar file.
  * Default embedding file name is "embedding.yaml".
- *
+ * @author gayashan
  */
 public class FileBasedCustomEmbedding implements IEmbeddingAlgo {
     private static Logger log = LogManager.getLogger(FileBasedCustomEmbedding.class);
@@ -109,6 +109,11 @@ public class FileBasedCustomEmbedding implements IEmbeddingAlgo {
         }
     }
 
+    /**
+     * @param name
+     * @return
+     * @throws FileNotFoundException
+     */
     private InputStream loadByFileName(String name) throws FileNotFoundException {
         File f = new File(name);
         if (f.isFile()) {

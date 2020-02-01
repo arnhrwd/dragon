@@ -16,8 +16,16 @@ import dragon.network.NodeDescriptor;
  * @author aaron
  *
  */
+/**
+ * @author aaron
+ *
+ */
 public class Op implements Serializable {
 	private static final long serialVersionUID = -2761109390357720762L;
+	
+	/**
+	 * 
+	 */
 	@SuppressWarnings("unused")
 	private static final Logger log = LogManager.getLogger(Op.class);
 	
@@ -64,6 +72,8 @@ public class Op implements Serializable {
 	 * <li>{@link #RUNNING}</li>
 	 * <li>{@link #FAILED}</li>
 	 * <li>{@link #COMPLETED}</li>
+	 * @author aaron
+	 *
 	 */
 	public static enum State {
 		/**
@@ -92,12 +102,21 @@ public class Op implements Serializable {
 	 */
 	private State state;
 	
+	/**
+	 * @param success
+	 * @param failure
+	 */
 	public Op(IOpSuccess success,IOpFailure failure) {
 		state=State.READY;
 		this.success=success;
 		this.failure=failure;
 	}
 	
+	/**
+	 * @param start
+	 * @param success
+	 * @param failure
+	 */
 	public Op(IOpStart start,IOpSuccess success,IOpFailure failure) {
 		state=State.READY;
 		this.start=start;
@@ -105,14 +124,23 @@ public class Op implements Serializable {
 		this.failure=failure;
 	}
 	
+	/**
+	 * 
+	 */
 	public Op() {
 		this.state=State.READY;
 	}
 
+	/**
+	 * @param start
+	 */
 	public void onStart(IOpStart start) {
 		this.start=start;
 	}
 	
+	/**
+	 * @param running
+	 */
 	public void onRunning(IOpRunning running) {
 		this.running=running;
 		if(state==State.RUNNING) {
@@ -120,6 +148,9 @@ public class Op implements Serializable {
 		}
 	}
 	
+	/**
+	 * @param success
+	 */
 	public void onSuccess(IOpSuccess success) {
 		this.success=success;
 		if(state==State.COMPLETED) {
@@ -127,6 +158,9 @@ public class Op implements Serializable {
 		}
 	}
 	
+	/**
+	 * @param failure
+	 */
 	public void onFailure(IOpFailure failure) {
 		this.failure=failure;
 		if(state==State.FAILED) {
@@ -134,23 +168,39 @@ public class Op implements Serializable {
 		}
 	}
 	
+	/**
+	 * @param desc
+	 * @param opCounter
+	 */
 	public void init(NodeDescriptor desc,long opCounter) {
 		this.sourceDesc=desc;
 		this.id=opCounter;
 	}
 	
+	/**
+	 * @return
+	 */
 	public Long getId() {
 		return this.id;
 	}
 	
+	/**
+	 * @return
+	 */
 	public NodeDescriptor getSourceDesc() {
 		return this.sourceDesc;
 	}
 	
+	/**
+	 * @return
+	 */
 	public State getState() {
 		return state;
 	}
 	
+	/**
+	 * 
+	 */
 	public void start() {
 		if(start!=null) start.start(this);
 		state=State.RUNNING;
@@ -159,6 +209,9 @@ public class Op implements Serializable {
 		}
 	}
 	
+	/**
+	 * 
+	 */
 	public void success() {
 		if(state==State.FAILED) {
 			log.error("operation has already failed");
@@ -168,6 +221,9 @@ public class Op implements Serializable {
 		if(success!=null) success.success(this);
 	}
 	
+	/**
+	 * @param error
+	 */
 	public void fail(String error) {
 		if(state==State.COMPLETED) {
 			log.error("operation has already completed");

@@ -8,8 +8,18 @@ import dragon.topology.base.Bolt;
 import dragon.topology.base.Spout;
 
 
+/**
+ * 
+ * @author aaron
+ *
+ */
 public class Topology1 {
 
+	/**
+	 * 
+	 * @param args
+	 * @throws InterruptedException
+	 */
 	public static void main(String[] args) throws InterruptedException {
 		
 		TopologyBuilder topologyBuilder = new TopologyBuilder();

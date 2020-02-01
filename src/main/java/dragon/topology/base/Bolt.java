@@ -14,18 +14,48 @@ import dragon.topology.OutputFieldsDeclarer;
 import dragon.tuple.RecycleStation;
 import dragon.tuple.Tuple;
 
+/**
+ * @author aaron
+ *
+ */
 public class Bolt extends Component {
 	private static final long serialVersionUID = 6696004781292813419L;
+	
+	/**
+	 * 
+	 */
 	private static final Logger log = LogManager.getLogger(Bolt.class);
+	
+	/**
+	 * 
+	 */
 	private Tuple tickTuple=null;
+	
+	/**
+	 * 
+	 */
 	private long processed=0;
+	
+	/**
+	 * 
+	 */
 	private InputCollector inputCollector;
+	
+	/**
+	 * 
+	 */
 	private HashSet<String> upstreamComponents;
 	
+	/**
+	 * @param tuple
+	 */
 	public final void setTickTuple(Tuple tuple) {
 		tickTuple=tuple;
 	}
 	
+	/* (non-Javadoc)
+	 * @see dragon.topology.base.Component#run()
+	 */
 	@Override
 	public final void run() {
 		Tuple tuple;
@@ -107,23 +137,40 @@ public class Bolt extends Component {
 		}
 	}
 	
+	/**
+	 * @param conf
+	 * @param context
+	 * @param collector
+	 */
 	public void prepare(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
 			OutputCollector collector) {
 		
 	}
 	
+	/**
+	 * @param tuple
+	 */
 	public void execute(Tuple tuple){
 		
 	}
 	
+	/**
+	 * 
+	 */
 	public void close() {
 		
 	}
 	
+	/**
+	 * @param declarer
+	 */
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
 		
 	}
 
+	/**
+	 * @param inputCollector
+	 */
 	public final void setInputCollector(InputCollector inputCollector) {
 		upstreamComponents=new HashSet<String>();
 		processed=0;
@@ -131,10 +178,16 @@ public class Bolt extends Component {
 		this.inputCollector = inputCollector;
 	}
 	
+	/**
+	 * @return
+	 */
 	public final InputCollector getInputCollector() {
 		return inputCollector;
 	}
 	
+	/**
+	 * @return
+	 */
 	public final long getProcessed(){
 		return processed;
 	}

@@ -5,10 +5,27 @@ import java.util.HashMap;
 
 import dragon.ComponentError;
 
+/**
+ * @author aaron
+ *
+ */
 public class TopoInfoNMsg extends NodeMessage {
 	private static final long serialVersionUID = 4785147438021153895L;
+	
+	/**
+	 * 
+	 */
 	public final HashMap<String,String> state;
+	
+	/**
+	 * 
+	 */
 	public final HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors;
+	
+	/**
+	 * @param state
+	 * @param errors
+	 */
 	public TopoInfoNMsg(HashMap<String,String> state,
 			HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors) {
 		super(NodeMessage.NodeMessageType.TOPOLOGY_INFORMATION);

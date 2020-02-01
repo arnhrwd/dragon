@@ -10,21 +10,71 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * @author aaron
+ *
+ * @param <T>
+ */
 public class CircularBlockingQueue<T> extends AbstractQueue<T>
          implements BlockingQueue<T> {
+	/**
+	 * 
+	 */
 	private AtomicReferenceArray<T> elements;
+	
+	/**
+	 * 
+	 */
 	private final AtomicInteger head=new AtomicInteger(0);
+	
+	/**
+	 * 
+	 */
 	private final AtomicInteger tail=new AtomicInteger(0);
+	
+	/**
+	 * 
+	 */
 	private final int capacity;
+	
+	/**
+	 * 
+	 */
 	private final int arraySize;
+	
+	/**
+	 * 
+	 */
 	private final AtomicInteger count = new AtomicInteger(0);
+	
+	/**
+	 * 
+	 */
 	private final ReentrantLock putLock = new ReentrantLock();
+	
+	/**
+	 * 
+	 */
 	private final ReentrantLock takeLock = new ReentrantLock();
+	
+	/**
+	 * 
+	 */
 	private final Condition notEmpty = takeLock.newCondition();
+	
+	/**
+	 * 
+	 */
 	private final Condition notFull = putLock.newCondition();
 	
+	/**
+	 * 
+	 */
 	public final ReentrantLock bufferLock = new ReentrantLock();
 	
+	/**
+	 * 
+	 */
 	public CircularBlockingQueue(){
 		capacity=1024;
 		arraySize=capacity+1;
@@ -34,6 +84,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		}
 	}
 
+	/**
+	 * @param capacity
+	 */
 	public CircularBlockingQueue(int capacity){
 		this.capacity=capacity;
 		arraySize=capacity+1;
@@ -43,10 +96,16 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		}
 	}
 	
+	/**
+	 * @return
+	 */
 	public int getCapacity() {
 		return capacity;
 	}
 	
+	/**
+	 * 
+	 */
 	private void signalNotEmpty() {
 		final ReentrantLock takeLock = this.takeLock;
 		takeLock.lock();
@@ -57,6 +116,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		}
 	}
 
+	/**
+	 * 
+	 */
 	private void signalNotFull() {
 		final ReentrantLock putLock = this.putLock;
 		putLock.lock();
@@ -67,24 +129,41 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		}
 	}
 
+	/**
+	 * 
+	 */
 	private void fullyLock() {
 		putLock.lock();
 		takeLock.lock();
 	}
 
+	/**
+	 * 
+	 */
 	private void fullyUnlock() {
 		takeLock.unlock();
 		putLock.unlock();
 	}
 
+	/* (non-Javadoc)
+	 * @see java.util.AbstractCollection#size()
+	 */
 	public int size() {
 		return count.get();
 	}
 	
+	/**
+	 * @param x
+	 * @param max
+	 * @return
+	 */
 	private static int quickNext(int x,int max) {
 		return (x+1 < max) ? x+1 : 0;
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.BlockingQueue#put(java.lang.Object)
+	 */
 	@Override
 	public void put(T element) throws InterruptedException {
 		if(element==null) throw new NullPointerException();
@@ -113,6 +192,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 			signalNotEmpty();
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.BlockingQueue#offer(java.lang.Object, long, java.util.concurrent.TimeUnit)
+	 */
 	@Override
 	public boolean offer(T element, long timeout, TimeUnit unit) throws InterruptedException{
 		if(element==null) throw new NullPointerException();
@@ -150,6 +232,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		return true;
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.util.Queue#offer(java.lang.Object)
+	 */
 	@Override
 	public boolean offer(T element) {
 		if(element==null) throw new NullPointerException();
@@ -176,6 +261,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		return c>=0;
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.BlockingQueue#take()
+	 */
 	@Override
 	public T take() throws InterruptedException {
 		T element;
@@ -205,6 +293,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		return element;
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.BlockingQueue#poll(long, java.util.concurrent.TimeUnit)
+	 */
 	@Override
 	public T poll(long timeout, TimeUnit unit) throws InterruptedException{
 		T element = null;
@@ -243,6 +334,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		return element;
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.util.Queue#poll()
+	 */
 	@Override
 	public T poll() {
 		final AtomicInteger count = this.count;
@@ -270,6 +364,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		return element;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.util.Queue#peek()
+	 */
 	@Override
 	public T peek(){
 		if (count.get()==0) return null;
@@ -286,6 +383,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.BlockingQueue#drainTo(java.util.Collection)
+	 */
 	@Override
 	public int drainTo(Collection<? super T> c) {
 		if (c==null){
@@ -322,6 +422,9 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		return n;
 	}
 
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.BlockingQueue#drainTo(java.util.Collection, int)
+	 */
 	@Override
 	public int drainTo(Collection<? super T> c, int maxElements) {
 		if (c==null)
@@ -350,11 +453,17 @@ public class CircularBlockingQueue<T> extends AbstractQueue<T>
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see java.util.concurrent.BlockingQueue#remainingCapacity()
+	 */
 	@Override
 	public int remainingCapacity() {
 		return capacity-count.get();
 	}
 
+	/* (non-Javadoc)
+	 * @see java.util.AbstractCollection#iterator()
+	 */
 	@Override
 	public Iterator<T> iterator() {
 		throw new UnsupportedOperationException();

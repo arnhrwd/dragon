@@ -2,7 +2,6 @@ package dragon.network;
 
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.PriorityQueue;
 
 import org.apache.logging.log4j.Logger;
@@ -57,9 +56,20 @@ import dragon.network.messages.service.ResumeTopoSMsg;
  */
 public class ServiceProcessor extends Thread {
 	private final static Logger log = LogManager.getLogger(ServiceProcessor.class);
+	
+	/**
+	 * 
+	 */
 	private final Node node;
+	
+	/**
+	 * 
+	 */
 	private final IComms comms;
 
+	/**
+	 * @param node
+	 */
 	public ServiceProcessor(Node node) {
 		this.node = node;
 		this.comms = node.getComms();
@@ -503,6 +513,9 @@ public class ServiceProcessor extends Thread {
 		});
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Thread#run()
+	 */
 	@Override
 	public void run() {
 		while (!isInterrupted()) {

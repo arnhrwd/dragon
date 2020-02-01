@@ -13,7 +13,6 @@ import dragon.network.comms.DragonCommsException;
 import dragon.topology.DragonTopology;
 import dragon.tuple.NetworkTask;
 import dragon.tuple.RecycleStation;
-import dragon.tuple.Tuple;
 import dragon.utils.NetworkTaskBuffer;
 
 /**
@@ -28,14 +27,51 @@ import dragon.utils.NetworkTaskBuffer;
  */
 public class Router {
 	private final static Logger log = LogManager.getLogger(Router.class);
+
+	/**
+	 * 
+	 */
 	private final Node node;
+
+	/**
+	 * 
+	 */
 	private final ArrayList<Thread> outgoingThreads;
+
+	/**
+	 * 
+	 */
 	private final ArrayList<Thread> incomingThreads;
+
+	/**
+	 * 
+	 */
 	private final TopologyQueueMap inputQueues;
+
+	/**
+	 * 
+	 */
 	private final TopologyQueueMap outputQueues;
+
+	/**
+	 * 
+	 */
 	private boolean shouldTerminate=false;
+
+	/**
+	 * 
+	 */
 	private final Config conf;
+
+	/**
+	 * 
+	 */
 	private final LinkedBlockingQueue<NetworkTaskBuffer> outputsPending;
+
+	/**
+	 * @param node
+	 * @param conf
+	 */
 	public Router(Node node, Config conf) {
 		this.node=node;
 		this.conf=conf;
@@ -54,6 +90,9 @@ public class Router {
 		runExecutors();
 	}
 	
+	/**
+	 * 
+	 */
 	private void runExecutors() {
 		for(int i=0;i<(Integer)conf.getDragonRouterOutputThreads();i++) {
 			outgoingThreads.add(new Thread() {
@@ -146,6 +185,10 @@ public class Router {
 		}
 	}
 	
+	/**
+	 * @param task
+	 * @return
+	 */
 	public boolean offer(NetworkTask task) {
 		RecycleStation.getInstance().getNetworkTaskRecycler().shareRecyclable(task, 1);
 		boolean ret = outputQueues.getBuffer(task).offer(task);
@@ -162,6 +205,10 @@ public class Router {
 	}
 	
 	
+	/**
+	 * @param task
+	 * @throws InterruptedException
+	 */
 	public void put(NetworkTask task) throws InterruptedException {
 		
 		//log.debug("putting on queue "+task.getTopologyId()+","+task.getTuple().getSourceStreamId());
@@ -171,6 +218,10 @@ public class Router {
 		RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 	}
 
+	/**
+	 * @param topologyName
+	 * @param topology
+	 */
 	public void submitTopology(String topologyName, DragonTopology topology) {
 		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
 			if(!desc.equals(node.getComms().getMyNodeDesc())) {
@@ -198,6 +249,10 @@ public class Router {
 		
 	}
 	
+	/**
+	 * @param topologyName
+	 * @param topology
+	 */
 	public void terminateTopology(String topologyName, DragonTopology topology) {
 		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
 			if(!desc.equals(node.getComms().getMyNodeDesc())) {

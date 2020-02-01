@@ -13,18 +13,27 @@ import org.apache.logging.log4j.LogManager;
  */
 public class NodeContext extends HashMap<String,NodeDescriptor>{
 	private static final long serialVersionUID = 6956040375029092241L;
-	private static final Logger log = LogManager.getLogger(Node.class);
+	private static final Logger log = LogManager.getLogger(NodeContext.class);
 	
+	/**
+	 * @param desc
+	 */
 	public synchronized void put(NodeDescriptor desc) {
 		put(desc.toString(),desc);
 		logContext();
 	}
 	
+	/**
+	 * @param desc
+	 */
 	public synchronized void remove(NodeDescriptor desc) {
 		remove(desc.toString());
 		logContext();
 	}
 	
+	/**
+	 * @param context
+	 */
 	public synchronized void putAll(NodeContext context) {
 		for(String key: context.keySet()) {
 			put(key,context.get(key));
@@ -32,6 +41,9 @@ public class NodeContext extends HashMap<String,NodeDescriptor>{
 		logContext();
 	}
 	
+	/**
+	 * 
+	 */
 	private void logContext() {
 		log.debug("context = "+keySet());
 	}

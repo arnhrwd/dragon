@@ -8,16 +8,37 @@ import org.apache.logging.log4j.LogManager;
 import dragon.topology.base.Bolt;
 import dragon.topology.base.Spout;
 
+/**
+ * @author aaron
+ *
+ */
 public class TopologyBuilder {
 	private static Logger log = LogManager.getLogger(TopologyBuilder.class);
+	
+	/**
+	 * 
+	 */
 	private HashMap<String,SpoutDeclarer> spoutMap;
+	
+	/**
+	 * 
+	 */
 	private HashMap<String,BoltDeclarer> boltMap;
 	
+	/**
+	 * 
+	 */
 	public TopologyBuilder() {
 		spoutMap=new HashMap<String,SpoutDeclarer>();
 		boltMap=new HashMap<String,BoltDeclarer>();
 	}
 
+	/**
+	 * @param spoutName
+	 * @param spout
+	 * @param parallelismHint
+	 * @return
+	 */
 	public SpoutDeclarer setSpout(String spoutName, Spout spout, int parallelismHint) {
 		if(spoutMap.containsKey(spoutName)||boltMap.containsKey(spoutName)) {
 			throw new RuntimeException("bolt and spout names must be collectively unique: ["+spoutName+"] has already been set");
@@ -27,6 +48,12 @@ public class TopologyBuilder {
 		return spoutDeclarer;
 	}
 	
+	/**
+	 * @param boltName
+	 * @param bolt
+	 * @param parallelismHint
+	 * @return
+	 */
 	public BoltDeclarer setBolt(String boltName, Bolt bolt, int parallelismHint) {
 		if(spoutMap.containsKey(boltName)||boltMap.containsKey(boltName)) {
 			throw new RuntimeException("bolt and spout names must be collectively unique: ["+boltName+"] has already been set");
@@ -36,6 +63,9 @@ public class TopologyBuilder {
 		return boltDeclarer;
 	}
 	
+	/**
+	 * @return
+	 */
 	public DragonTopology createTopology() {
 		DragonTopology topology=new DragonTopology();
 		for(String spoutId : spoutMap.keySet()) {

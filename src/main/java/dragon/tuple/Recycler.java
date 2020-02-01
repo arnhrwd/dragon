@@ -11,10 +11,27 @@ import org.apache.logging.log4j.LogManager;
 
 import dragon.utils.CircularBlockingQueue;
 
+/**
+ * @author aaron
+ *
+ * @param <T>
+ */
 public class Recycler<T> {
 	private final static Logger log = LogManager.getLogger(Recycler.class);
+	
+	/**
+	 * 
+	 */
 	private final int expansion;
+	
+	/**
+	 * 
+	 */
 	private final T obj;
+	
+	/**
+	 * 
+	 */
 	private final double compact;
 	
 	
@@ -22,10 +39,28 @@ public class Recycler<T> {
 //	private AtomicReferenceArray<T> objects;
 //	private int next;
 //	private final HashMap<T,Integer> map;
+	
+	/**
+	 * 
+	 */
 	private volatile CircularBlockingQueue<T> objects;
+	
+	/**
+	 * 
+	 */
 	private final Map<T,AtomicInteger> refCount;
+	
+	/**
+	 * 
+	 */
 	private final ReentrantLock lock = new ReentrantLock();
 		
+	/**
+	 * @param obj
+	 * @param capacity
+	 * @param expansion
+	 * @param compact
+	 */
 	@SuppressWarnings("unchecked")
 	public Recycler(T obj,int capacity,int expansion, double compact) {
 		objects = new CircularBlockingQueue<T>(capacity);
@@ -47,6 +82,9 @@ public class Recycler<T> {
 		}
 	}
 	
+	/**
+	 * @param t
+	 */
 	public void recycleObject(T t) {
 		((IRecyclable)t).recycle();
 		lock.lock();
@@ -74,6 +112,9 @@ public class Recycler<T> {
 
 	}
 	
+	/**
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	public T newObject() {
 		lock.lock();
@@ -105,10 +146,18 @@ public class Recycler<T> {
 		}
 	}
 
+	/**
+	 * @param t
+	 * @param n
+	 */
 	public void shareRecyclable(T t,int n) {
 		refCount.get(t).addAndGet(n);
 	}
 
+	/**
+	 * @param t
+	 * @param n
+	 */
 	public void crushRecyclable(T t,int n) {
 		long c = refCount.get(t).addAndGet(-n);
 		if(c==0) {

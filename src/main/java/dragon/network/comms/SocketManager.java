@@ -18,16 +18,51 @@ import dragon.network.NodeDescriptor;
  * @author aaron
  *
  */
+/**
+ * @author aaron
+ *
+ */
 public class SocketManager {
 	private static Logger log = LogManager.getLogger(SocketManager.class);
 
+	/**
+	 * 
+	 */
 	ServerSocket server;
+	
+	/**
+	 * 
+	 */
 	TcpStreamMap<ObjectInputStream> inputStreamMap;
+	
+	/**
+	 * 
+	 */
 	TcpStreamMap<ObjectOutputStream> outputStreamMap;
+	
+	/**
+	 * 
+	 */
 	TcpStreamMap<Socket> socketMap;
+	
+	/**
+	 * 
+	 */
 	NodeDescriptor me;
+	
+	/**
+	 * Thread for accepting connections.
+	 */
 	Thread thread;
+	
+	/**
+	 * 
+	 */
 	HashMap<String,LinkedBlockingQueue<NodeDescriptor>> inputsWaiting;
+	
+	/**
+	 * 
+	 */
 	SocketManager socketManager;
 	
 	/**
@@ -93,6 +128,11 @@ public class SocketManager {
 		thread.start();
 	} 
 	
+	/**
+	 * @param id
+	 * @return
+	 * @throws InterruptedException
+	 */
 	public NodeDescriptor getWaitingInputs(String id) throws InterruptedException {
 		synchronized(this) {
 			if(!inputsWaiting.containsKey(id+"_in")) {
@@ -102,6 +142,13 @@ public class SocketManager {
 		return inputsWaiting.get(id+"_in").take();
 	}
 	
+	
+	/**
+	 * @param id
+	 * @param desc
+	 * @return
+	 * @throws IOException
+	 */
 	public ObjectOutputStream getOutputStream(String id,NodeDescriptor desc) throws IOException {
 		synchronized(this) {
 			if(outputStreamMap.contains(id+"_out",desc)) {
@@ -139,12 +186,21 @@ public class SocketManager {
 		}
 	}
 	
+	/**
+	 * @param id
+	 * @param desc
+	 * @return
+	 */
 	public ObjectInputStream getInputStream(String id,NodeDescriptor desc) {
 		synchronized(this) {
 			return inputStreamMap.get(id+"_in").get(desc);
 		}
 	}
 
+	/**
+	 * @param id
+	 * @param desc
+	 */
 	public void delete(String id, NodeDescriptor desc) {
 		synchronized(this) {
 			inputStreamMap.drop(id,desc);
@@ -153,6 +209,10 @@ public class SocketManager {
 		}
 	}
 	
+	/**
+	 * @param id
+	 * @param desc
+	 */
 	public void close(String id, NodeDescriptor desc) {
 		synchronized(this) {
 			try {

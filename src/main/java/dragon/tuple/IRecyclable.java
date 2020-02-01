@@ -1,5 +1,9 @@
 package dragon.tuple;
 
+/**
+ * @author aaron
+ *
+ */
 public interface IRecyclable {
 	/**
 	 * Called when the object is being returned for recycling.

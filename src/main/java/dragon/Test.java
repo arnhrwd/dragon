@@ -14,6 +14,11 @@ import org.apache.commons.cli.ParseException;
 
 import dragon.utils.CircularBlockingQueue;
 
+/**
+ * Standalone class for various low level tests. Not important.
+ * @author aaron
+ *
+ */
 public class Test {
 
 	private static volatile boolean startWork=false;

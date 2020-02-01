@@ -22,18 +22,53 @@ import dragon.topology.DragonTopology;
  * @author aaron
  *
  */
+/**
+ * @author aaron
+ *
+ */
 public class Ops extends Thread {
 	private static final Logger log = LogManager.getLogger(Ops.class);
+	
+	/**
+	 * 
+	 */
 	private long opCounter = 0;
+	
+	/**
+	 * 
+	 */
 	private final HashMap<Long, Op> groupOps;
+	
+	/**
+	 * 
+	 */
 	private final Node node;
+	
+	/**
+	 * 
+	 */
 	private static Ops me;
+	
+	/**
+	 * 
+	 */
 	private final LinkedBlockingQueue<Op> readyQueue;
+	
+	/**
+	 * 
+	 */
 	private final ArrayList<ConditionalOp> conditionalOps;
+	
+	/**
+	 * @return
+	 */
 	public static Ops inst() {
 		return me;
 	}
 
+	/**
+	 * @param node
+	 */
 	public Ops(Node node) {
 		Ops.me = this;
 		this.node = node;
@@ -45,6 +80,12 @@ public class Ops extends Thread {
 		start();
 	}
 
+	/**
+	 * @param condition
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public ConditionalOp newConditionOp(IOpCondition condition,
 			IOpSuccess success,
 			IOpFailure failure) {
@@ -57,34 +98,73 @@ public class Ops extends Thread {
 		return cop;
 	}
 	
+	/**
+	 * @param topologyId
+	 * @param jarFile
+	 * @param topology
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public RunTopoGroupOp newRunTopoGroupOp(String topologyId, byte[] jarFile, DragonTopology topology,
 			IOpSuccess success, IOpFailure failure) {
 		RunTopoGroupOp rtgo = new RunTopoGroupOp(topologyId, jarFile, success, failure);
 		return (RunTopoGroupOp) newGroupOp(rtgo, topology);
 	}
 
+	/**
+	 * @param rtm
+	 * @param topology
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public PrepareTopoGroupOp newPrepareTopoGroupOp(RunTopoSMsg rtm, DragonTopology topology, IOpSuccess success,
 			IOpFailure failure) {
 		PrepareTopoGroupOp ptgo = new PrepareTopoGroupOp(rtm, success, failure);
 		return (PrepareTopoGroupOp) newGroupOp(ptgo, topology);
 	}
 
+	/**
+	 * @param topologyId
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public StartTopoGroupOp newStartTopologyGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
 		StartTopoGroupOp stgo = new StartTopoGroupOp(topologyId, success, failure);
 		return (StartTopoGroupOp) newGroupOp(stgo, topologyId);
 	}
 
+	/**
+	 * @param topologyId
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public TermTopoGroupOp newTermTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
 		TermTopoGroupOp ttgo = new TermTopoGroupOp(topologyId, success, failure);
 		return (TermTopoGroupOp) newGroupOp(ttgo, topologyId);
 	}
 
+	/**
+	 * @param ttm
+	 * @param topology
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public RemoveTopoGroupOp newRemoveTopoGroupOp(TermTopoSMsg ttm, DragonTopology topology, IOpSuccess success,
 			IOpFailure failure) {
 		RemoveTopoGroupOp trgo = new RemoveTopoGroupOp(ttm.topologyId, success, failure);
 		return (RemoveTopoGroupOp) newGroupOp(trgo, topology);
 	}
 
+	/**
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public ListToposGroupOp newListToposGroupOp(IOpSuccess success, IOpFailure failure) {
 		ListToposGroupOp ltgo = new ListToposGroupOp(success, failure);
 		// this group operation goes to EVERY dragon daemon
@@ -98,16 +178,34 @@ public class Ops extends Thread {
 		return ltgo;
 	}
 
+	/**
+	 * @param topologyId
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public HaltTopoGroupOp newHaltTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
 		HaltTopoGroupOp htgo = new HaltTopoGroupOp(topologyId, success, failure);
 		return (HaltTopoGroupOp) newGroupOp(htgo, topologyId);
 	}
 
+	/**
+	 * @param topologyId
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public ResumeTopoGroupOp newResumeTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
 		ResumeTopoGroupOp htgo = new ResumeTopoGroupOp(topologyId, success, failure);
 		return (ResumeTopoGroupOp) newGroupOp(htgo, topologyId);
 	}
 	
+	/**
+	 * @param desc
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public JoinGroupOp newJoinGroupOp(NodeDescriptor desc,IOpSuccess success, IOpFailure failure) {
 		JoinGroupOp jgo = new JoinGroupOp(success,failure);
 		jgo.add(desc);
@@ -115,6 +213,13 @@ public class Ops extends Thread {
 		return jgo;
 	}
 	
+	/**
+	 * @param partitionId
+	 * @param allocation
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public AllocPartGroupOp newAllocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
 		AllocPartGroupOp apgo = new AllocPartGroupOp(partitionId,allocation,success,failure);
 		for(NodeDescriptor desc : allocation.keySet()) {
@@ -124,10 +229,20 @@ public class Ops extends Thread {
 		return apgo;
 	}
 
+	/**
+	 * @param go
+	 * @param topologyId
+	 * @return
+	 */
 	private GroupOp newGroupOp(GroupOp go, String topologyId) {
 		return newGroupOp(go, node.getLocalClusters().get(topologyId).getTopology());
 	}
 
+	/**
+	 * @param go
+	 * @param topology
+	 * @return
+	 */
 	private GroupOp newGroupOp(GroupOp go, DragonTopology topology) {
 		for (NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
 			go.add(desc);
@@ -136,6 +251,9 @@ public class Ops extends Thread {
 		return go;
 	}
 
+	/**
+	 * @param groupOp
+	 */
 	private void register(Op groupOp) {
 		synchronized (groupOps) {
 			groupOp.init(node.getComms().getMyNodeDesc(), opCounter);
@@ -149,18 +267,28 @@ public class Ops extends Thread {
 		}
 	}
 
+	/**
+	 * @param id
+	 * @return
+	 */
 	public GroupOp getGroupOp(Long id) {
 		synchronized (groupOps) {
 			return (GroupOp) groupOps.get(id);
 		}
 	}
 
+	/**
+	 * @param id
+	 */
 	public void removeGroupOp(Long id) {
 		synchronized (groupOps) {
 			groupOps.remove(id);
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see java.lang.Thread#run()
+	 */
 	@Override
 	public void run() {
 		final ArrayList<ConditionalOp> removed = new ArrayList<ConditionalOp>();

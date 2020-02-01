@@ -22,15 +22,48 @@ import dragon.tuple.Values;
 import dragon.utils.ComponentTaskBuffer;
 import dragon.utils.NetworkTaskBuffer;
 
+/**
+ * @author aaron
+ *
+ */
 public class Collector {
 	private static final Logger log = LogManager.getLogger(Collector.class);
+	
+	/**
+	 * 
+	 */
 	private final ComponentTaskBuffer outputQueues;
+	
+	/**
+	 * 
+	 */
 	private final LocalCluster localCluster;
+	
+	/**
+	 * 
+	 */
 	private final Component component;
+	
+	/**
+	 * 
+	 */
 	private final int totalBufferSpace;
+	
+	/**
+	 * 
+	 */
 	private boolean emitted;
+	
+	/**
+	 * 
+	 */
 	private final Router router;
 	
+	/**
+	 * @param component
+	 * @param localCluster
+	 * @param bufSize
+	 */
 	public Collector(Component component,LocalCluster localCluster,int bufSize) {
 		this.component = component;
 		this.localCluster=localCluster;
@@ -53,32 +86,65 @@ public class Collector {
 		totalBufferSpace=tbs;
 	}
 	
+	/**
+	 * @return
+	 */
 	public int getTotalBufferSpace() {
 		return totalBufferSpace;
 	}
 	
+	/**
+	 * @param componentId
+	 * @param streamId
+	 * @return
+	 */
 	public NetworkTaskBuffer getQueue(String componentId, String streamId){
 		return outputQueues.get(componentId).get(streamId);
 	}
 	
+	/**
+	 * @return
+	 */
 	public ComponentTaskBuffer getComponentTaskBuffer() {
 		return outputQueues;
 	}
 	
+	/**
+	 * @param anchorTuple
+	 * @param values
+	 * @return
+	 */
 	@Deprecated
 	public synchronized List<Integer> emit(Tuple anchorTuple, Values values) {
 		return emit(values);
 	}
 	
+	/**
+	 * @param streamId
+	 * @param anchorTuple
+	 * @param values
+	 * @return
+	 */
 	@Deprecated
 	public synchronized List<Integer> emit(String streamId,Tuple anchorTuple, Values values) {
 		return emit(streamId,values);
 	}
 	
+	/**
+	 * @param values
+	 * @return
+	 */
 	public synchronized List<Integer> emit(Values values){
 		return emit(Constants.DEFAULT_STREAM,values);
 	}
 	
+	/**
+	 * @param grouping
+	 * @param tuple
+	 * @param taskIds
+	 * @param componentId
+	 * @param streamId
+	 */
 	private void transmit(AbstractGrouping grouping, 
 			Tuple tuple,
 			List<Integer> taskIds,
@@ -118,6 +184,11 @@ public class Collector {
 		}
 	}
 	
+	/**
+	 * @param streamId
+	 * @param values
+	 * @return
+	 */
 	public synchronized List<Integer> emit(String streamId,Values values) {
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
 		if(component.isClosed()) {
@@ -165,11 +236,20 @@ public class Collector {
 		return receivingTaskIds;
 	}
 	
+	/**
+	 * @param taskId
+	 * @param values
+	 */
 	public synchronized void emitDirect(int taskId, Values values){
 		emitDirect(taskId,Constants.DEFAULT_STREAM,values);
 	}
 	
 	// TODO: update this method for network operation - following above example
+	/**
+	 * @param taskId
+	 * @param streamId
+	 * @param values
+	 */
 	public synchronized void emitDirect(int taskId, String streamId, Values values){
 		List<Integer> receivingTaskIds = new ArrayList<Integer>();
 		Fields fields = component.getOutputFieldsDeclarer().getFieldsDirect(streamId);
@@ -195,23 +275,41 @@ public class Collector {
 		setEmit();
 	}
 	
+	/**
+	 * @param taskId
+	 * @param streamId
+	 * @param anchorTuple
+	 * @param values
+	 */
 	@Deprecated
 	public synchronized void emitDirect(int taskId, String streamId, Tuple anchorTuple, Values values){
 		emitDirect(taskId,Constants.DEFAULT_STREAM,values);
 	}
 	
+	/**
+	 * 
+	 */
 	public void resetEmit() {
 		emitted=false;
 	}
 	
+	/**
+	 * @return
+	 */
 	public boolean didEmit() {
 		return emitted;
 	}
 	
+	/**
+	 * 
+	 */
 	public void setEmit() {
 		emitted=true;
 	}
 
+	/**
+	 * 
+	 */
 	public void emitTerminateTuple() {
 		if(localCluster.getTopology().getTopology().get(component.getComponentId())==null) return;
 		for(String componentId : localCluster.getTopology().getTopology().get(component.getComponentId()).keySet()) {

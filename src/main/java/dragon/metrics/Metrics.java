@@ -24,23 +24,43 @@ import dragon.network.Node;
  */
 public class Metrics extends Thread {
 	private static Logger log = LogManager.getLogger(Metrics.class);
+	
+	/**
+	 * The node that this metrics class belongs to.
+	 */
 	private Node node;
 	
+	/**
+	 * The topology metric map for storing samples on topologies.
+	 */
 	private TopologyMetricMap samples;
+	
+	/**
+	 * The InfluxDBClient, null if none given in conf. 
+	 */
 	private InfluxDBClient influxDBClient;
+	
+	/**
+	 * For writing to the InfluxDBClient.
+	 */
 	private WriteApi writeApi;
 	
+	/**
+	 * When initialized it will open a DB connection to InfluxDB if
+	 * available. The connection will remain open until metrics shuts down.
+	 * @param node
+	 */
 	public Metrics(Node node){
-		log.debug("metrics initialized");
 		samples=new TopologyMetricMap((int)node.getConf().getDragonMetricsSampleHistory());
 		this.node = node;
-		if(node.getConf().getInfluxDBUrl()!=null) {
-			log.info("using InfluxDB ["+node.getConf().getInfluxDBUrl()+"]");
-			influxDBClient = InfluxDBClientFactory.create(node.getConf().getInfluxDBUrl(), node.getConf().getInfluxDBToken().toCharArray());
-			writeApi = influxDBClient.getWriteApi();
-		}
+		
 	}
 	
+	/**
+	 * Return the samples for a given topology.
+	 * @param topologyId
+	 * @return
+	 */
 	public ComponentMetricMap getMetrics(String topologyId){
 		log.debug("gettings samples for ["+topologyId+"]");
 		synchronized(samples){
@@ -48,6 +68,11 @@ public class Metrics extends Thread {
 		}
 	}
 	
+	/**
+	 * Compute the total accumulated time that the garbage collector
+	 * has been working for this JVM.
+	 * @return
+	 */
 	private long gcTime() {
 		long gcTime = 0;
 	    for (GarbageCollectorMXBean garbageCollectorMXBean : ManagementFactory.getGarbageCollectorMXBeans()) {
@@ -56,8 +81,18 @@ public class Metrics extends Thread {
 	    return gcTime;
 	}
 	
+	/* (non-Javadoc)
+	 * @see java.lang.Thread#run()
+	 */
 	@Override
 	public void run(){
+		setName("metrics");
+		log.info("starting up");
+		if(node.getConf().getInfluxDBUrl()!=null) {
+			log.info("using InfluxDB ["+node.getConf().getInfluxDBUrl()+"]");
+			influxDBClient = InfluxDBClientFactory.create(node.getConf().getInfluxDBUrl(), node.getConf().getInfluxDBToken().toCharArray());
+			writeApi = influxDBClient.getWriteApi();
+		}
 		Point point;
 		while(!isInterrupted()){
 			try {
@@ -95,9 +130,20 @@ public class Metrics extends Thread {
 				}
 			}
 		}
-		if(influxDBClient!=null) influxDBClient.close();
+		if(influxDBClient!=null) {
+			log.info("closing connection to InfluxDB");
+			influxDBClient.close();
+		}
+		log.info("shutting down");
 	}
 	
+	/**
+	 * Send a sample to InfluxDB
+	 * @param topologyId
+	 * @param componentId
+	 * @param taskId
+	 * @param sample
+	 */
 	private void writeToInfluxDB(String topologyId, String componentId, Integer taskId, Sample sample) {
 		Point point;
 		point = Point.measurement("outputQueueSize").addTag("node", node.getComms().getMyNodeDesc().toString())

@@ -13,6 +13,11 @@ import dragon.network.operations.GroupOp;
 public class NodeMessage extends Message {
 	private static final long serialVersionUID = -1656333391539097974L;
 
+	/**
+	 * 
+	 * @author aaron
+	 *
+	 */
 	public static enum NodeMessageType {
 		JOIN_REQUEST,
 		ACCEPTING_JOIN,
@@ -46,6 +51,9 @@ public class NodeMessage extends Message {
 		ALLOCATE_PARTITION_ERROR
 	}
 	
+	/**
+	 * The type of the message
+	 */
 	private final NodeMessageType type;
 	
 	/**
@@ -59,26 +67,44 @@ public class NodeMessage extends Message {
 	 */
 	private NodeDescriptor sender;
 	
+	/**
+	 * @param type
+	 */
 	public NodeMessage(NodeMessageType type) {
 		this.type=type;
 	}
 	
+	/**
+	 * @return
+	 */
 	public NodeMessageType getType() {
 		return type;
 	}
 	
+	/**
+	 * @param sender
+	 */
 	public void setSender(NodeDescriptor sender) {
 		this.sender=sender;
 	}
 	
+	/**
+	 * @return
+	 */
 	public NodeDescriptor getSender() {
 		return sender;
 	}
 
+	/**
+	 * @param groupOperation
+	 */
 	public void setGroupOp(GroupOp groupOperation) {
 		this.groupOperation=groupOperation;
 	}
 	
+	/**
+	 * @return
+	 */
 	public GroupOp getGroupOp() {
 		return this.groupOperation;
 	}

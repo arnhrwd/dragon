@@ -10,6 +10,10 @@ public class ServiceMessage extends Message {
 	 */
 	private String messageId="";
 	
+	/**
+	 * @author aaron
+	 *
+	 */
 	public static enum ServiceMessageType {
 		RUN_TOPOLOGY,
 		TOPOLOGY_ERROR,
@@ -41,20 +45,35 @@ public class ServiceMessage extends Message {
 		ALLOCATE_PARTITION_ERROR
 	}
 	
+	/**
+	 * 
+	 */
 	private ServiceMessageType type;
 	
+	/**
+	 * @param type
+	 */
 	public ServiceMessage(ServiceMessageType type){
 		this.type=type;
 	}
 	
+	/**
+	 * @return
+	 */
 	public ServiceMessageType getType(){
 		return type;
 	}
 	
+	/**
+	 * @param messageId
+	 */
 	public void setMessageId(String messageId) {
 		this.messageId=messageId;
 	}
 	
+	/**
+	 * @return
+	 */
 	public String getMessageId() {
 		return messageId;
 	}

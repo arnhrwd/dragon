@@ -12,7 +12,9 @@ import java.util.jar.JarFile;
  *
  */
 public class Agent {
-	
+	/**
+	 * intrumentation hook
+	 */
 	private static Instrumentation inst;
 	
 	/**

@@ -7,9 +7,17 @@ import dragon.topology.base.Bolt;
 import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
 
-
+/**
+ * 
+ * @author aaron
+ *
+ */
 public class TopologyFieldsGroupingTest {
 
+	/**
+	 * 
+	 * @param args
+	 */
 	public static void main(String[] args) {
 		
 		TopologyBuilder topologyBuilder = new TopologyBuilder();

@@ -4,12 +4,18 @@ import java.util.HashMap;
 
 import dragon.network.NodeDescriptor;
 
+/**
+ * @author aaron
+ *
+ */
 public class ComponentEmbedding extends HashMap<String,HashMap<Integer,NodeDescriptor>>{
-
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -6653485330603838000L;
+	
+	/**
+	 * @param componentId
+	 * @param taskId
+	 * @param node
+	 */
 	public void put(String componentId, Integer taskId, NodeDescriptor node) {
 		if(!containsKey(componentId)) {
 			put(componentId,new HashMap<Integer,NodeDescriptor>());
@@ -19,6 +25,9 @@ public class ComponentEmbedding extends HashMap<String,HashMap<Integer,NodeDescr
 	}
 	
 	
+	/**
+	 * @return
+	 */
 	public ReverseComponentEmbedding getReverseComponentEmbedding() {
 		ReverseComponentEmbedding rce = new ReverseComponentEmbedding();
 		for(String componentId : keySet()) {

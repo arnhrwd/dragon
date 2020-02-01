@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -708,15 +707,30 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * Scheduling the spouts will allow data to start streaming.
+	 */
 	private void scheduleSpouts() {
 		runComponentThreads();
 		state=State.RUNNING;
 	}
 	
+	/**
+	 * Bolts set to have their prepare function called, at a later time.
+	 * @param bolt
+	 * @param context
+	 * @param collector
+	 */
 	private void prepareLater(Bolt bolt, TopologyContext context, OutputCollector collector) {
 		boltPrepareList.add(new BoltPrepare(bolt,context,collector));
 	}
 	
+	/**
+	 * Spouts set to have their open function called, at a later time.
+	 * @param spout
+	 * @param context
+	 * @param collector
+	 */
 	private void openLater(Spout spout, TopologyContext context, SpoutOutputCollector collector) {
 		spoutOpenList.add(new SpoutOpen(spout,context,collector));
 	}
@@ -738,6 +752,10 @@ public class LocalCluster {
 		scheduleSpouts();
 	}
 
+	/**
+	 * Send a tick tuple to the given bolt.
+	 * @param boltId
+	 */
 	private void issueTickTuple(String boltId) {
 		Tuple tuple=RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).newObject();;
 		tuple.setValues(new Values("0"));
@@ -752,6 +770,10 @@ public class LocalCluster {
 		RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).crushRecyclable(tuple, 1);
 	}
 	
+	/**
+	 * Continue to check when all components are closed then terminate all threads
+	 * and signal the local cluster has shutdown.
+	 */
 	private void checkCloseCondition() {
 		log.debug("starting shutdown thread");
 		Thread shutdownThread = new Thread() {
@@ -879,6 +901,9 @@ public class LocalCluster {
 		shutdownThread.start();
 	}
 	
+	/**
+	 * Startup a thread per component.
+	 */
 	private void runComponentThreads() {
 		log.info("starting component executor threads with "+totalParallelismHint+" threads");
 		for(int i=0;i<totalParallelismHint;i++){
@@ -888,7 +913,10 @@ public class LocalCluster {
 		}
 	}
 
-	
+	/**
+	 * Check the output queues of components, processing network tasks found there and
+	 * deliver tuples to the input queues of components.
+	 */
 	private void outputsScheduler(){
 		log.debug("starting the outputs scheduler with "+conf.getDragonLocalclusterThreads()+" threads");
 		for(int i=0;i<conf.getDragonLocalclusterThreads();i++) {
@@ -1055,14 +1083,26 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * 
+	 * @return the bolts that running on this local cluster.
+	 */
 	public HashMap<String,HashMap<Integer,Bolt>> getBolts(){
 		return bolts;
 	}
 	
+	/**
+	 * 
+	 * @return the spouts that are running on this local cluster.
+	 */
 	public HashMap<String,HashMap<Integer,Spout>> getSpouts(){
 		return spouts;
 	}
 	
+	/**
+	 * 
+	 * @return the node that this local cluster is attached to.
+	 */
 	public Node getNode(){
 		return node;
 	}
@@ -1071,6 +1111,12 @@ public class LocalCluster {
 //		return componentsPending;
 //	}
 	
+	/**
+	 * Record group operations that this local cluster needs to respond
+	 * to, e.g. when the local cluster has terminated then it needs to
+	 * respond to the terminate group operation.
+	 * @param go
+	 */
 	public void setGroupOperation(GroupOp go) {
 		synchronized(groupOperations) {
 			if(!groupOperations.containsKey(go.getClass())) {
@@ -1081,6 +1127,13 @@ public class LocalCluster {
 		}
 	}
 
+	/**
+	 * Store up component exceptions and halt a topology if any component exceeds
+	 * the set limit on exceptions. Stack traces are converted to a String.
+	 * @param component ref to the component
+	 * @param message the exception message
+	 * @param stackTrace the stack trace of the exception
+	 */
 	public synchronized void componentException(Component component, String message, StackTraceElement[] stackTrace) {
 		ComponentError ce = new ComponentError(message,stackTrace);
 		if(!componentErrors.containsKey(component)) {
@@ -1104,10 +1157,18 @@ public class LocalCluster {
 		}
 	}
 	
+	/**
+	 * 
+	 * @return the component errors accumulated for this local cluster
+	 */
 	public HashMap<Component, ArrayList<ComponentError>> getComponentErrors() {
 		return componentErrors;
 	}
 
+	/**
+	 * 
+	 * @return the state of this local cluster
+	 */
 	public State getState() {
 		return state;
 	}

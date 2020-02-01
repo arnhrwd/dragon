@@ -274,6 +274,7 @@ public class Config extends HashMap<String, Object> {
 	/**
 	 * Use default config and overwrite with conf from supplied file.
 	 * @param file the filename to read conf from
+	 * @param logon true if conf should write to the log
 	 * @throws IOException if there was a problem reading the file
 	 */
 	public Config(String file,boolean logon) throws IOException {

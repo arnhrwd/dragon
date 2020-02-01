@@ -1,8 +1,13 @@
 package dragon.utils;
 
-import java.util.Date;
-
+/**
+ * @author aaron
+ *
+ */
 public class Utils {
+	/**
+	 * @param ms
+	 */
 	public static void sleep(long ms){
 		try {
 			Thread.sleep(ms);

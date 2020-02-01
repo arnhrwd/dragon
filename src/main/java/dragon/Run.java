@@ -25,7 +25,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
 import org.yaml.snakeyaml.Yaml;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

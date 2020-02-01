@@ -30,6 +30,7 @@ import dragon.network.messages.service.ServiceMessage;
  * @author aaron
  *
  */
+@Deprecated
 public class MetricsMonitor {
 	private static Logger log = LogManager.getLogger(MetricsMonitor.class);
 	private static String topologyId;
