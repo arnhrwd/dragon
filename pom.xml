@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>tech.streamsoft</groupId>
 	<artifactId>dragon</artifactId>
-	<version>0.0.1-alpha.1</version>
+	<version>0.0.1-alpha.2</version>
 	<name>${project.groupId}:${project.artifactId}</name>
 	<description>A high performance, distributed stream processing system, loosely based on the Apache Storm API.</description>
 	<url>http://people.eng.unimelb.edu.au/aharwood</url>
