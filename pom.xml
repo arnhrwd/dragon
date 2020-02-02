@@ -4,7 +4,8 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>tech.streamsoft</groupId>
 	<artifactId>dragon</artifactId>
-	<version>0.0.1-alpha.3</version>
+	<version>0.0.1-alpha.4-SNAPSHOT</version>
+	<packaging>jar</packaging>
 	<name>${project.groupId}:${project.artifactId}</name>
 	<description>A high performance, distributed stream processing system, loosely based on the Apache Storm API.</description>
 	<url>http://people.eng.unimelb.edu.au/aharwood</url>
@@ -161,6 +162,17 @@
 				</configuration>
 			</plugin>
 			<plugin>
+			  <groupId>org.apache.maven.plugins</groupId>
+			  <artifactId>maven-release-plugin</artifactId>
+			  <version>2.5.3</version>
+			  <configuration>
+			    <autoVersionSubmodules>true</autoVersionSubmodules>
+			    <useReleaseProfile>false</useReleaseProfile>
+			    <releaseProfiles>release</releaseProfiles>
+			    <goals>deploy</goals>
+			  </configuration>
+			</plugin>
+			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<executions>
 					<execution>
@@ -181,8 +193,6 @@
 									<Multi-Release>true</Multi-Release>
 								</manifestEntries>
 							</archive>
-							<!-- <finalName>${project.artifactId}-${project.version}</finalName> 
-								<appendAssemblyId>false</appendAssemblyId> -->
 						</configuration>
 						<phase>package</phase>
 						<goals>
