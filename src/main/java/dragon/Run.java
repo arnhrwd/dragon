@@ -575,7 +575,7 @@ public class Run {
 	 * @throws IOException
 	 */
 	@SuppressWarnings("unchecked")
-	private static Config getConf(CommandLine cmd,boolean logon) throws IOException {
+	private static Config getConf(CommandLine cmd,String exec,boolean logon) throws IOException {
 		Config conf;
         if(cmd.hasOption("conf")) {
         	String val = cmd.getOptionValue("conf");
@@ -588,6 +588,17 @@ public class Run {
         	}
         } else {
         	conf = new Config(Constants.DRAGON_PROPERTIES,logon);
+        }
+        if(exec.equals("daemon")) {
+        	if(cmd.hasOption("host")) {
+				conf.put(Config.DRAGON_NETWORK_LOCAL_HOST, cmd.getOptionValue("host"));
+			}
+			if(cmd.hasOption("port")) {
+				conf.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,Integer.parseInt(cmd.getOptionValue("port")));
+			}
+			if(cmd.hasOption("sport")) {
+				conf.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT, Integer.parseInt(cmd.getOptionValue("sport")));
+			}
         }
         return conf;
 	}
@@ -636,15 +647,7 @@ public class Run {
         
         try {
             cmd = parser.parse(options, args);
-            Config conf = getConf(cmd,false);
-            Run.updateLog4jConfiguration(conf.getDragonLogDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort());
-            final Properties properties = new Properties();
-    		properties.load(Run.class.getClassLoader().getResourceAsStream("project.properties"));
-    		log.info("dragon version "+properties.getProperty("project.version"));
-            conf = getConf(cmd,true);
-            RecycleStation.instanceInit(conf);
-            pm = new ProcessManager(conf);
-            
+            String exec = "";
             /*
              * First check to see if we are submitting a topology using the
              * approach: dragon -j JARFILE -c CLASS TOPOLOGYNAME
@@ -653,14 +656,11 @@ public class Run {
              * is given then it is simply run in local cluster mode.
              */
             if(cmd.hasOption("jar") && cmd.hasOption("class")) {
-            	submit(cmd,conf);
+            	exec="submit";
             } else {
-            
 	            /*
 	             * Otherwise check for what command is being issued.
 	             */
-	            
-	            String exec = "";
 	            if(cmd.hasOption("exec")) {
 	            	exec = cmd.getOptionValue("exec");
 	            } else if(cmd.getArgs().length>0) {
@@ -680,194 +680,194 @@ public class Run {
 	            		exec="daemon";
 	            	} 
 	            }
-	            
-	            switch(exec) {
-	            case "":
-	            	throw new ParseException("no command was given");
-	            case "submit":
-	            	submit(cmd,conf);
-	            	pm.interrupt();
-	            	break;
-	            case "deploy":
-	            	deploy(cmd,conf);
-	            	pm.interrupt();
-	            	break;
-	            case "setup": {
-	            	ArrayList<String> hostnames = hostnames(cmd,conf);
-	            	String username=System.getProperty("user.name");
-	        		if(cmd.getArgs().length==2) {
-	        			username=cmd.getArgs()[1];
-	        		}
-	            	setup(hostnames,username,conf);
-	            	pm.interrupt();
-	            	break;
-	            }
-	            case "distro":{
-	            	ArrayList<String> hostnames = hostnames(cmd,conf);
-	            	if(cmd.getArgs().length<2) {
-	        			throw new ParseException("ERROR: a package distro must be given\n try: dragon deploy [-h HOSTNAME] [-p DPORT] [-s SPORT] DRAGON-VERSION-distro.zip [USERNAME]");
-	        		}
-	        		String distro = cmd.getArgList().get(1);
-	        		String username=System.getProperty("user.name");
-	        		if(cmd.getArgs().length==3) {
-	        			username=cmd.getArgs()[2];
-	        		}
-	            	distro(hostnames,username,distro,conf);
-	            	pm.interrupt();
-	            	break;
-	            }
-	            case "unzip":{
-	            	ArrayList<String> hostnames = hostnames(cmd,conf);
-	            	if(cmd.getArgs().length<2) {
-	        			throw new ParseException("ERROR: a package distro must be given\n try: dragon deploy [-h HOSTNAME] [-p DPORT] [-s SPORT] DRAGON-VERSION-distro.zip [USERNAME]");
-	        		}
-	        		String distro = cmd.getArgList().get(1);
-	        		String username=System.getProperty("user.name");
-	        		if(cmd.getArgs().length==3) {
-	        			username=cmd.getArgs()[2];
-	        		}
-	            	unzipdistro(hostnames,username,distro,conf);
-	            	pm.interrupt();
-	            	break;
-	            }
-	            case "config":{
-	            	ArrayList<String> hostnames = hostnames(cmd,conf);
-	            	String username=System.getProperty("user.name");
-	        		if(cmd.getArgs().length==2) {
-	        			username=cmd.getArgs()[1];
-	        		}
-	            	configuredistro(hostnames,username,cmd,conf);
-	            	pm.interrupt();
-	            	break;
-	            }
-	            case "online":{
-	            	ArrayList<String> hostnames = hostnames(cmd,conf);
-	            	String username=System.getProperty("user.name");
-	        		if(cmd.getArgs().length==2) {
-	        			username=cmd.getArgs()[1];
-	        		}
-	            	onlinedistro(hostnames,username,cmd,conf);
-	            	pm.interrupt();
-	            	break;
-	            }
-	            case "offline":{
-	            	ArrayList<String> hostnames = hostnames(cmd,conf);
-	            	String username=System.getProperty("user.name");
-	        		if(cmd.getArgs().length==2) {
-	        			username=cmd.getArgs()[1];
-	        		}
-	            	offlinedistro(hostnames,username,cmd,conf);
-	            	pm.interrupt();
-	            	break;
-	            }
-	            case "allocate":
-	            	break;
-	            case "metrics":{
-	            	DragonSubmitter.node = conf.getLocalHost();
-	    			if(cmd.hasOption("host")) {
-	    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
-	    			}
-	    			if(cmd.hasOption("sport")) {
-	    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
-	    			}
-	    			if(cmd.hasOption("port")) {
-	    				log.warn("the -p option was given but metrics does not use that option");
-	    			}
-	    			if(!cmd.hasOption("topology")){
-	    				throw new ParseException("must provide a topology name with -t option");
-	    			}
-	    			DragonSubmitter.getMetrics(conf,cmd.getOptionValue("topology"));
-	    			pm.interrupt();
-	    			break;
-	            }
-	            case "terminate":{
-	            	DragonSubmitter.node = conf.getLocalHost();
-	    			if(cmd.hasOption("host")) {
-	    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
-	    			}
-	    			if(cmd.hasOption("sport")) {
-	    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
-	    			}
-	    			if(cmd.hasOption("port")) {
-	    				log.warn("the -p option was given but terminate does not use that option");
-	    			}
-	    			if(!cmd.hasOption("topology")){
-	    				throw new ParseException("must provide a topology name with -t option");
-	    			}
-	    			DragonSubmitter.terminateTopology(conf,cmd.getOptionValue("topology"));
-	    			pm.interrupt();
-	    			break;
-	            }
-	            case "resume":{
-	            	DragonSubmitter.node = conf.getLocalHost();
-	    			if(cmd.hasOption("host")) {
-	    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
-	    			}
-	    			if(cmd.hasOption("sport")) {
-	    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
-	    			}
-	    			if(cmd.hasOption("port")) {
-	    				log.warn("the -p option was given but resume does not use that option");
-	    			}
-	    			if(!cmd.hasOption("topology")){
-	    				throw new ParseException("must provide a topology name with -r option");
-	    			}
-	    			DragonSubmitter.resumeTopology(conf,cmd.getOptionValue("topology"));
-	    			pm.interrupt();
-	    			break;
-	            }
-	            case "halt":{
-	            	DragonSubmitter.node = conf.getLocalHost();
-	    			if(cmd.hasOption("host")) {
-	    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
-	    			}
-	    			if(cmd.hasOption("sport")) {
-	    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
-	    			}
-	    			if(cmd.hasOption("port")) {
-	    				log.warn("the -p option was given but halt does not use that option");
-	    			}
-	    			if(!cmd.hasOption("topology")){
-	    				throw new ParseException("must provide a topology name with -x option");
-	    			}
-	    			DragonSubmitter.haltTopology(conf,cmd.getOptionValue("topology"));
-	    			pm.interrupt();
-	    			break;
-	            }
-	            case "list":{
-	            	DragonSubmitter.node = conf.getLocalHost();
-	    			if(cmd.hasOption("host")) {
-	    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
-	    			}
-	    			if(cmd.hasOption("sport")) {
-	    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
-	    			}
-	    			if(cmd.hasOption("port")) {
-	    				log.warn("the -p option was given but list does not use that option");
-	    			}
-	    			DragonSubmitter.listTopologies(conf);
-	    			pm.interrupt();
-	    			break;
-	            }
-	            case "daemon":{
-	            	if(cmd.hasOption("host")) {
-	    				conf.put(Config.DRAGON_NETWORK_LOCAL_HOST, cmd.getOptionValue("host"));
-	    			}
-	    			if(cmd.hasOption("port")) {
-	    				conf.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,Integer.parseInt(cmd.getOptionValue("port")));
-	    			}
-	    			if(cmd.hasOption("sport")) {
-	    				conf.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT, Integer.parseInt(cmd.getOptionValue("sport")));
-	    			}
-	            	log.info("starting dragon daemon");
-	            	
-					new Node(conf);
-					break;
-	            }
-	            default:
-	            	throw new ParseException("unknown command: "+exec);
-	            }
             }
+            Config conf = getConf(cmd,exec,false);
+            Run.updateLog4jConfiguration(conf.getDragonLogDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort());
+            final Properties properties = new Properties();
+    		properties.load(Run.class.getClassLoader().getResourceAsStream("project.properties"));
+    		log.info("dragon version "+properties.getProperty("project.version"));
+            conf = getConf(cmd,exec,true);
+            
+            RecycleStation.instanceInit(conf);
+            
+            switch(exec) {
+            case "":
+            	throw new ParseException("no command was given");
+            case "submit":
+            	submit(cmd,conf);
+            	break;
+            case "deploy":
+            	pm = new ProcessManager(conf);
+            	deploy(cmd,conf);
+            	pm.interrupt();
+            	break;
+            case "setup": {
+            	pm = new ProcessManager(conf);
+            	ArrayList<String> hostnames = hostnames(cmd,conf);
+            	String username=System.getProperty("user.name");
+        		if(cmd.getArgs().length==2) {
+        			username=cmd.getArgs()[1];
+        		}
+            	setup(hostnames,username,conf);
+            	pm.interrupt();
+            	break;
+            }
+            case "distro":{
+            	pm = new ProcessManager(conf);
+            	ArrayList<String> hostnames = hostnames(cmd,conf);
+            	if(cmd.getArgs().length<2) {
+        			throw new ParseException("ERROR: a package distro must be given\n try: dragon deploy [-h HOSTNAME] [-p DPORT] [-s SPORT] DRAGON-VERSION-distro.zip [USERNAME]");
+        		}
+        		String distro = cmd.getArgList().get(1);
+        		String username=System.getProperty("user.name");
+        		if(cmd.getArgs().length==3) {
+        			username=cmd.getArgs()[2];
+        		}
+            	distro(hostnames,username,distro,conf);
+            	pm.interrupt();
+            	break;
+            }
+            case "unzip":{
+            	pm = new ProcessManager(conf);
+            	ArrayList<String> hostnames = hostnames(cmd,conf);
+            	if(cmd.getArgs().length<2) {
+        			throw new ParseException("ERROR: a package distro must be given\n try: dragon deploy [-h HOSTNAME] [-p DPORT] [-s SPORT] DRAGON-VERSION-distro.zip [USERNAME]");
+        		}
+        		String distro = cmd.getArgList().get(1);
+        		String username=System.getProperty("user.name");
+        		if(cmd.getArgs().length==3) {
+        			username=cmd.getArgs()[2];
+        		}
+            	unzipdistro(hostnames,username,distro,conf);
+            	pm.interrupt();
+            	break;
+            }
+            case "config":{
+            	pm = new ProcessManager(conf);
+            	ArrayList<String> hostnames = hostnames(cmd,conf);
+            	String username=System.getProperty("user.name");
+        		if(cmd.getArgs().length==2) {
+        			username=cmd.getArgs()[1];
+        		}
+            	configuredistro(hostnames,username,cmd,conf);
+            	pm.interrupt();
+            	break;
+            }
+            case "online":{
+            	pm = new ProcessManager(conf);
+            	ArrayList<String> hostnames = hostnames(cmd,conf);
+            	String username=System.getProperty("user.name");
+        		if(cmd.getArgs().length==2) {
+        			username=cmd.getArgs()[1];
+        		}
+            	onlinedistro(hostnames,username,cmd,conf);
+            	pm.interrupt();
+            	break;
+            }
+            case "offline":{
+            	pm = new ProcessManager(conf);
+            	ArrayList<String> hostnames = hostnames(cmd,conf);
+            	String username=System.getProperty("user.name");
+        		if(cmd.getArgs().length==2) {
+        			username=cmd.getArgs()[1];
+        		}
+            	offlinedistro(hostnames,username,cmd,conf);
+            	pm.interrupt();
+            	break;
+            }
+            case "allocate":
+            	break;
+            case "metrics":{
+            	DragonSubmitter.node = conf.getLocalHost();
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
+    			if(cmd.hasOption("port")) {
+    				log.warn("the -p option was given but metrics does not use that option");
+    			}
+    			if(!cmd.hasOption("topology")){
+    				throw new ParseException("must provide a topology name with -t option");
+    			}
+    			DragonSubmitter.getMetrics(conf,cmd.getOptionValue("topology"));
+    			break;
+            }
+            case "terminate":{
+            	DragonSubmitter.node = conf.getLocalHost();
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
+    			if(cmd.hasOption("port")) {
+    				log.warn("the -p option was given but terminate does not use that option");
+    			}
+    			if(!cmd.hasOption("topology")){
+    				throw new ParseException("must provide a topology name with -t option");
+    			}
+    			DragonSubmitter.terminateTopology(conf,cmd.getOptionValue("topology"));
+    			break;
+            }
+            case "resume":{
+            	DragonSubmitter.node = conf.getLocalHost();
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
+    			if(cmd.hasOption("port")) {
+    				log.warn("the -p option was given but resume does not use that option");
+    			}
+    			if(!cmd.hasOption("topology")){
+    				throw new ParseException("must provide a topology name with -r option");
+    			}
+    			DragonSubmitter.resumeTopology(conf,cmd.getOptionValue("topology"));
+    			break;
+            }
+            case "halt":{
+            	DragonSubmitter.node = conf.getLocalHost();
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
+    			if(cmd.hasOption("port")) {
+    				log.warn("the -p option was given but halt does not use that option");
+    			}
+    			if(!cmd.hasOption("topology")){
+    				throw new ParseException("must provide a topology name with -x option");
+    			}
+    			DragonSubmitter.haltTopology(conf,cmd.getOptionValue("topology"));
+    			break;
+            }
+            case "list":{
+            	DragonSubmitter.node = conf.getLocalHost();
+    			if(cmd.hasOption("host")) {
+    				DragonSubmitter.node.setHost(cmd.getOptionValue("host"));
+    			}
+    			if(cmd.hasOption("sport")) {
+    				DragonSubmitter.node.setServicePort(Integer.parseInt(cmd.getOptionValue("sport")));
+    			}
+    			if(cmd.hasOption("port")) {
+    				log.warn("the -p option was given but list does not use that option");
+    			}
+    			DragonSubmitter.listTopologies(conf);
+    			break;
+            }
+            case "daemon":{
+            	log.info("starting dragon daemon");
+				new Node(conf);
+				break;
+            }
+            default:
+            	throw new ParseException("unknown command: "+exec);
+            }
+            
        
         } catch (ParseException e) {
             System.out.println(e.getMessage());

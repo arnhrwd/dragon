@@ -102,9 +102,11 @@ public class Metrics extends Thread {
 			}
 			synchronized(samples){
 				
-				point = Point.measurement("gcTime").addTag("node", node.getComms().getMyNodeDesc().toString())
-						.addField("value", gcTime()).time(Instant.now().toEpochMilli(), WritePrecision.MS);
-				writeApi.writePoint(node.getConf().getInfluxDBBucket(), node.getConf().getInfluxDBOrganization(), point);
+				if(writeApi!=null) {
+					point = Point.measurement("gcTime").addTag("node", node.getComms().getMyNodeDesc().toString())
+							.addField("value", gcTime()).time(Instant.now().toEpochMilli(), WritePrecision.MS);
+					writeApi.writePoint(node.getConf().getInfluxDBBucket(), node.getConf().getInfluxDBOrganization(), point);
+				}
 				
 				for(String topologyId : node.getLocalClusters().keySet()){
 					log.info("sampling topology ["+topologyId+"]");
