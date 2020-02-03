@@ -168,7 +168,7 @@ public class Node {
 		bw.newLine();
 		bw.close();
 		if(ProcessHandle.current().parent().isPresent()) {
-			long parent_pid = ProcessHandle.current().parent().get().pid()
+			long parent_pid = ProcessHandle.current().parent().get().pid();
 			log.debug("parent pid = "+parent_pid);
 		}
 		
