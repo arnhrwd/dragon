@@ -84,7 +84,7 @@ public class DragonSubmitter {
 	 */
 	public static void submitTopology(String string, Config conf, DragonTopology topology) {
 		initComms(conf);
-		log.info("requesting context from ["+node+"]");
+		System.out.println("requesting context from ["+node+"]");
 		try {
 			comms.sendServiceMsg(new GetNodeContextSMsg());
 		} catch (DragonCommsException e1) {
@@ -111,13 +111,13 @@ public class DragonSubmitter {
 			System.exit(-1);
 		}
 		
-		log.info("received context  ["+context+"]");
+		log.debug("received context  ["+context+"]");
 
 		IEmbeddingAlgo embedding = ReflectionUtils.newInstance(conf.getDragonEmbeddingAlgorithm());
 		topology.embedTopology(embedding, context, conf);
 		
 		
-		log.info("uploading jar file to ["+node+"]");
+		System.out.println("uploading jar file to ["+node+"]");
 		try {
 			comms.sendServiceMsg(new UploadJarSMsg(string,topologyJar));
 		} catch (DragonCommsException e1) {
@@ -152,7 +152,7 @@ public class DragonSubmitter {
 			System.exit(-1);
 		}
 		
-		log.debug("running topology on ["+node+"]");
+		System.out.println("running topology on ["+node+"]");
 		try {
 			comms.sendServiceMsg(new RunTopoSMsg(string,conf,topology));
 		} catch (DragonCommsException e1) {
@@ -228,6 +228,7 @@ public class DragonSubmitter {
 	 */
 	public static void terminateTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
+		System.out.println("terminating topology ["+topologyId+"]");
 		comms.sendServiceMsg(new TermTopoSMsg(topologyId));
 		ServiceMessage message = comms.receiveServiceMsg();
 		TermTopoErrorSMsg tte;

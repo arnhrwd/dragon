@@ -66,9 +66,8 @@ public class NodeProcessor extends Thread {
 		this.node=node;
 		context=new NodeContext();
 		nextNode=node.getComms().getMyNodeDesc();
-		
 		context.put(nextNode);
-		
+		setName("node processor");
 		start();
 	}
 	
@@ -483,8 +482,7 @@ public class NodeProcessor extends Thread {
 	 */
 	@Override
 	public void run() {
-		setName("node proc");
-		log.info("starting");
+		log.info("starting up");
 		log.info("next pointer = ["+this.nextNode+"]");
 		while(!isInterrupted()) {
 			NodeMessage msg;
@@ -540,6 +538,7 @@ public class NodeProcessor extends Thread {
 				break;
 			}
 		}
+		log.info("shutting down");
 	}
 	
 	/**

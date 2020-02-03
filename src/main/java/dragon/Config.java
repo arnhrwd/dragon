@@ -243,12 +243,14 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_PROCESSES_MAX="dragon.processes.max";
 	
 	/**
-	 * distribution basename
+	 * distribution deploy dir, i.e. where the installation dir is unpacked
+	 * into
 	 */
-	public static final String DRAGON_DISTRO_BASE="dragon.distro.base";
+	public static final String DRAGON_DEPLOY_DIR="dragon.deploy.dir";
 	
 	/**
-	 * log directory, if not given will be BASE/log
+	 * 
+	 * @return log directory, if not given will be DRAGON_HOME/log
 	 */
 	public static final String DRAGON_LOG_DIR="dragon.log.dir";
 	
@@ -293,8 +295,8 @@ public class Config extends HashMap<String, Object> {
 		}
 		if(inputStream==null) {
 			try {
-				if(logon) log.debug("looking for "+file+" in ../conf");
-				inputStream =loadByFileName("../conf/"+file);
+				if(logon) log.debug("looking for "+file+" in "+getDragonHomeDir()+"/conf");
+				inputStream =loadByFileName(getDragonHomeDir()+"/conf/"+file);
 			} catch (FileNotFoundException e) {
 				
 			}
@@ -413,7 +415,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_FAULTS_COMPONENT_TOLERANCE,3);
 		put(DRAGON_JAVA_BIN,"java");
 		put(DRAGON_PROCESSES_MAX,10);
-		put(DRAGON_DISTRO_BASE,"dragon");
+		put(DRAGON_DEPLOY_DIR,"dragon");
 	}
 	
 	/**
@@ -782,11 +784,26 @@ public class Config extends HashMap<String, Object> {
 	}
 	
 	/**
-	 * 
-	 * @return the base of the distro installation
+	 * The deploy directory is usually the directory in which the installation
+	 * was unpacked to, i.e. the parent of the dragon home directory.
+	 * @return the deploy directory of the installation
 	 */
-	public String getDragonDistroBase() {
-		return (String)get(DRAGON_DISTRO_BASE);
+	public String getDragonDeployDir() {
+		return (String)get(DRAGON_DEPLOY_DIR);
+	}
+	
+	/**
+	 * 
+	 * @return the home directory of the installation
+	 */
+	public String getDragonHomeDir() {
+		String home_dir = System.getenv("DRAGON_HOME");
+		if(home_dir==null) {
+			System.err.println("WARNING: DRAGON_HOME environment variable is not set. Either run dragon using dragon.sh or"
+					+ " set the DRAGON_HOME environment variable to point to the installation directory.");
+			System.exit(-1);
+		}
+		return home_dir;
 	}
 	
 	/**
@@ -797,7 +814,7 @@ public class Config extends HashMap<String, Object> {
 		if(containsKey(DRAGON_LOG_DIR)) {
 			return (String)get(DRAGON_LOG_DIR);
 		}
-		return get(DRAGON_DISTRO_BASE)+"/dragon/log";
+		return getDragonHomeDir()+"/log";
 	}
 	
  	//

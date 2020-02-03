@@ -61,7 +61,6 @@ public class Run {
 		props.setProperty("logFile",logFile);
 	    LoggerContext context = (LoggerContext)LogManager.getContext(false);
 	    context.reconfigure();
-	     
 	 }
 	
 	/**
@@ -161,7 +160,6 @@ public class Run {
 		ArrayList<String> hostnames = hostnames(cmd,conf);
 		setup(hostnames,username,conf);
 		distro(hostnames,username,distro,conf);
-		//unzipdistro(hostnames,username,distro,conf);
 		configuredistro(hostnames,username,cmd,conf);
 		onlinedistro(hostnames,username,cmd,conf);
 	}
@@ -177,7 +175,7 @@ public class Run {
 		System.out.println("setting up machines...");
 		for(String hostname : hostnames) {
 			waitingFor++;
-			sshsetup(hostname,username,conf.getDragonDistroBase());
+			sshsetup(hostname,username,conf.getDragonDeployDir());
 		}
 		while(waitingFor>0) {
 			Thread.sleep(100);
@@ -197,7 +195,7 @@ public class Run {
 		System.out.println("copying distro...");
 		for(String hostname: hostnames) {
 			waitingFor++;
-			scpdistro(hostname,username,distro,conf.getDragonDistroBase());
+			scpdistro(hostname,username,distro,conf.getDragonDeployDir());
 		}
 		while(waitingFor>0) {
 			Thread.sleep(100);
@@ -219,7 +217,7 @@ public class Run {
 		System.out.println("unzipping distro...");
 		for(String hostname: hostnames) {
 			waitingFor++;
-			sshunzipdistro(hostname,username,distro,conf.getDragonDistroBase());
+			sshunzipdistro(hostname,username,distro,conf.getDragonDeployDir());
 		}
 		while(waitingFor>0) {
 			Thread.sleep(100);
@@ -368,9 +366,9 @@ public class Run {
 	private static void sshsetup(String hostname,String username,String base) {
 		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+
 				" \"mkdir -p "+base+
-				" && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip && sudo apt autoremove\"";
+				" && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip\"";
 		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",username+"@" + hostname,
-				"mkdir -p "+base+" && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip monitorix && sudo apt autoremove");
+				"mkdir -p "+base+" && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip");
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 		}, (pb2)->{
@@ -484,9 +482,9 @@ public class Run {
 	 */
 	private static void sshconfiguredistro(String hostname,String username,Config conf) {
 		String info="<CONF> | ssh -oStrictHostKeyChecking=no "+username+
-				"@"+hostname+" \"cat > "+conf.getDragonDistroBase()+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml\"";
+				"@"+hostname+" \"cat > "+conf.getDragonDeployDir()+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml\"";
 		ProcessBuilder pb = new ProcessBuilder("ssh","-oStrictHostKeyChecking=no",
-				username+"@" + hostname,"cat > "+conf.getDragonDistroBase()+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml");
+				username+"@" + hostname,"cat > "+conf.getDragonDeployDir()+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml");
 		pm.startProcess(pb, false, (p)->{
 			System.out.println("Running: "+info);
 			OutputStream stdin = p.getOutputStream();
@@ -526,7 +524,7 @@ public class Run {
 	 * @param conf
 	 */
 	private static void sshonlinedistro(String hostname,String username,Config conf) {
-		String base=conf.getDragonDistroBase();
+		String base=conf.getDragonDeployDir();
 		String command="nohup "+base+"/dragon/bin/dragon.sh -d -C "+base+"/dragon/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml"+" > "+
 				base+"/dragon/log/dragon-"+conf.getDragonNetworkLocalDataPort()+".stdout 2> "+base+"/dragon/log/dragon-"+conf.getDragonNetworkLocalDataPort()+".stderr &";
 		String info="ssh -oStrictHostKeyChecking=no "+username+"@"+hostname+" \""+command+"\"";
@@ -610,6 +608,8 @@ public class Run {
 	 */
 	public static void main(String[] args) throws Exception {
 		Options options = new Options();
+		Option helpOption = new Option("?","help",false,"help");
+		options.addOption(helpOption);
 		Option jarOption = new Option("j", "jar", true, "path to topology jar file");
 		options.addOption(jarOption);
 		Option classOption = new Option("c", "class", true, "toplogy class name");
@@ -647,6 +647,9 @@ public class Run {
         
         try {
             cmd = parser.parse(options, args);
+            if(cmd.hasOption("help")) {
+            	throw new ParseException("Help");
+            }
             String exec = "";
             /*
              * First check to see if we are submitting a topology using the
@@ -872,11 +875,11 @@ public class Run {
         } catch (ParseException e) {
             System.out.println(e.getMessage());
             String help="To simply submit a topology to run in local mode: \n";
-            help+="dragon -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY\n\n";
+            help+="dragon.sh -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY\n\n";
             help+="To submit a topology to a Dragon daemon: \n";
-            help+="dragon -h HOST_NAME -s SERVICE_PORT -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME\n\n";
+            help+="dragon.sh -h HOST_NAME -s SERVICE_PORT -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME\n\n";
             help+="To start a Dragon daemon: \n";
-            help+="dragon -d\n\n";
+            help+="dragon.sh -d\n\n";
             help+="Other commands are listed below, see README.md";
             formatter.printHelp(help, options);
             System.exit(1);

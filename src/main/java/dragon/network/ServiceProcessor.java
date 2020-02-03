@@ -74,7 +74,7 @@ public class ServiceProcessor extends Thread {
 		this.node = node;
 		this.comms = node.getComms();
 		setName("service processor");
-		log.info("starting service processor");
+		
 		start();
 	}
 
@@ -518,6 +518,7 @@ public class ServiceProcessor extends Thread {
 	 */
 	@Override
 	public void run() {
+		log.info("starting up");
 		while (!isInterrupted()) {
 			ServiceMessage msg;
 			try {
@@ -558,6 +559,6 @@ public class ServiceProcessor extends Thread {
 				log.error("unrecognized command: " + msg.getType().name());
 			}
 		}
-		log.info("shut down");
+		log.info("shutting down");
 	}
 }

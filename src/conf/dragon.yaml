@@ -1,41 +1,21 @@
-#dragon.output.buffer.size: 1024
 
-#dragon.input.buffer.size: 1024
-
-#dragon.base.dir: /tmp/dragon
-
-#dragon.jar.dir: jars
-
-#dragon.localcluster.threads: 10
-
-#dragon.router.input.threads: 10
-
-#dragon.router.output.threads: 10
-
-#dragon.router.input.buffer.size: 1024
-
-#dragon.router.output.buffer.size: 1024
-
-#dragon.comms.retry.ms: 10000
-
-#dragon.comms.retry.attempts: 30
-
-#dragon.network.local.host: localhost
-
-#dragon.network.default.service.port: 4000
-
-#dragon.network.default.data.port: 4001
-
-#dragon.metrics.enabled: true
-
-#dragon.metrics.sample.period.ms: 60000
-
-#dragon.metrics.sample.history: 1
+# For quick deployment, configure a dragon.yaml file, either this one
+# found in conf/ or create a copy, as shown below (without comments
+# of course), and run the following command:
+#
+# bin/dragon.sh deploy PATH_TO_DISTRO/dragon-VERSION-distro.zip [USERNAME]
+#
+# where USERNAME is an optional parameter giving the username to scp/ssh
+# to on the hosts. It is preferable to have public key access already
+# setup with a key agent running.
+# 
+# The deploy command will upload the distribtion to the deploy directory,
+# unpack it there, and upload an appropariate dragon.yaml specific to each host,
+# it will then bring all of the dragon daemons online.
 
 #dragon.network.hosts:
-#- host1: [sport,dport]
-#- host2: [sport,dport]
+#- hostname: 192.168.1.2
+#- hostname: 192.168.1.3
+#dragon.deploy.dir: /home/ubuntu
 
-#dragon.embedding.algorithm: dragon.topology.RoundRobinEmbedding
-
-#dragon.embedding.custom.file: embedding.yaml
+# See the README.md file for extensive list of configuration parameters.

@@ -53,7 +53,8 @@ public class Metrics extends Thread {
 	public Metrics(Node node){
 		samples=new TopologyMetricMap((int)node.getConf().getDragonMetricsSampleHistory());
 		this.node = node;
-		
+		setName("metrics");
+		start();
 	}
 	
 	/**
@@ -86,7 +87,6 @@ public class Metrics extends Thread {
 	 */
 	@Override
 	public void run(){
-		setName("metrics");
 		log.info("starting up");
 		if(node.getConf().getInfluxDBUrl()!=null) {
 			log.info("using InfluxDB ["+node.getConf().getInfluxDBUrl()+"]");

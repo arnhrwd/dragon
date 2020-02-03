@@ -24,7 +24,7 @@ The Dragon distribution has the following directory structure and relevant files
 To see simple help on using Dragon:
 
     cd dragon/bin
-    ./dragon.sh -h
+    ./dragon.sh --help
  
 ## Quick setup on a cluster
 
@@ -32,14 +32,13 @@ Dragon is recommended to run on a cluster of Ubuntu machines. Ensure that you ha
 
 ### Configure a dragon.yaml
 
-Unpack the distribution into a directory that will not be the deployment directory. Configure a `dragon.yaml` file with the set of Ubuntu machines. In the example below we have 3 Ubuntu machines, and the first one will have two Dragon daemons deployed to it, where we have given different data port (`dport`) and service port (`sport`) numbers for those two. The others have default port numbers which are 4001 and 4000 resp. The `dragon.distro.base` is the directory to put the distribution installation on each Ubuntu machine.
+Unpack the distribution into a directory that will not be the deployment directory. Configure a `dragon.yaml` file with the set of Ubuntu machines. In the example below we have 3 Ubuntu machines that will be deployed to. The `dragon.deploy.dir` is the directory to put the distribution installation in, on each Ubuntu machine - in this case the user is called `ubuntu` and the installation will be deployed within the `packages` dir in the user's home directory.
 
     dragon.network.hosts:
-    - {hostname: 45.113.235.125, dport: 4001, sport: 4000 } 
-    - {hostname: 45.113.235.125, dport: 4101, sport: 4100 }
+    - hostname: 45.113.235.125
     - hostname: 45.113.235.146
     - hostname: 45.113.235.116
-    dragon.distro.base: dragon
+    dragon.deploy.dir: /home/ubuntu/packages
 
 Dragon has a number of deployment commands available, with `deploy` bundling a number of them together. It takes the original distro package as a command line parameter.
 
@@ -47,18 +46,20 @@ Dragon has a number of deployment commands available, with `deploy` bundling a n
 
 The distro must be one of `-distro.zip`, `-distro.tar.gz` or `-distro.tar.bz2`. The `USERNAME` is an optional parameter that is the username to login to the Ubuntu machines as, otherwise the user's login name will be used. The `deploy` command will install software on each Ubuntu machine:
 
-    mkdir -p dragon && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip && sudo apt autoremove
+    mkdir -p /home/ubuntu/packages && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip && sudo apt autoremove
 
-It will then copy the distribution into the distro base dir (`dragon` in this example), unpack it and configure it. The configuration file and other related files like log files will have the data port appended to them, so that they are unique when multiple Dragon daemons are on the same machine, e.g.:
-
-    |
-    └───conf
-    |   |   dragon-4001.yaml
-    |   |   dragon-4101.yaml
+It will then copy the distribution into the deploy dir (`/home/ubuntu/packages` in this example), unpack it and configure it. The configuration file and other related files like log files will have the data port appended to them, so that they are unique when multiple Dragon daemons are on the same machine, e.g.:
+    
+    /home/ubuntu/packages
+    |   dragon-VERSION-distro.zip
+    └───dragon -> dragon-VERSION
+    |   dragon-VERSION 
+    |   └───conf
+    |   |   |   dragon-4001.yaml
 
 It will also bring the daemons online using a command like:
 
-    nohup dragon/dragon/bin/dragon.sh -d -C dragon/dragon/conf/dragon-4001.yaml > dragon/dragon/log/dragon-4001.stdout 2> dragon/dragon/log/dragon-4001.stderr &
+    nohup /home/ubuntu/packages/dragon/bin/dragon.sh -d -C /home/ubuntu/packages/dragon/conf/dragon-4001.yaml > /home/ubuntu/packages/dragon/log/dragon-4001.stdout 2> /home/ubuntu/packages/dragon/log/dragon-4001.stderr &
 
 Now you can submit a topology to the Dragon cluster. Other commands that are useful for controlling deployment are:
 
@@ -80,12 +81,12 @@ To install Dragon into your local cache:
     
 ## Dependency
 
-Include the dependency in your project's `pom.xml`: 
+Include the dependency in your project's `pom.xml`, where `VERSION` is replaced with whatever version you are using: 
 
     <dependency>
         <groupId>au.edu.unimelb</groupId>
         <artifactId>dragon</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
+        <version>VERSION</version>
         <scope>provided</scope>
     </dependency>
     

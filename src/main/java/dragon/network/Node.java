@@ -192,7 +192,6 @@ public class Node {
 		nodeThread = new NodeProcessor(this);
 		if (conf.getDragonMetricsEnabled()) {
 			metricsThread = new Metrics(this);
-			metricsThread.start();
 		} else {
 			metricsThread = null;
 		}

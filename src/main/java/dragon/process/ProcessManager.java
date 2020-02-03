@@ -74,6 +74,7 @@ public class ProcessManager extends Thread {
 		waitingToStart = new ArrayList<ProcessContainer>();
 		running = new HashSet<ProcessContainer>();
 		this.conf=conf;
+		setName("process manager");
 		start();
 	}
 	
