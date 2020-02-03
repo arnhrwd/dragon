@@ -568,7 +568,7 @@ public class Node {
 	 * @param numDaemons
 	 * @throws IOException 
 	 */
-	public synchronized void allocatePartition(String partitionId,int numDaemons) throws IOException {
+	public synchronized int allocatePartition(String partitionId,int numDaemons) {
 		for(int i=0;i<numDaemons;i++) {
 			Config c = new Config();
 			c.putAll(conf);
@@ -577,11 +577,25 @@ public class Node {
 			c.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,conf.getDragonNetworkLocalServicePort()+(daemons.keySet().size()+1)*10);
 			c.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,conf.getDragonNetworkLocalDataPort()+(daemons.keySet().size()+1)*10);
 			String home = c.getDragonHomeDir();
-			writeConf(c,home+"/conf/dragon-"+c.getDragonNetworkLocalDataPort()+".yaml");
-			ProcessBuilder pb = ProcessManager.createDaemon(c);
-			Process p = pb.start();
-			daemons.put(c.getLocalHost().toString(),p);
+			try {
+				writeConf(c,home+"/conf/dragon-"+c.getDragonNetworkLocalDataPort()+".yaml");
+				String hostname=c.getLocalHost().toString();
+				ProcessBuilder pb = ProcessManager.createDaemon(c);
+				processManager.startProcess(pb,false,(p)->{
+					daemons.put(hostname,p);
+				},(pb2)->{
+					log.error("process failed to start: "+pb.toString());
+				},(p)->{
+					log.error("process has exited: "+p.exitValue());
+				});
+			} catch (IOException e) {
+				return i;
+			}
+			
+			
+			
 		}
+		return numDaemons;
 	}
 	
 	/**

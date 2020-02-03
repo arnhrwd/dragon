@@ -27,6 +27,7 @@ import dragon.network.messages.service.HaltTopoErrorSMsg;
 import dragon.network.messages.service.HaltTopoSMsg;
 import dragon.network.messages.service.UploadJarSMsg;
 import dragon.network.messages.service.UploadJarSuccessSMsg;
+import dragon.network.operations.AllocPartGroupOp;
 import dragon.network.operations.HaltTopoGroupOp;
 import dragon.network.operations.ListToposGroupOp;
 import dragon.network.operations.PrepareTopoGroupOp;
@@ -508,7 +509,16 @@ public class ServiceProcessor extends Thread {
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: " + e.getMessage());
 			}
-		}).onStart((op)->{
+		}).onRunning((op)->{
+			if(allocation.containsKey(node.getComms().getMyNodeDesc())) {
+				int a = node.allocatePartition(partitionId, allocation.get(node.getComms().getMyNodeDesc()));
+				AllocPartGroupOp apgo = (AllocPartGroupOp) op;
+				if(a!=allocation.get(node.getComms().getMyNodeDesc())) {
+					apgo.receiveError(comms, comms.getMyNodeDesc(), "failed to start daemon processes on ["+node.getComms().getMyNodeDesc()+"]");
+				} else {
+					apgo.receiveSuccess(comms,comms.getMyNodeDesc());
+				}
+			}
 			
 		});
 	}

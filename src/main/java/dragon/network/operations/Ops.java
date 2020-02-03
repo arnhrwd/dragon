@@ -223,7 +223,8 @@ public class Ops extends Thread {
 	public AllocPartGroupOp newAllocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
 		AllocPartGroupOp apgo = new AllocPartGroupOp(partitionId,allocation,success,failure);
 		for(NodeDescriptor desc : allocation.keySet()) {
-			apgo.add(desc);
+			// we never send messages to ourselves
+			if(!desc.equals(node.getComms().getMyNodeDesc())) apgo.add(desc);
 		}
 		register(apgo);
 		return apgo;

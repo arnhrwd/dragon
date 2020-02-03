@@ -121,7 +121,7 @@ Local mode is useful for development and debugging. Alternatively, *Network mode
 Dragon looks for `dragon.yaml` in several places, in this order:
 
 - `./dragon.yaml`
-- `../conf/dragon.yaml`
+- `${DRAGON_HOME}/conf/dragon.yaml`
 - `/etc/dragon/dragon.yaml`
 - `${HOME}/.dragon/dragon.yaml`
 

@@ -1,18 +1,24 @@
 package dragon.network;
 
 import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+
 import org.apache.logging.log4j.LogManager;
 
 import dragon.DragonRequiresClonableException;
 import dragon.network.Node.NodeState;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.IErrorMessage;
+import dragon.network.messages.node.AllocPartErrorNMsg;
+import dragon.network.messages.node.AllocPartNMsg;
 import dragon.network.messages.node.ContextUpdateNMsg;
 import dragon.network.messages.node.GetTopoInfoNMsg;
 import dragon.network.messages.node.HaltTopoErrorNMsg;
 import dragon.network.messages.node.HaltTopoNMsg;
 import dragon.network.messages.node.JarReadyNMsg;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.node.PartAllocedNMsg;
 import dragon.network.messages.node.PrepareJarErrorNMsg;
 import dragon.network.messages.node.PrepareJarNMsg;
 import dragon.network.messages.node.PrepareTopoNMsg;
@@ -30,6 +36,7 @@ import dragon.network.messages.node.TopoResumedNMsg;
 import dragon.network.messages.node.TopoStartedNMsg;
 import dragon.network.messages.node.TopoStoppedNMsg;
 import dragon.network.messages.node.TopoHaltedNMsg;
+import dragon.network.operations.AllocPartGroupOp;
 import dragon.network.operations.JoinGroupOp;
 import dragon.network.operations.ListToposGroupOp;
 
@@ -383,7 +390,7 @@ public class NodeProcessor extends Thread {
 	private synchronized void processGetTopologyInformation(NodeMessage msg) {
 		GetTopoInfoNMsg gtim = (GetTopoInfoNMsg) msg;
 		ListToposGroupOp ltgo = (ListToposGroupOp)gtim.getGroupOp();
-		node.listTopologies(ltgo); // sends the response for us
+		node.listTopologies(ltgo); 
 		ltgo.sendSuccess(node.getComms());
 	}
 	
@@ -396,6 +403,40 @@ public class NodeProcessor extends Thread {
 				.getGroupOp(tim.getGroupOp().getId())))
 				.aggregate(tim.getSender(),tim.state,tim.errors);
 		receiveSuccess(tim);
+	}
+	
+	/**
+	 * @param msg
+	 */
+	private synchronized void processAllocatePartition(NodeMessage msg) {
+		AllocPartNMsg apm = (AllocPartNMsg) msg;
+		AllocPartGroupOp apgo = (AllocPartGroupOp) apm.getGroupOp();
+		int a=node.allocatePartition(apm.partitionId, apm.daemons);
+		apgo.partitionId=apm.partitionId;
+		apgo.daemons=a;
+		if(a==apm.daemons) {
+			apgo.sendSuccess(node.getComms());
+		} else {
+			apgo.sendError(node.getComms(), "failed to start daemon processes on ["+msg.getSender()+"]");
+		}
+	}
+	
+	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processPartitionAllocated(NodeMessage msg) {
+		PartAllocedNMsg pam = (PartAllocedNMsg) msg;
+		receiveSuccess(pam);
+	}
+	
+	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processAllocatePartitionError(NodeMessage msg) {
+		AllocPartErrorNMsg apem = (AllocPartErrorNMsg) msg;
+		receiveError(apem);
 	}
 	
 	/**
@@ -472,6 +513,15 @@ public class NodeProcessor extends Thread {
 		case TOPOLOGY_INFORMATION:
 			processTopologyInformation(msg);
 			break;
+		case ALLOCATE_PARTITION:
+			processAllocatePartition(msg);
+			break;
+		case ALLOCATE_PARTITION_ERROR:
+			processAllocatePartitionError(msg);
+			break;
+		case PARTITION_ALLOCATED:
+			processPartitionAllocated(msg);
+			break;
 		default:
 			break;
 		}
@@ -525,6 +575,9 @@ public class NodeProcessor extends Thread {
 			case TOPOLOGY_RESUMED:
 			case TOPOLOGY_STARTED:
 			case TOPOLOGY_STOPPED:
+			case ALLOCATE_PARTITION:
+			case ALLOCATE_PARTITION_ERROR:
+			case PARTITION_ALLOCATED:
 				// do when appropriate
 				node.getOpsProcessor().newConditionOp((op)->{
 					return node.getNodeState()==NodeState.OPERATIONAL;

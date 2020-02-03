@@ -18,7 +18,7 @@ public class AllocPartGroupOp extends GroupOp {
 	/**
 	 * 
 	 */
-	public transient final String partitionId;
+	public transient String partitionId;
 	
 	/**
 	 * 
