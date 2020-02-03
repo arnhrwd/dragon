@@ -2,6 +2,7 @@ package dragon.network;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -166,6 +167,11 @@ public class Node {
 		bw.write(pid.toString());
 		bw.newLine();
 		bw.close();
+		if(ProcessHandle.current().parent().isPresent()) {
+			long parent_pid = ProcessHandle.current().parent().get().pid()
+			log.debug("parent pid = "+parent_pid);
+		}
+		
 		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
 		jvmArgs = bean.getInputArguments();
 		daemons=new HashMap<String,Process>();
@@ -560,36 +566,37 @@ public class Node {
 	 * Service and data ports increase by 10 for each new daemon started.
 	 * @param partitionId
 	 * @param numDaemons
+	 * @throws IOException 
 	 */
-	public synchronized void allocatePartition(String partitionId,int numDaemons) {
+	public synchronized void allocatePartition(String partitionId,int numDaemons) throws IOException {
 		for(int i=0;i<numDaemons;i++) {
-			List<String> pbArgs = new ArrayList<String>();
-			pbArgs.add(conf.getDragonJavaBin());
-			pbArgs.addAll(jvmArgs);
-			pbArgs.add("-classpath");
-			pbArgs.add(System.getProperty("java.class.path"));
-			pbArgs.add("-jar");
-			pbArgs.add("dragon.jar");
-			pbArgs.add("-d");
-			pbArgs.add("-C");
-			
 			Config c = new Config();
 			c.putAll(conf);
 			c.put(Config.DRAGON_NETWORK_PARTITION,partitionId);
 			c.put(Config.DRAGON_NETWORK_PRIMARY,false);
 			c.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,conf.getDragonNetworkLocalServicePort()+(daemons.keySet().size()+1)*10);
 			c.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,conf.getDragonNetworkLocalDataPort()+(daemons.keySet().size()+1)*10);
-			pbArgs.add(c.toYamlString());
-			ProcessBuilder pb = new ProcessBuilder(pbArgs);
-	
-			try {
-				Process p = pb.start();
-				daemons.put(c.getLocalHost().toString(),p);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			String home = c.getDragonHomeDir();
+			writeConf(c,home+"/conf/dragon-"+c.getDragonNetworkLocalDataPort()+".yaml");
+			ProcessBuilder pb = ProcessManager.createDaemon(c);
+			Process p = pb.start();
+			daemons.put(c.getLocalHost().toString(),p);
 		}
+	}
+	
+	/**
+	 * Utility function to write a config to a file.
+	 * @param conf
+	 * @param filename
+	 * @throws IOException 
+	 */
+	public static void writeConf(Config conf, String filename) throws IOException {
+		File file = new File(filename);
+		FileOutputStream fos = new FileOutputStream(file);
+		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+		bw.write(conf.toYamlStringNice());
+		bw.newLine();
+		bw.close();
 	}
 
 }

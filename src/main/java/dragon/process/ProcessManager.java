@@ -1,5 +1,6 @@
 package dragon.process;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,17 +25,17 @@ public class ProcessManager extends Thread {
 	/**
 	 * 
 	 */
-	HashMap<Long,ProcessContainer> unbounded;
+	HashMap<Long,ProcessContainer> unboundedRunning;
 	
 	/**
 	 * 
 	 */
-	ArrayList<ProcessContainer> waitingToStart;
+	ArrayList<ProcessContainer> boundedWaiting;
 	
 	/**
 	 * 
 	 */
-	HashSet<ProcessContainer> running;
+	HashSet<ProcessContainer> boundedRunning;
 	
 	/**
 	 * 
@@ -70,20 +71,25 @@ public class ProcessManager extends Thread {
 	 * @param conf
 	 */
 	public ProcessManager(Config conf) {
-		unbounded = new HashMap<Long,ProcessContainer>();
-		waitingToStart = new ArrayList<ProcessContainer>();
-		running = new HashSet<ProcessContainer>();
+		unboundedRunning = new HashMap<Long,ProcessContainer>();
+		boundedWaiting = new ArrayList<ProcessContainer>();
+		boundedRunning = new HashSet<ProcessContainer>();
 		this.conf=conf;
 		setName("process manager");
 		start();
 	}
 	
 	/**
-	 * @param pb
-	 * @param isUnbounded
-	 * @param pos
-	 * @param pof
-	 * @param poe
+	 * Start unbounded and bounded processes, keeping a limit 
+	 * (DRAGON_PROCESSES_MAX) on how many 
+	 * bounded processes can be running
+	 * at any one time.
+	 * @param pb the process builder object
+	 * @param isUnbounded true if the process will run for an unbounded amount of time (like a server), 
+	 * false if the process is expected to be short lived (like a command to do something)
+	 * @param pos callback when process successfully starts
+	 * @param pof callback if process fails to start
+	 * @param poe callback when process exits
 	 */
 	public void startProcess(ProcessBuilder pb,boolean isUnbounded,
 			IProcessOnStart pos,
@@ -96,7 +102,7 @@ public class ProcessManager extends Thread {
 				if(pos!=null) {
 					pos.process(p);
 				}
-				unbounded.put(p.pid(),new ProcessContainer(p,pb,pos,pof,poe));
+				unboundedRunning.put(p.pid(),new ProcessContainer(p,pb,pos,pof,poe));
 			} catch (IOException e) {
 				if(pof!=null) {
 					pof.fail(pb);
@@ -105,8 +111,8 @@ public class ProcessManager extends Thread {
 				}
 			}
 		} else {
-			synchronized(waitingToStart) {
-				waitingToStart.add(new ProcessContainer(null,pb,pos,pof,poe));
+			synchronized(boundedWaiting) {
+				boundedWaiting.add(new ProcessContainer(null,pb,pos,pof,poe));
 			}
 		}
 	}
@@ -118,21 +124,21 @@ public class ProcessManager extends Thread {
 	public void run() {
 		log.info("starting up");
 		while(!isInterrupted()) {
-			while(waitingToStart.size()>0) {
+			while(boundedWaiting.size()>0) {
 				/**
 				 * Startup as many waiting processes as we can within limits.
 				 */
-				while(waitingToStart.size()>0 && running.size() < conf.getDragonProcessesMax()) {
+				while(boundedWaiting.size()>0 && boundedRunning.size() < conf.getDragonProcessesMax()) {
 					ProcessContainer pc;
-					synchronized(waitingToStart) {
-						pc = waitingToStart.remove(0);
+					synchronized(boundedWaiting) {
+						pc = boundedWaiting.remove(0);
 					}
 					try {
 						pc.p = pc.pb.start();
 						if(pc.pos!=null) {
 							pc.pos.process(pc.p);
 						}
-						running.add(pc);
+						boundedRunning.add(pc);
 					} catch (IOException e) {
 						if(pc.pof!=null) {
 							pc.pof.fail(pc.pb);
@@ -145,10 +151,10 @@ public class ProcessManager extends Thread {
 				/**
 				 * Wait for processes while there are max outstanding
 				 */
-				while(running.size()>0 && !(waitingToStart.size()>0 && 
-						running.size()<conf.getDragonProcessesMax())) {
+				while(boundedRunning.size()>0 && !(boundedWaiting.size()>0 && 
+						boundedRunning.size()<conf.getDragonProcessesMax())) {
 					ArrayList<ProcessContainer> done = new ArrayList<ProcessContainer>();
-					for(ProcessContainer pc : running) {
+					for(ProcessContainer pc : boundedRunning) {
 						if(!pc.p.isAlive()) {
 							if(pc.poe!=null) {
 								pc.poe.process(pc.p);
@@ -157,7 +163,7 @@ public class ProcessManager extends Thread {
 						}
 					}
 					for(ProcessContainer pc : done) {
-						running.remove(pc);
+						boundedRunning.remove(pc);
 					}
 					try {
 						Thread.sleep(500);
@@ -178,5 +184,16 @@ public class ProcessManager extends Thread {
 			}
 		}
 		log.info("shutting down");
+	}
+	
+	public static ProcessBuilder createDaemon(Config conf) {
+		String home=conf.getDragonHomeDir();
+		File stdout = new File(home+"/log/dragon-"+conf.getDragonNetworkLocalDataPort()+".stdout");
+		File stderr = new File(home+"/log/dragon-"+conf.getDragonNetworkLocalDataPort()+".stderr");
+		ProcessBuilder pb = new ProcessBuilder(home+"/bin/dragon.sh",
+				"-d","-C",home+"/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml")
+				.redirectOutput(stdout)
+				.redirectError(stderr);
+		return pb;
 	}
 }

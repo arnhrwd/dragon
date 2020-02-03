@@ -57,6 +57,8 @@ It will then copy the distribution into the deploy dir (`/home/ubuntu/packages` 
     |   └───conf
     |   |   |   dragon-4001.yaml
 
+_Note that if you install the distribution manually, it MUST have the  dragon directory (or symbolic link) as above, that is the dragon home directory if you wish to use the config/online/offline commands._
+
 It will also bring the daemons online using a command like:
 
     nohup /home/ubuntu/packages/dragon/bin/dragon.sh -d -C /home/ubuntu/packages/dragon/conf/dragon-4001.yaml > /home/ubuntu/packages/dragon/log/dragon-4001.stdout 2> /home/ubuntu/packages/dragon/log/dragon-4001.stderr &
