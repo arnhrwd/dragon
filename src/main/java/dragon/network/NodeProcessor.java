@@ -2,8 +2,6 @@ package dragon.network;
 
 import org.apache.logging.log4j.Logger;
 
-import java.io.IOException;
-
 import org.apache.logging.log4j.LogManager;
 
 import dragon.DragonRequiresClonableException;
@@ -13,6 +11,8 @@ import dragon.network.messages.IErrorMessage;
 import dragon.network.messages.node.AllocPartErrorNMsg;
 import dragon.network.messages.node.AllocPartNMsg;
 import dragon.network.messages.node.ContextUpdateNMsg;
+import dragon.network.messages.node.GetStatusErrorNMsg;
+import dragon.network.messages.node.GetStatusNMsg;
 import dragon.network.messages.node.GetTopoInfoNMsg;
 import dragon.network.messages.node.HaltTopoErrorNMsg;
 import dragon.network.messages.node.HaltTopoNMsg;
@@ -26,6 +26,7 @@ import dragon.network.messages.node.ResumeTopoErrorNMsg;
 import dragon.network.messages.node.ResumeTopoNMsg;
 import dragon.network.messages.node.TopoRemovedNMsg;
 import dragon.network.messages.node.StartTopoNMsg;
+import dragon.network.messages.node.StatusNMsg;
 import dragon.network.messages.node.StopTopoErrorNMsg;
 import dragon.network.messages.node.StopTopoNMsg;
 import dragon.network.messages.node.RemoveTopoErrorNMsg;
@@ -37,6 +38,7 @@ import dragon.network.messages.node.TopoStartedNMsg;
 import dragon.network.messages.node.TopoStoppedNMsg;
 import dragon.network.messages.node.TopoHaltedNMsg;
 import dragon.network.operations.AllocPartGroupOp;
+import dragon.network.operations.GetStatusGroupOp;
 import dragon.network.operations.JoinGroupOp;
 import dragon.network.operations.ListToposGroupOp;
 
@@ -440,6 +442,40 @@ public class NodeProcessor extends Thread {
 	}
 	
 	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processGetStatus(NodeMessage msg) {
+		GetStatusNMsg gsnm = (GetStatusNMsg) msg;
+		GetStatusGroupOp gsgo = (GetStatusGroupOp) gsnm.getGroupOp();
+		NodeStatus nodeStatus = node.getStatus();
+		nodeStatus.context = context;
+		gsgo.nodeStatus=nodeStatus;
+		gsgo.sendSuccess(node.getComms());
+	}
+	
+	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processGetStatusError(NodeMessage msg) {
+		GetStatusErrorNMsg gsnm = (GetStatusErrorNMsg) msg;
+		receiveError(gsnm);
+	}
+	
+	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processStatus(NodeMessage msg) {
+		StatusNMsg gsnm = (StatusNMsg) msg;
+		((GetStatusGroupOp)(node.getOpsProcessor()
+				.getGroupOp(gsnm.getGroupOp().getId())))
+				.aggregate(gsnm.nodeStatus);
+		receiveSuccess(msg);
+	}
+	
+	/**
 	 * @param msg
 	 */
 	private void processOperationalMsgs(NodeMessage msg) {
@@ -522,6 +558,15 @@ public class NodeProcessor extends Thread {
 		case PARTITION_ALLOCATED:
 			processPartitionAllocated(msg);
 			break;
+		case GET_STATUS:
+			processGetStatus(msg);
+			break;
+		case GET_STATUS_ERROR:
+			processGetStatusError(msg);
+			break;
+		case STATUS:
+			processStatus(msg);
+			break;
 		default:
 			break;
 		}
@@ -578,6 +623,9 @@ public class NodeProcessor extends Thread {
 			case ALLOCATE_PARTITION:
 			case ALLOCATE_PARTITION_ERROR:
 			case PARTITION_ALLOCATED:
+			case GET_STATUS:
+			case GET_STATUS_ERROR:
+			case STATUS:
 				// do when appropriate
 				node.getOpsProcessor().newConditionOp((op)->{
 					return node.getNodeState()==NodeState.OPERATIONAL;

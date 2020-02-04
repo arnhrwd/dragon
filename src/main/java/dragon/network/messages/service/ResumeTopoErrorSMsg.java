@@ -1,12 +1,11 @@
 package dragon.network.messages.service;
 
-import dragon.network.messages.IErrorMessage;
-
 /**
+ * Error attempting to resume the topology.
  * @author aaron
  *
  */
-public class ResumeTopoErrorSMsg extends ServiceMessage implements IErrorMessage {
+public class ResumeTopoErrorSMsg extends ServiceErrorMessage {
 	private static final long serialVersionUID = 3488028938154008168L;
 	
 	/**
@@ -15,26 +14,11 @@ public class ResumeTopoErrorSMsg extends ServiceMessage implements IErrorMessage
 	public final String topologyId;
 	
 	/**
-	 * 
-	 */
-	public final String error;
-	
-	/**
 	 * @param topologyId
 	 * @param error
 	 */
 	public ResumeTopoErrorSMsg(String topologyId, String error) {
-		super(ServiceMessage.ServiceMessageType.RESUME_TOPOLOGY_ERROR);
+		super(ServiceMessage.ServiceMessageType.RESUME_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
-		this.error=error;
 	}
-	
-	/* (non-Javadoc)
-	 * @see dragon.network.messages.IErrorMessage#getError()
-	 */
-	@Override
-	public String getError() {
-		return error;
-	}
-
 }

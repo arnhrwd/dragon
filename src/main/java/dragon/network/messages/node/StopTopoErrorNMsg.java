@@ -1,12 +1,11 @@
 package dragon.network.messages.node;
 
-import dragon.network.messages.IErrorMessage;
-
 /**
+ * Error attempting to stop a topology.
  * @author aaron
  *
  */
-public class StopTopoErrorNMsg extends NodeMessage implements IErrorMessage {
+public class StopTopoErrorNMsg extends NodeErrorMessage {
 	private static final long serialVersionUID = -6062382885436856253L;
 	
 	/**
@@ -15,26 +14,11 @@ public class StopTopoErrorNMsg extends NodeMessage implements IErrorMessage {
 	public final String topologyId;
 	
 	/**
-	 * 
-	 */
-	public final String error;
-	
-	/**
 	 * @param topologyId
 	 * @param error
 	 */
 	public StopTopoErrorNMsg(String topologyId,String error) {
-		super(NodeMessage.NodeMessageType.STOP_TOPOLOGY_ERROR);
+		super(NodeMessage.NodeMessageType.STOP_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
-		this.error=error;
 	}
-	
-	/* (non-Javadoc)
-	 * @see dragon.network.messages.IErrorMessage#getError()
-	 */
-	@Override
-	public String getError() {
-		return error;
-	}
-
 }

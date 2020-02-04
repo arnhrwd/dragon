@@ -92,11 +92,19 @@ public abstract class GroupOp extends Op implements Serializable {
 					return;
 				}
 			}
+			/*
+			* else the thread that initiated the group op needs to make sure
+			* that it is resolved for the source desc.
+			*/
 		}
 		super.start();
 	}
 	
 	/**
+	 * Send a success message back to the source of the group op.
+	 * If the source desc of the group op is the same as the local
+	 * node's desc, then calling this method is a proxy for calling
+	 * {@link #receiveSuccess(IComms, NodeDescriptor)}.
 	 * @param comms
 	 */
 	public void sendSuccess(IComms comms) {
@@ -113,14 +121,22 @@ public abstract class GroupOp extends Op implements Serializable {
 	}
 	
 	/**
+	 * Send an error message back to the source of the group op.
+	 * If the source desc of the group op is the same as the local
+	 * node's desc, then calling this method is a proxy for calling
+	 * {@link #receiveError(IComms, NodeDescriptor, String)}.
 	 * @param comms
 	 * @param error
 	 */
 	public void sendError(IComms comms,String error) {
-		try {
-			comms.sendNodeMsg(getSourceDesc(),errorNodeMessage(error));
-		} catch (DragonCommsException e) {
-			log.fatal("network errors prevented group operation");
+		if(!getSourceDesc().equals(comms.getMyNodeDesc())) {
+			try {
+				comms.sendNodeMsg(getSourceDesc(),errorNodeMessage(error));
+			} catch (DragonCommsException e) {
+				log.fatal("network errors prevented group operation");
+			}
+		} else {
+			receiveError(comms,comms.getMyNodeDesc(),error);
 		}
 	}
 	

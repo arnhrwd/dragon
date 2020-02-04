@@ -8,27 +8,45 @@ public class AllocPartSMsg extends ServiceMessage {
 	private static final long serialVersionUID = -4383113891826020623L;
 	
 	/**
-	 * 
+	 * The name of the partition to allocate
 	 */
 	public final String partitionId;
 	
 	/**
-	 * 
+	 * Number of daemons (JVMs)
 	 */
 	public final Integer daemons;
 	
 	/**
+	 * The allocation strategy types
+	 * <li>{@link #EACH}</li>
+	 * <li>{@link #UNIFORM}</li>
+	 * <li>{@link #BALANCED}</li>
 	 * @author aaron
 	 *
 	 */
 	public static enum Strategy {
-		PER_PRIMARY,
-		UNIFORMLY,
-		LEAST_LOADED
+		/**
+		 * Allocate the same number on each machine.
+		 */
+		EACH,
+		
+		/**
+		 * Allocate the number uniformly spread over
+		 * the machines.
+		 */
+		UNIFORM,
+		
+		/**
+		 * Allocate the number spread over the machines
+		 * so as to balance the machine load as much as
+		 * possible.
+		 */
+		BALANCED
 	}
 	
 	/**
-	 * 
+	 * The allocation strategy to use when allocating a partition.
 	 */
 	public final Strategy strategy;
 	

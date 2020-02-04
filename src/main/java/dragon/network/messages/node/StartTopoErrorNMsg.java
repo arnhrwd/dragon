@@ -1,18 +1,12 @@
 package dragon.network.messages.node;
 
-import dragon.network.messages.IErrorMessage;
-
 /**
+ * Error attempting to start (run) a topology.
  * @author aaron
  *
  */
-public class StartTopoErrorNMsg extends NodeMessage implements IErrorMessage {
+public class StartTopoErrorNMsg extends NodeErrorMessage {
 	private static final long serialVersionUID = 1580653942766147873L;
-	
-	/**
-	 * 
-	 */
-	public final String error;
 	
 	/**
 	 * 
@@ -24,17 +18,8 @@ public class StartTopoErrorNMsg extends NodeMessage implements IErrorMessage {
 	 * @param error
 	 */
 	public StartTopoErrorNMsg(String topologyId,String error) {
-		super(NodeMessage.NodeMessageType.START_TOPOLOGY_ERROR);
+		super(NodeMessage.NodeMessageType.START_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
-		this.error=error;
-	}
-
-	/* (non-Javadoc)
-	 * @see dragon.network.messages.IErrorMessage#getError()
-	 */
-	@Override
-	public String getError() {
-		return error;
 	}
 
 }

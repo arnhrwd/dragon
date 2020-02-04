@@ -59,7 +59,7 @@ public class ListToposGroupOp extends GroupOp {
 	 * @param state
 	 * @param errors
 	 */
-	public void aggregate(NodeDescriptor desc,
+	public synchronized void aggregate(NodeDescriptor desc,
 			HashMap<String,String> state,
 			HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors) {
 			descState.put(desc.toString(),state);

@@ -1,28 +1,22 @@
 package dragon.network.messages.node;
 
-import dragon.network.messages.IErrorMessage;
-
 /**
+ * Error attempting to allocate a partition.
  * @author aaron
  *
  */
-public class AllocPartErrorNMsg extends NodeMessage implements IErrorMessage {
+public class AllocPartErrorNMsg extends NodeErrorMessage {
 	private static final long serialVersionUID = 6657104194854547858L;
 	
 	/**
-	 * 
+	 * The partition in error.
 	 */
 	public final String partitionId;
 	
 	/**
-	 * 
+	 * The number of daemons actually allocated.
 	 */
 	public final Integer daemons;
-	
-	/**
-	 * 
-	 */
-	public final String error;
 	
 	/**
 	 * @param partitionId
@@ -30,18 +24,9 @@ public class AllocPartErrorNMsg extends NodeMessage implements IErrorMessage {
 	 * @param error
 	 */
 	public AllocPartErrorNMsg(String partitionId,Integer daemons,String error) {
-		super(NodeMessage.NodeMessageType.ALLOCATE_PARTITION_ERROR);
+		super(NodeMessage.NodeMessageType.ALLOCATE_PARTITION_ERROR,error);
 		this.partitionId=partitionId;
 		this.daemons=daemons;
-		this.error=error;
 	}
 	
-	/* (non-Javadoc)
-	 * @see dragon.network.messages.IErrorMessage#getError()
-	 */
-	@Override
-	public String getError() {
-		return error;
-	}
-
 }

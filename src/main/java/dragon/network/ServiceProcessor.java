@@ -11,6 +11,7 @@ import dragon.DragonRequiresClonableException;
 import dragon.metrics.ComponentMetricMap;
 import dragon.network.messages.service.RunTopoSMsg;
 import dragon.network.messages.service.ServiceMessage;
+import dragon.network.messages.service.StatusSMsg;
 import dragon.network.messages.service.TermTopoErrorSMsg;
 import dragon.network.messages.service.TermTopoSMsg;
 import dragon.network.messages.service.TopoHaltedSMsg;
@@ -23,11 +24,14 @@ import dragon.network.messages.service.RunTopoErrorSMsg;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.messages.service.GetMetricsSMsg;
+import dragon.network.messages.service.GetStatusErrorSMsg;
+import dragon.network.messages.service.GetStatusSMsg;
 import dragon.network.messages.service.HaltTopoErrorSMsg;
 import dragon.network.messages.service.HaltTopoSMsg;
 import dragon.network.messages.service.UploadJarSMsg;
 import dragon.network.messages.service.UploadJarSuccessSMsg;
 import dragon.network.operations.AllocPartGroupOp;
+import dragon.network.operations.GetStatusGroupOp;
 import dragon.network.operations.HaltTopoGroupOp;
 import dragon.network.operations.ListToposGroupOp;
 import dragon.network.operations.PrepareTopoGroupOp;
@@ -328,7 +332,7 @@ public class ServiceProcessor extends Thread {
 			ListToposGroupOp ltgo = (ListToposGroupOp) op;
 			node.listTopologies(ltgo);
 			ltgo.aggregate(comms.getMyNodeDesc(), ltgo.state, ltgo.errors);
-			ltgo.sendSuccess(comms);
+			ltgo.receiveSuccess(comms,comms.getMyNodeDesc());
 		});
 	}
 
@@ -444,7 +448,7 @@ public class ServiceProcessor extends Thread {
 			}
 		}
 		switch(apsm.strategy) {
-		case LEAST_LOADED:
+		case BALANCED:
 			PriorityQueue<NodeDescriptor> pQueue = 
 				new PriorityQueue<NodeDescriptor>(load.size(),
 						new Comparator<NodeDescriptor>() {
@@ -469,12 +473,12 @@ public class ServiceProcessor extends Thread {
 				daemons--;
 			}
 			break;
-		case PER_PRIMARY:
+		case EACH:
 			for(NodeDescriptor host : load.keySet()) {
 				allocation.put(host,daemons);
 			}
 			break;
-		case UNIFORMLY:
+		case UNIFORM:
 			while(daemons>0) {
 				int inc = daemons>load.size() ? daemons/load.size():1;
 				for(NodeDescriptor host : load.keySet()) {
@@ -523,6 +527,34 @@ public class ServiceProcessor extends Thread {
 		});
 	}
 
+	/**
+	 * Get the status of the daemons.
+	 * @param msg
+	 */
+	private void processGetStatus(ServiceMessage msg) {
+		GetStatusSMsg gssm = (GetStatusSMsg) msg;
+		Ops.inst().newGetStatusGroupOp((op)->{
+			try {
+				GetStatusGroupOp gsgo = (GetStatusGroupOp) op;
+				comms.sendServiceMsg(new StatusSMsg(gsgo.dragonStatus),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+		}, (op,error)->{
+			try {
+				comms.sendServiceMsg(new GetStatusErrorSMsg((String)error),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+		}).onRunning((op)->{
+			GetStatusGroupOp gsgo = (GetStatusGroupOp) op;
+			NodeStatus nodeStatus = node.getStatus();
+			nodeStatus.context=node.getNodeProcessor().getContext();
+			gsgo.aggregate(nodeStatus);
+			gsgo.receiveSuccess(comms, comms.getMyNodeDesc());
+		});
+	}
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Thread#run()
 	 */
@@ -564,6 +596,9 @@ public class ServiceProcessor extends Thread {
 				break;
 			case ALLOCATE_PARTITION:
 				processAllocatePartition(msg);
+				break;
+			case GET_STATUS:
+				processGetStatus(msg);
 				break;
 			default:
 				log.error("unrecognized command: " + msg.getType().name());

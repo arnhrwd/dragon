@@ -11,6 +11,7 @@ import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -611,6 +612,20 @@ public class Node {
 		bw.write(conf.toYamlStringNice());
 		bw.newLine();
 		bw.close();
+	}
+	
+	/**
+	 * Return a status object describing the current state of the node.
+	 */
+	public synchronized NodeStatus getStatus() {
+		NodeStatus nodeStatus = new NodeStatus();
+		nodeStatus.desc=comms.getMyNodeDesc();
+		nodeStatus.timestamp=Instant.now().toEpochMilli();
+		nodeStatus.state=nodeState;
+		for(String topologyId : localClusters.keySet()) {
+			nodeStatus.localClusterStates.put(topologyId,localClusters.get(topologyId).getState());
+		}
+		return nodeStatus;
 	}
 
 }

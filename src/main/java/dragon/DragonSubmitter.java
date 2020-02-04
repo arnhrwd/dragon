@@ -2,24 +2,35 @@ package dragon;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 
 import dragon.topology.IEmbeddingAlgo;
 import dragon.utils.ReflectionUtils;
+import io.bretty.console.tree.PrintableTreeNode;
+import io.bretty.console.tree.TreePrinter;
+
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.parser.ParseException;
 import org.apache.logging.log4j.LogManager;
 
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
+import dragon.network.NodeStatus;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.GetMetricsSMsg;
 import dragon.network.messages.service.GetNodeContextSMsg;
+import dragon.network.messages.service.GetStatusSMsg;
 import dragon.network.messages.service.HaltTopoErrorSMsg;
 import dragon.network.messages.service.HaltTopoSMsg;
 import dragon.network.messages.service.ListToposSMsg;
 import dragon.network.messages.service.UploadJarSMsg;
+import dragon.network.messages.service.AllocPartErrorSMsg;
+import dragon.network.messages.service.AllocPartSMsg;
 import dragon.network.messages.service.GetMetricsErrorSMsg;
 import dragon.network.messages.service.MetricsSMsg;
 import dragon.network.messages.service.NodeContextSMsg;
@@ -29,6 +40,7 @@ import dragon.network.messages.service.RunTopoErrorSMsg;
 import dragon.network.messages.service.RunTopoSMsg;
 import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
+import dragon.network.messages.service.StatusSMsg;
 import dragon.network.messages.service.TermTopoErrorSMsg;
 import dragon.network.messages.service.TermTopoSMsg;
 import dragon.network.messages.service.TopoListSMsg;
@@ -57,6 +69,34 @@ public class DragonSubmitter {
 	 * Comms layer for this client.
 	 */
 	private static IComms comms;
+	
+	/**
+	 * For displaying information on the console
+	 */
+	private static class TreeNode implements PrintableTreeNode {
+
+		private String name;
+		private List<TreeNode> children;
+
+		public TreeNode(String name) {
+			this.name = name;
+			this.children = new ArrayList<>();
+		}
+
+		public void addChild(TreeNode child){
+			this.children.add(child);
+		}
+		
+		public String name() {
+			// return the name of the node that you wish to print later
+			return this.name;
+		}
+
+		public List<TreeNode> children() {
+			// return the list of children of this node
+			return this.children;
+		}
+	}
 	
 	/**
 	 * Open the comms to the node, using the supplied conf.
@@ -324,36 +364,112 @@ public class DragonSubmitter {
 			System.out.println("there are no topologies running");
 			return;
 		}
+		TreeNode dragon = new TreeNode("<dragon>");
 		for(String topologyId: topologies) {
-			System.out.println("\n# "+topologyId+"\n");
-			boolean hasErrors=false;
+			TreeNode topo = new TreeNode("["+topologyId+"]");
+			dragon.addChild(topo);
 			for(String descid : message.descState.keySet()) {
-				System.out.println("- "+descid+" "+message.descState.get(descid).get(topologyId));
+				TreeNode machine= new TreeNode("["+descid+"] "+message.descState.get(descid).get(topologyId));
+				topo.addChild(machine);
 				if(message.descErrors.get(descid).containsKey(topologyId)) {
 					for(String cid : message.descErrors.get(descid).get(topologyId).keySet()) {
-						hasErrors=true;
+						TreeNode comp = new TreeNode("["+cid+"]");
+						machine.addChild(comp);
 						for(ComponentError ce : message.descErrors.get(descid).get(topologyId).get(cid)) {
-							System.out.println("    - "+ce.message);
-						}
-					}
-				}
-			}
-			if(hasErrors) {
-				System.out.println("\n## Stack traces\n");
-				for(String descid : message.descState.keySet()) {
-					if(message.descErrors.get(descid).containsKey(topologyId)) {
-						System.out.println("### "+descid+"\n");
-						for(String cid : message.descErrors.get(descid).get(topologyId).keySet()) {
-							for(ComponentError ce : message.descErrors.get(descid).get(topologyId).get(cid)) {
-								System.out.println(ce.message);
-								System.out.println(ce.stackTrace+"\n");
+							TreeNode error=new TreeNode(ce.message);
+							comp.addChild(error);
+							for(String line : ce.stackTrace.split("\n")) {
+								TreeNode errline=new TreeNode(line);
+								error.addChild(errline);
 							}
 						}
+						
 					}
 				}
 			}
-			
 		}
+		String output = TreePrinter.toString(dragon);
+		System.out.println(output);
+	}
+	
+	public static void getStatus(Config conf) throws DragonCommsException, InterruptedException {
+		initComms(conf);
+		comms.sendServiceMsg(new GetStatusSMsg());
+		StatusSMsg message = (StatusSMsg) comms.receiveServiceMsg();
+		comms.sendServiceMsg(new ServiceDoneSMsg());
+		comms.close();
+		ArrayList<NodeStatus> dragonStatus = message.dragonStatus;
+		if(dragonStatus.isEmpty()) {
+			System.out.println("there are no topologies running");
+			return;
+		}
+		TreeNode dragon = new TreeNode("<dragon>");
+		for(NodeStatus nodeStatus : dragonStatus) {
+			TreeNode node = new TreeNode("["+nodeStatus.desc.toString()+"] "+nodeStatus.state.name()+" at "+ (new Date(nodeStatus.timestamp)).toString());
+			dragon.addChild(node);
+			if(nodeStatus.context.size()>0) {
+				TreeNode context = new TreeNode("<context>");
+				node.addChild(context);
+				for(String desc : nodeStatus.context.keySet()) {
+					TreeNode contextdesc = new TreeNode(desc);
+					context.addChild(contextdesc);
+				}
+			}
+			if(!nodeStatus.localClusterStates.isEmpty()) {
+				TreeNode topos = new TreeNode("<topologies>");
+				node.addChild(topos);
+				for(String topo : nodeStatus.localClusterStates.keySet()) {
+					TreeNode toponode = new TreeNode("["+topo+"] "+nodeStatus.localClusterStates.get(topo).name());
+					topos.addChild(toponode);
+				}
+			}
+		}
+		String output = TreePrinter.toString(dragon);
+		System.out.println(output);
+		
+	}
+	
+	public static void allocatePartition(Config conf,List<String> argList) throws ParseException, 
+			DragonCommsException, InterruptedException {
+		initComms(conf);
+		if(argList.size()!=3) {
+			throw new ParseException("required arguments: PARTITIONID NUMBER STRATEGY\n"+
+					"where strategy is: each|uniform|balanced");
+		}
+		String partitionId = argList.get(0);
+		Integer number = Integer.parseInt(argList.get(1));
+		AllocPartSMsg.Strategy strat;
+		switch(argList.get(2)) {
+		case "each":
+			strat=AllocPartSMsg.Strategy.EACH;
+			break;
+		case "uniform":
+			strat=AllocPartSMsg.Strategy.UNIFORM;
+			break;
+		case "balanced":
+			strat=AllocPartSMsg.Strategy.BALANCED;
+			break;
+		default:
+			throw new ParseException("strategy must be: each|uniform|balanced");
+		}
+		comms.sendServiceMsg(new AllocPartSMsg(partitionId,number,strat));
+		ServiceMessage message = comms.receiveServiceMsg();
+		AllocPartErrorSMsg apem;
+		switch(message.getType()) {
+		case ALLOCATE_PARTITION_ERROR:
+			apem = (AllocPartErrorSMsg) message;
+			System.out.println("error: "+apem.getError());
+			break;
+		case PARTITION_ALLOCATED:
+			System.out.println("partition allocated");
+			break;
+		default:
+			System.out.println("unexpected response: "+message.getType().name());
+			comms.close();
+			System.exit(-1);
+		}
+		comms.sendServiceMsg(new ServiceDoneSMsg());
+		comms.close();
 	}
 
 }

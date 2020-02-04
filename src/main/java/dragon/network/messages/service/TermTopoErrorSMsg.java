@@ -1,12 +1,11 @@
 package dragon.network.messages.service;
 
-import dragon.network.messages.IErrorMessage;
-
 /**
+ * Error attempting to terminate the topology.
  * @author aaron
  *
  */
-public class TermTopoErrorSMsg extends ServiceMessage implements IErrorMessage {
+public class TermTopoErrorSMsg extends ServiceErrorMessage {
 	private static final long serialVersionUID = 320378867671700289L;
 	
 	/**
@@ -15,26 +14,12 @@ public class TermTopoErrorSMsg extends ServiceMessage implements IErrorMessage {
 	public final String topologyId;
 	
 	/**
-	 * 
-	 */
-	public final String error;
-	
-	/**
 	 * @param topologyId
 	 * @param error
 	 */
 	public TermTopoErrorSMsg(String topologyId, String error) {
-		super(ServiceMessage.ServiceMessageType.TERMINATE_TOPOLOGY_ERROR);
+		super(ServiceMessage.ServiceMessageType.TERMINATE_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
-		this.error=error;
-	}
-	
-	/* (non-Javadoc)
-	 * @see dragon.network.messages.IErrorMessage#getError()
-	 */
-	@Override
-	public String getError() {
-		return error;
 	}
 
 }

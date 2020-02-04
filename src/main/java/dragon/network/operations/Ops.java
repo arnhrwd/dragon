@@ -171,8 +171,7 @@ public class Ops extends Thread {
 		NodeContext nc = new NodeContext();
 		nc.putAll(node.getNodeProcessor().getContext());
 		for (NodeDescriptor desc : nc.values()) {
-			// we never send messages to ourselves
-			if(!desc.equals(node.getComms().getMyNodeDesc())) ltgo.add(desc);
+			ltgo.add(desc);
 		}
 		register(ltgo);
 		return ltgo;
@@ -223,8 +222,19 @@ public class Ops extends Thread {
 	public AllocPartGroupOp newAllocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
 		AllocPartGroupOp apgo = new AllocPartGroupOp(partitionId,allocation,success,failure);
 		for(NodeDescriptor desc : allocation.keySet()) {
-			// we never send messages to ourselves
-			if(!desc.equals(node.getComms().getMyNodeDesc())) apgo.add(desc);
+			apgo.add(desc);
+		}
+		register(apgo);
+		return apgo;
+	}
+	
+	public GetStatusGroupOp newGetStatusGroupOp(IOpSuccess success, IOpFailure failure) {
+		GetStatusGroupOp apgo = new GetStatusGroupOp(success,failure);
+		// this group operation goes to EVERY dragon daemon
+		NodeContext nc = new NodeContext();
+		nc.putAll(node.getNodeProcessor().getContext());
+		for (NodeDescriptor desc : nc.values()) {
+			apgo.add(desc);
 		}
 		register(apgo);
 		return apgo;

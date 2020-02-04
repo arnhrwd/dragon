@@ -1,12 +1,11 @@
 package dragon.network.messages.node;
 
-import dragon.network.messages.IErrorMessage;
-
 /**
+ * Error attempting to prepare a topology for running.
  * @author aaron
  *
  */
-public class PrepareTopoErrorNMsg extends NodeMessage implements IErrorMessage {
+public class PrepareTopoErrorNMsg extends NodeErrorMessage {
 	private static final long serialVersionUID = 2180031153355565198L;
 	
 	/**
@@ -15,26 +14,12 @@ public class PrepareTopoErrorNMsg extends NodeMessage implements IErrorMessage {
 	public final String topologyId;
 	
 	/**
-	 * 
-	 */
-	public final String error;
-	
-	/**
 	 * @param topologyId
 	 * @param error
 	 */
 	public PrepareTopoErrorNMsg(String topologyId,String error) {
-		super(NodeMessage.NodeMessageType.PREPARE_TOPOLOGY_ERROR);
+		super(NodeMessage.NodeMessageType.PREPARE_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
-		this.error=error;
-	}
-
-	/* (non-Javadoc)
-	 * @see dragon.network.messages.IErrorMessage#getError()
-	 */
-	@Override
-	public String getError() {
-		return error;
 	}
 
 }
