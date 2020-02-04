@@ -625,6 +625,8 @@ public class Node {
 		for(String topologyId : localClusters.keySet()) {
 			nodeStatus.localClusterStates.put(topologyId,localClusters.get(topologyId).getState());
 		}
+		nodeStatus.partitionId=conf.getDragonNetworkPartition();
+		nodeStatus.primary=conf.getDragonNetworkPrimary();
 		return nodeStatus;
 	}
 

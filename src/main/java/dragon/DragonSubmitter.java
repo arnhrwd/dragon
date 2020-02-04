@@ -405,8 +405,10 @@ public class DragonSubmitter {
 		}
 		TreeNode dragon = new TreeNode("<dragon>");
 		for(NodeStatus nodeStatus : dragonStatus) {
-			TreeNode node = new TreeNode("["+nodeStatus.desc.toString()+"] "+nodeStatus.state.name()+" at "+ (new Date(nodeStatus.timestamp)).toString());
+			TreeNode node = new TreeNode("["+nodeStatus.desc.toString()+"] "+(nodeStatus.primary?"(primary) ":"")+nodeStatus.state.name()+" at "+ (new Date(nodeStatus.timestamp)).toString());
 			dragon.addChild(node);
+			TreeNode partition = new TreeNode("partition: "+nodeStatus.partitionId);
+			node.addChild(partition);
 			if(nodeStatus.context.size()>0) {
 				TreeNode context = new TreeNode("<context>");
 				node.addChild(context);

@@ -40,6 +40,16 @@ public class NodeStatus implements Serializable {
 	/**
 	 * 
 	 */
+	public String partitionId;
+	
+	/**
+	 * 
+	 */
+	public boolean primary;
+	
+	/**
+	 * 
+	 */
 	public NodeStatus() {
 		localClusterStates=new HashMap<String,LocalCluster.State>();
 	}
