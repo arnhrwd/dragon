@@ -1,7 +1,6 @@
 package dragon.network.messages.node.allocpart;
 
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * Request the node to allocate a partition.
@@ -19,16 +18,16 @@ public class AllocPartNMsg extends NodeMessage {
 	/**
 	 * The number of daemons to allocate. 
 	 */
-	public final Integer daemons;
+	public final Integer number;
 	
 	/**
 	 * @param partitionId the partition id to allocate.
-	 * @param daemons the number of daemons to allocate.
+	 * @param number the number of daemons to allocate.
 	 */
-	public AllocPartNMsg(String partitionId,Integer daemons) {
+	public AllocPartNMsg(String partitionId,Integer number) {
 		super(NodeMessage.NodeMessageType.ALLOCATE_PARTITION);
 		this.partitionId=partitionId;
-		this.daemons=daemons;
+		this.number=number;
 	}
 
 }

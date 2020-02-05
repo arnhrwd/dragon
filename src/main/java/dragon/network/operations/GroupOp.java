@@ -4,8 +4,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.comms.DragonCommsException;
@@ -84,6 +84,8 @@ public abstract class GroupOp extends Op implements Serializable {
 	 */
 	public void initiate(IComms comms) {
 		for(NodeDescriptor desc : group) {
+			log.debug(desc);
+			log.debug(getSourceDesc());
 			if(!desc.equals(getSourceDesc())) {
 				try {
 					sendGroupNodeMessage(comms,desc, initiateNodeMessage(desc));

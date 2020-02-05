@@ -1,7 +1,6 @@
 package dragon.network.messages.service.allocpart;
 
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 
 /**
  * @author aaron
@@ -18,16 +17,16 @@ public class PartAllocedSMsg extends ServiceMessage {
 	/**
 	 * 
 	 */
-	public final Integer daemons;
+	public final Integer number;
 	
 	/**
 	 * @param partitionId
-	 * @param daemons
+	 * @param number
 	 */
-	public PartAllocedSMsg(String partitionId,Integer daemons) {
+	public PartAllocedSMsg(String partitionId,Integer number) {
 		super(ServiceMessage.ServiceMessageType.PARTITION_ALLOCATED);
 		this.partitionId=partitionId;
-		this.daemons=daemons;
+		this.number=number;
 	}
 
 }

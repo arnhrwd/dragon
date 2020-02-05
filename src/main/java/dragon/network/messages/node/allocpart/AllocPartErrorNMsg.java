@@ -2,7 +2,6 @@ package dragon.network.messages.node.allocpart;
 
 import dragon.network.messages.node.NodeErrorMessage;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * Error attempting to allocate a partition.
@@ -20,17 +19,17 @@ public class AllocPartErrorNMsg extends NodeErrorMessage {
 	/**
 	 * The number of daemons actually allocated.
 	 */
-	public final Integer daemons;
+	public final Integer number;
 	
 	/**
 	 * @param partitionId
-	 * @param daemons
+	 * @param number
 	 * @param error
 	 */
-	public AllocPartErrorNMsg(String partitionId,Integer daemons,String error) {
+	public AllocPartErrorNMsg(String partitionId,Integer number,String error) {
 		super(NodeMessage.NodeMessageType.ALLOCATE_PARTITION_ERROR,error);
 		this.partitionId=partitionId;
-		this.daemons=daemons;
+		this.number=number;
 	}
 	
 }

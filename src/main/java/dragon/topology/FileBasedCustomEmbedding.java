@@ -1,11 +1,5 @@
 package dragon.topology;
 
-import dragon.Config;
-import dragon.network.NodeContext;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-import org.yaml.snakeyaml.Yaml;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -14,6 +8,13 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.yaml.snakeyaml.Yaml;
+
+import dragon.Config;
+import dragon.network.NodeContext;
 
 /***
  * This class implements {@link IEmbeddingAlgo} interface to embed tasks on to host devices based

@@ -1,7 +1,6 @@
 package dragon.network.messages.node.allocpart;
 
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * @author aaron
@@ -18,16 +17,16 @@ public class PartAllocedNMsg extends NodeMessage {
 	/**
 	 * 
 	 */
-	public final Integer daemons;
+	public final Integer number;
 	
 	/**
 	 * @param partitionId
-	 * @param daemons
+	 * @param number
 	 */
-	public PartAllocedNMsg(String partitionId,Integer daemons) {
+	public PartAllocedNMsg(String partitionId,Integer number) {
 		super(NodeMessage.NodeMessageType.PARTITION_ALLOCATED);
 		this.partitionId=partitionId;
-		this.daemons=daemons;
+		this.number=number;
 	}
 
 }

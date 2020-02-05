@@ -3,7 +3,6 @@ package dragon.network.messages.node.join;
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * @author aaron

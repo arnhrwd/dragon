@@ -2,8 +2,8 @@ package dragon.network;
 
 import java.util.HashMap;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * A map of node names "hostname:dport" to NodeDescriptors.

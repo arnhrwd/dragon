@@ -2,22 +2,20 @@ package dragon.network;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.lang.management.ManagementFactory;
-import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.Agent;
 import dragon.ComponentError;
@@ -70,12 +68,12 @@ public class Node {
 	 * The service processor thread.
 	 */
 	@SuppressWarnings("unused")
-	private final ServiceProcessor serviceThread;
+	private final ServiceMsgProcessor serviceThread;
 	
 	/**
 	 * The node processor thread.
 	 */
-	private final NodeProcessor nodeThread;
+	private final NodeMsgProcessor nodeThread;
 	
 	/**
 	 * The operations processor thread.
@@ -96,6 +94,8 @@ public class Node {
 	 * The router for this node.
 	 */
 	private final Router router;
+	
+	
 
 	/**
 	 * The possible states that the node is in.
@@ -127,17 +127,13 @@ public class Node {
 		 * The node is available to process general messages. 
 		 */
 		OPERATIONAL
+		
 	}
 
 	/**
 	 * The state that this node is in.
 	 */
 	private NodeState nodeState;
-	
-	/**
-	 * Arguments used to start this JVM
-	 */
-	private List<String> jvmArgs;
 	
 	/**
 	 * Secondary daemons started by this primary daemon
@@ -150,6 +146,12 @@ public class Node {
 	private ProcessManager processManager;
 	
 	/**
+	 * 
+	 */
+	private final ReentrantLock operationsLock = new ReentrantLock();
+
+	
+	/**
 	 * Initialize the node, will initiate a join request if possible to
 	 * join to existing daemons, unless it is the first listed host in the
 	 * host list, in which case it will just wait for others to join to it.
@@ -157,6 +159,41 @@ public class Node {
 	 * @throws IOException
 	 */
 	public Node(Config conf) throws IOException {
+		
+		this.conf = conf;
+		writePid();
+		localClusters = new HashMap<String, LocalCluster>();
+		daemons=new HashMap<String,Process>();
+		
+		
+		processManager = new ProcessManager(conf);
+		operationsThread = new Ops(this);
+		
+		setNodeState(NodeState.JOINING);
+		comms = new TcpComms(conf);
+		comms.open();
+		router = new Router(conf,comms,localClusters);
+		serviceThread = new ServiceMsgProcessor(this);
+		nodeThread = new NodeMsgProcessor(this);
+		if (conf.getDragonMetricsEnabled()) {
+			metricsThread = new Metrics(conf,localClusters,comms.getMyNodeDesc());
+		} else {
+			metricsThread=null;
+		}
+		
+		final ArrayList<NodeDescriptor> hosts = conf.getHosts();
+		if(hosts.size()>0 && !hosts.get(0).equals(comms.getMyNodeDesc())) {
+			sendJoinRequest(hosts);
+		} else {
+			setNodeState(NodeState.OPERATIONAL);
+		}
+	}
+	
+	/**
+	 * Utility function to write the pid to a file.
+	 * @throws IOException 
+	 */
+	private void writePid() throws IOException {
 		Long pid = ProcessHandle.current().pid();
 		log.debug("pid = "+pid);
 		log.debug("writing pid to ["+conf.getDragonDataDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort()+".pid]");
@@ -171,43 +208,6 @@ public class Node {
 		if(ProcessHandle.current().parent().isPresent()) {
 			long parent_pid = ProcessHandle.current().parent().get().pid();
 			log.debug("parent pid = "+parent_pid);
-		}
-		
-		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
-		jvmArgs = bean.getInputArguments();
-		daemons=new HashMap<String,Process>();
-		processManager = new ProcessManager(conf);
-
-		// java -javaagent:dragon.jar -jar dragon.jar -d
-		// -javaagent:dragon.jar
-		for (int i = 0; i < jvmArgs.size(); i++) {
-			log.debug(jvmArgs.get(i));
-		}
-		// -classpath dragon.jar:dragon.jar
-		log.debug(" -classpath " + System.getProperty("java.class.path"));
-		// dragon.jar -d
-		log.debug(" " + System.getProperty("sun.java.command"));
-
-		this.conf = conf;
-		operationsThread = new Ops(this);
-		localClusters = new HashMap<String, LocalCluster>();
-		comms = new TcpComms(conf);
-		comms.open();
-		setNodeState(NodeState.JOINING);
-		router = new Router(this, conf);
-		serviceThread = new ServiceProcessor(this);
-		nodeThread = new NodeProcessor(this);
-		if (conf.getDragonMetricsEnabled()) {
-			metricsThread = new Metrics(this);
-		} else {
-			metricsThread = null;
-		}
-		
-		final ArrayList<NodeDescriptor> hosts = conf.getHosts();
-		if(hosts.size()>0 && !hosts.get(0).equals(comms.getMyNodeDesc())) {
-			sendJoinRequest(hosts);
-		} else {
-			setNodeState(NodeState.OPERATIONAL);
 		}
 	}
 	
@@ -231,7 +231,6 @@ public class Node {
 				log.info("joined to "+desc);
 				JoinGroupOp jgo = (JoinGroupOp) op;
 				AcceptingJoinNMsg aj = (AcceptingJoinNMsg) jgo.getReceived().get(0);
-				nodeThread.setNextNode(aj.nextNode);
 				
 				try {
 					comms.sendNodeMsg(aj.getSender(), new JoinCompleteNMsg());
@@ -302,12 +301,16 @@ public class Node {
 		log.info("state is now ["+nodeState+"]");
 		this.nodeState = nodeState;
 	}
+	
+	public synchronized ReentrantLock getOperationsLock() {
+		return operationsLock;
+	}
 
 	/**
 	 *  
 	 * @return the node processor for this node.
 	 */
-	public synchronized NodeProcessor getNodeProcessor() {
+	public synchronized NodeMsgProcessor getNodeProcessor() {
 		return this.nodeThread;
 	}
 

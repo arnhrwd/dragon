@@ -2,7 +2,6 @@ package dragon.network.messages.service.runtopo;
 
 import dragon.network.messages.service.ServiceErrorMessage;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 
 /**
  * Error attempting to run a topology.

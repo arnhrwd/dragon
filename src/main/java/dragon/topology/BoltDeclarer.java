@@ -2,8 +2,8 @@ package dragon.topology;
 
 import java.util.HashMap;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.Constants;
 import dragon.grouping.AbstractGrouping;
@@ -12,7 +12,6 @@ import dragon.grouping.DirectGrouping;
 import dragon.grouping.FieldGrouping;
 import dragon.grouping.ShuffleGrouping;
 import dragon.topology.base.Bolt;
-
 import dragon.tuple.Fields;
 
 /**

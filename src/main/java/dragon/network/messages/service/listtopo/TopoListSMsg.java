@@ -5,7 +5,6 @@ import java.util.HashMap;
 
 import dragon.ComponentError;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 
 /**
  * @author aaron

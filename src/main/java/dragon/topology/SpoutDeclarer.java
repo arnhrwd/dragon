@@ -1,8 +1,7 @@
 package dragon.topology;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-
+import org.apache.logging.log4j.Logger;
 
 import dragon.topology.base.Spout;
 

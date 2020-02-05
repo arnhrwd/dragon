@@ -4,17 +4,19 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.PriorityQueue;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.DragonRequiresClonableException;
 import dragon.metrics.ComponentMetricMap;
-import dragon.network.messages.service.ServiceMessage;
+import dragon.network.Node.NodeState;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
+import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.allocpart.AllocPartErrorSMsg;
 import dragon.network.messages.service.allocpart.AllocPartSMsg;
 import dragon.network.messages.service.allocpart.PartAllocedSMsg;
+import dragon.network.messages.service.dealloc.DeallocPartSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsErrorSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsSMsg;
 import dragon.network.messages.service.getmetrics.MetricsSMsg;
@@ -42,13 +44,13 @@ import dragon.network.operations.AllocPartGroupOp;
 import dragon.network.operations.GetStatusGroupOp;
 import dragon.network.operations.HaltTopoGroupOp;
 import dragon.network.operations.ListToposGroupOp;
+import dragon.network.operations.Ops;
 import dragon.network.operations.PrepareTopoGroupOp;
+import dragon.network.operations.RemoveTopoGroupOp;
 import dragon.network.operations.ResumeTopoGroupOp;
 import dragon.network.operations.RunTopoGroupOp;
 import dragon.network.operations.StartTopoGroupOp;
-import dragon.network.operations.RemoveTopoGroupOp;
 import dragon.network.operations.TermTopoGroupOp;
-import dragon.network.operations.Ops;
 import dragon.topology.DragonTopology;
 
 /**
@@ -59,8 +61,8 @@ import dragon.topology.DragonTopology;
  * @author aaron
  *
  */
-public class ServiceProcessor extends Thread {
-	private final static Logger log = LogManager.getLogger(ServiceProcessor.class);
+public class ServiceMsgProcessor extends Thread {
+	private final static Logger log = LogManager.getLogger(ServiceMsgProcessor.class);
 	
 	/**
 	 * 
@@ -75,7 +77,7 @@ public class ServiceProcessor extends Thread {
 	/**
 	 * @param node
 	 */
-	public ServiceProcessor(Node node) {
+	public ServiceMsgProcessor(Node node) {
 		this.node = node;
 		this.comms = node.getComms();
 		setName("service processor");
@@ -423,30 +425,41 @@ public class ServiceProcessor extends Thread {
 	private void processAllocatePartition(ServiceMessage msg) {
 		final AllocPartSMsg apsm = (AllocPartSMsg) msg;
 		final String partitionId = apsm.partitionId;
-		int daemons = apsm.daemons;
+		int daemons = apsm.number;
 		final NodeContext context = node.getNodeProcessor().getContext();
 		final HashMap<NodeDescriptor,Integer> allocation = new HashMap<NodeDescriptor,Integer>();
 		final HashMap<NodeDescriptor,Integer> load = new HashMap<NodeDescriptor,Integer>();
+		// list of machines to consider, with the primary node that will be contacted
+		// for the group operation
 		final HashMap<String,NodeDescriptor> machines = new HashMap<String,NodeDescriptor>();
+		log.debug("retrieve machine load");
+		// first build a list of machines, and designate a primary
 		for(NodeDescriptor desc : context.values()) {
-			if(desc.getPartition().equals(partitionId)) {
-				try {
-					comms.sendServiceMsg(new AllocPartErrorSMsg(partitionId,0,"partition already exists"),msg);
-				} catch (DragonCommsException e) {
-					log.fatal("can't communicate with client: " + e.getMessage());
-				}
-				return;
-			}
-			if(!machines.containsKey(desc.getHostName())){
+//			if(desc.getPartition().equals(partitionId)) {
+//				try {
+//					comms.sendServiceMsg(new AllocPartErrorSMsg(partitionId,0,"partition already exists"),msg);
+//				} catch (DragonCommsException e) {
+//					log.fatal("can't communicate with client: " + e.getMessage());
+//				}
+//				return;
+//			}
+			if(!machines.containsKey(desc.getHostName())) {
 				if(desc.isPrimary()) {
 					machines.put(desc.getHostName(),desc);
 				}
-				load.put(machines.get(desc.getHostName()),1);
-			} else {
-				load.put(machines.get(desc.getHostName()),
-						load.get(machines.get(desc.getHostName()))+1);
 			}
 		}
+		// now find the load for each machine
+		for(NodeDescriptor desc : context.values()) {
+			String hostname = desc.getHostName();
+			if(!load.containsKey(machines.get(hostname))){
+				load.put(machines.get(hostname),1);
+			} else {
+				load.put(machines.get(hostname),
+						load.get(machines.get(hostname))+1);
+			}
+		}
+		log.debug("considering strategy "+apsm.strategy.name());
 		switch(apsm.strategy) {
 		case BALANCED:
 			PriorityQueue<NodeDescriptor> pQueue = 
@@ -500,7 +513,10 @@ public class ServiceProcessor extends Thread {
 			}
 			return;
 		}
-		
+		for(NodeDescriptor desc : allocation.keySet()) {
+			log.debug("allocating to ["+desc+"] "+allocation.get(desc));
+		}
+		log.debug("calling group op");
 		Ops.inst().newAllocPartGroupOp(partitionId,allocation, (op)->{
 			try {
 				comms.sendServiceMsg(new PartAllocedSMsg(partitionId,0), msg);
@@ -526,6 +542,13 @@ public class ServiceProcessor extends Thread {
 			
 		});
 	}
+	
+	private void processDeallocatePartition(ServiceMessage msg) {
+		final DeallocPartSMsg apsm = (DeallocPartSMsg) msg;
+		final String partitionId = apsm.partitionId;
+		int daemons = apsm.daemons;
+		final NodeContext context = node.getNodeProcessor().getContext();
+	}
 
 	/**
 	 * Get the status of the daemons.
@@ -536,13 +559,13 @@ public class ServiceProcessor extends Thread {
 		Ops.inst().newGetStatusGroupOp((op)->{
 			try {
 				GetStatusGroupOp gsgo = (GetStatusGroupOp) op;
-				comms.sendServiceMsg(new StatusSMsg(gsgo.dragonStatus),msg);
+				comms.sendServiceMsg(new StatusSMsg(gsgo.dragonStatus),gssm);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: " + e.getMessage());
 			}
 		}, (op,error)->{
 			try {
-				comms.sendServiceMsg(new GetStatusErrorSMsg((String)error),msg);
+				comms.sendServiceMsg(new GetStatusErrorSMsg((String)error),gssm);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: " + e.getMessage());
 			}
@@ -569,40 +592,58 @@ public class ServiceProcessor extends Thread {
 				log.info("interrupted");
 				break;
 			}
-			switch (msg.getType()) {
-			case UPLOAD_JAR:
-				processUploadJar(msg);
-				break;
-			case RUN_TOPOLOGY:
-				processRunTopology(msg);
-				break;
-			case GET_NODE_CONTEXT:
-				processGetNodeContext(msg);
-				break;
-			case GET_METRICS:
-				processGetMetrics(msg);
-				break;
-			case TERMINATE_TOPOLOGY:
-				processTerminateTopology(msg);
-				break;
-			case LIST_TOPOLOGIES:
-				processListTopologies(msg);
-				break;
-			case HALT_TOPOLOGY:
-				processHaltTopology(msg);
-				break;
-			case RESUME_TOPOLOGY:
-				processResumeTopology(msg);
-				break;
-			case ALLOCATE_PARTITION:
-				processAllocatePartition(msg);
-				break;
-			case GET_STATUS:
-				processGetStatus(msg);
-				break;
-			default:
-				log.error("unrecognized command: " + msg.getType().name());
-			}
+			// do when appropriate
+			node.getOpsProcessor().newConditionOp((op)->{
+				return node.getNodeState()==NodeState.OPERATIONAL;
+			},(op)->{
+				try {
+					node.getOperationsLock().lockInterruptibly();
+					switch (msg.getType()) {
+					case UPLOAD_JAR:
+						processUploadJar(msg);
+						break;
+					case RUN_TOPOLOGY:
+						processRunTopology(msg);
+						break;
+					case GET_NODE_CONTEXT:
+						processGetNodeContext(msg);
+						break;
+					case GET_METRICS:
+						processGetMetrics(msg);
+						break;
+					case TERMINATE_TOPOLOGY:
+						processTerminateTopology(msg);
+						break;
+					case LIST_TOPOLOGIES:
+						processListTopologies(msg);
+						break;
+					case HALT_TOPOLOGY:
+						processHaltTopology(msg);
+						break;
+					case RESUME_TOPOLOGY:
+						processResumeTopology(msg);
+						break;
+					case ALLOCATE_PARTITION:
+						processAllocatePartition(msg);
+						break;
+					case DEALLOCATE_PARTITION:
+						processDeallocatePartition(msg);
+						break;
+					case GET_STATUS:
+						processGetStatus(msg);
+						break;
+					default:
+						log.error("unrecognized command: " + msg.getType().name());
+					}
+				} catch (InterruptedException e) {
+					log.error("interrupted while waiting for node operations lock");
+				} finally {
+					node.getOperationsLock().unlock();
+				}
+			}, (op,error)->{
+				log.error(error);
+			});
+			
 		}
 		log.info("shutting down");
 	}

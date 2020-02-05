@@ -1,7 +1,6 @@
 package dragon.network.messages.node.starttopo;
 
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * @author aaron

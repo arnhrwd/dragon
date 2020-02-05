@@ -7,14 +7,9 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 
-import dragon.topology.IEmbeddingAlgo;
-import dragon.utils.ReflectionUtils;
-import io.bretty.console.tree.PrintableTreeNode;
-import io.bretty.console.tree.TreePrinter;
-
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.parser.ParseException;
-import org.apache.logging.log4j.LogManager;
 
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
@@ -22,6 +17,8 @@ import dragon.network.NodeStatus;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
+import dragon.network.messages.service.ServiceDoneSMsg;
+import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.allocpart.AllocPartErrorSMsg;
 import dragon.network.messages.service.allocpart.AllocPartSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsErrorSMsg;
@@ -43,9 +40,11 @@ import dragon.network.messages.service.termtopo.TermTopoErrorSMsg;
 import dragon.network.messages.service.termtopo.TermTopoSMsg;
 import dragon.network.messages.service.uploadjar.UploadJarFailedSMsg;
 import dragon.network.messages.service.uploadjar.UploadJarSMsg;
-import dragon.network.messages.service.ServiceDoneSMsg;
-import dragon.network.messages.service.ServiceMessage;
 import dragon.topology.DragonTopology;
+import dragon.topology.IEmbeddingAlgo;
+import dragon.utils.ReflectionUtils;
+import io.bretty.console.tree.PrintableTreeNode;
+import io.bretty.console.tree.TreePrinter;
 
 /**
  * Static class for providing stand-alone client commands.

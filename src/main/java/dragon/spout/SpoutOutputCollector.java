@@ -1,13 +1,10 @@
 package dragon.spout;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.LocalCluster;
-
-
 import dragon.topology.base.Collector;
-
 import dragon.topology.base.Spout;
 
 /**

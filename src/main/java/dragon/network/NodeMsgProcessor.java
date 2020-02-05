@@ -1,8 +1,7 @@
 package dragon.network;
 
-import org.apache.logging.log4j.Logger;
-
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.DragonRequiresClonableException;
 import dragon.network.Node.NodeState;
@@ -49,18 +48,13 @@ import dragon.network.operations.ListToposGroupOp;
  * @author aaron
  *
  */
-public class NodeProcessor extends Thread {
-	private final static Logger log = LogManager.getLogger(NodeProcessor.class);
+public class NodeMsgProcessor extends Thread {
+	private final static Logger log = LogManager.getLogger(NodeMsgProcessor.class);
 	
 	/**
 	 * The node that this node processor belongs to.
 	 */
 	private final Node node;
-	
-	/**
-	 * The next node pointer.
-	 */
-	private NodeDescriptor nextNode=null;
 	
 	/**
 	 * The set of node descriptors that this node processor knows about.
@@ -71,11 +65,10 @@ public class NodeProcessor extends Thread {
 	 * 
 	 * @param node
 	 */
-	public NodeProcessor(Node node) {
+	public NodeMsgProcessor(Node node) {
 		this.node=node;
 		context=new NodeContext();
-		nextNode=node.getComms().getMyNodeDesc();
-		context.put(nextNode);
+		context.put(node.getComms().getMyNodeDesc());
 		setName("node processor");
 		start();
 	}
@@ -163,10 +156,7 @@ public class NodeProcessor extends Thread {
 		context.put(msg.getSender());
 		JoinGroupOp jgo = (JoinGroupOp) msg.getGroupOp();
 		jgo.context=context;
-		jgo.next=nextNode;
 		sendSuccess(msg);
-		nextNode=msg.getSender();
-		log.debug("next pointer = ["+nextNode+"]");
 	}
 	
 	/**
@@ -413,10 +403,10 @@ public class NodeProcessor extends Thread {
 	private synchronized void processAllocatePartition(NodeMessage msg) {
 		AllocPartNMsg apm = (AllocPartNMsg) msg;
 		AllocPartGroupOp apgo = (AllocPartGroupOp) apm.getGroupOp();
-		int a=node.allocatePartition(apm.partitionId, apm.daemons);
+		int a=node.allocatePartition(apm.partitionId, apm.number);
 		apgo.partitionId=apm.partitionId;
 		apgo.daemons=a;
-		if(a==apm.daemons) {
+		if(a==apm.number) {
 			apgo.sendSuccess(node.getComms());
 		} else {
 			apgo.sendError(node.getComms(), "failed to start daemon processes on ["+msg.getSender()+"]");
@@ -578,7 +568,6 @@ public class NodeProcessor extends Thread {
 	@Override
 	public void run() {
 		log.info("starting up");
-		log.info("next pointer = ["+this.nextNode+"]");
 		while(!isInterrupted()) {
 			NodeMessage msg;
 			try {
@@ -630,7 +619,14 @@ public class NodeProcessor extends Thread {
 				node.getOpsProcessor().newConditionOp((op)->{
 					return node.getNodeState()==NodeState.OPERATIONAL;
 				},(op)->{
-					processOperationalMsgs(msg);
+					try {
+						node.getOperationsLock().lockInterruptibly();
+						processOperationalMsgs(msg);
+					} catch (InterruptedException e) {
+						log.error("interrupted while waiting for node operations lock");
+					} finally {
+						node.getOperationsLock().unlock();
+					}
 				}, (op,error)->{
 					log.error(error);
 				});
@@ -656,14 +652,5 @@ public class NodeProcessor extends Thread {
 	 */
 	public synchronized void contextPutAll(NodeContext context) {
 		this.context.putAll(context);
-	}
-	
-	/**
-	 * Set the next node in the cycle to the given node.
-	 * @param desc
-	 */
-	public void setNextNode(NodeDescriptor desc) {
-		nextNode=desc;
-		log.debug("next pointer = ["+nextNode+"]");
 	}
 }

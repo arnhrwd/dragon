@@ -2,7 +2,6 @@ package dragon.network.messages.node.preparetopo;
 
 import dragon.network.messages.node.NodeErrorMessage;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * Error attempting to prepare a topology for running.

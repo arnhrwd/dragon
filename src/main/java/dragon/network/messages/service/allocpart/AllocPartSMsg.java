@@ -1,7 +1,6 @@
 package dragon.network.messages.service.allocpart;
 
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 
 /**
  * @author aaron
@@ -18,7 +17,7 @@ public class AllocPartSMsg extends ServiceMessage {
 	/**
 	 * Number of daemons (JVMs)
 	 */
-	public final Integer daemons;
+	public final Integer number;
 	
 	/**
 	 * The allocation strategy types
@@ -55,13 +54,13 @@ public class AllocPartSMsg extends ServiceMessage {
 	
 	/**
 	 * @param partitionId
-	 * @param daemons
+	 * @param number
 	 * @param strategy
 	 */
-	public AllocPartSMsg(String partitionId,Integer daemons,Strategy strategy) {
+	public AllocPartSMsg(String partitionId,Integer number,Strategy strategy) {
 		super(ServiceMessage.ServiceMessageType.ALLOCATE_PARTITION);
 		this.partitionId=partitionId;
-		this.daemons=daemons;
+		this.number=number;
 		this.strategy=strategy;
 	}
 

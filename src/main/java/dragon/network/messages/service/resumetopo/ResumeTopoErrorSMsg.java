@@ -2,7 +2,6 @@ package dragon.network.messages.service.resumetopo;
 
 import dragon.network.messages.service.ServiceErrorMessage;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 
 /**
  * Error attempting to resume the topology.

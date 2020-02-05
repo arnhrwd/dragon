@@ -2,7 +2,6 @@ package dragon.network.messages.node.preparetopo;
 
 import dragon.Config;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 import dragon.topology.DragonTopology;
 
 /**

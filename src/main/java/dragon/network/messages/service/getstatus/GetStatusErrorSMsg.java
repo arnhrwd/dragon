@@ -2,7 +2,6 @@ package dragon.network.messages.service.getstatus;
 
 import dragon.network.messages.service.ServiceErrorMessage;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 
 /**
  * Error when getting status.

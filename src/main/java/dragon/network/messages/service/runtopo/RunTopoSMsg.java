@@ -2,7 +2,6 @@ package dragon.network.messages.service.runtopo;
 
 import dragon.Config;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 import dragon.topology.DragonTopology;
 
 /**

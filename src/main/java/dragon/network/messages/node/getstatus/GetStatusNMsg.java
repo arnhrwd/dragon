@@ -1,7 +1,6 @@
 package dragon.network.messages.node.getstatus;
 
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * Get status of the particular daemon.

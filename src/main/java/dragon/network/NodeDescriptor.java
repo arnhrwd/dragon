@@ -89,7 +89,7 @@ public class NodeDescriptor implements Serializable {
 	}
 	
 	/**
-	 * @return
+	 * @return the {@link #hostName}
 	 */
 	public String getHostName() {
 		return hostName;

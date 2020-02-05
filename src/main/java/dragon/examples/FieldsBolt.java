@@ -1,12 +1,12 @@
 package dragon.examples;
 
+import java.util.HashSet;
+import java.util.Map;
+
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.base.BaseRichBolt;
 import dragon.tuple.Tuple;
-
-import java.util.HashSet;
-import java.util.Map;
 
 /**
  *

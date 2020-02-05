@@ -8,8 +8,8 @@ import java.util.Map;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.grouping.AbstractGrouping;
 import dragon.network.Node;
@@ -26,10 +26,7 @@ import dragon.topology.OutputFieldsDeclarer;
 import dragon.topology.SpoutDeclarer;
 import dragon.topology.StreamMap;
 import dragon.topology.base.Bolt;
-
 import dragon.topology.base.Component;
-
-
 import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
 import dragon.tuple.NetworkTask;

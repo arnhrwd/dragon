@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import dragon.network.NodeStatus;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 
 /**
  * Status information about the dragon daemons.

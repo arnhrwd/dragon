@@ -5,11 +5,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.Config;
+import dragon.LocalCluster;
 import dragon.network.comms.DragonCommsException;
+import dragon.network.comms.IComms;
 import dragon.topology.DragonTopology;
 import dragon.tuple.NetworkTask;
 import dragon.tuple.RecycleStation;
@@ -31,7 +33,17 @@ public class Router {
 	/**
 	 * 
 	 */
-	private final Node node;
+	//private final Node node;
+	
+	/**
+	 * 
+	 */
+	private final IComms comms;
+	
+	/**
+	 * 
+	 */
+	private final HashMap<String, LocalCluster> localClusters;
 
 	/**
 	 * 
@@ -70,10 +82,13 @@ public class Router {
 
 	/**
 	 * @param node
-	 * @param conf
+	 * @param comms
+	 * @param localClusters
 	 */
-	public Router(Node node, Config conf) {
-		this.node=node;
+	public Router(Config conf,IComms comms,HashMap<String, LocalCluster> localClusters) {
+		//this.node=node;
+		this.comms=comms;
+		this.localClusters=localClusters;
 		this.conf=conf;
 		inputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterInputBufferSize());
 		outputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterOutputBufferSize());
@@ -98,6 +113,7 @@ public class Router {
 			outgoingThreads.add(new Thread() {
 				@Override
 				public void run() {
+					log.info("starting up");
 					while(!shouldTerminate) {
 						try {
 							NetworkTaskBuffer buffer = outputsPending.take();
@@ -108,8 +124,7 @@ public class Router {
 								NetworkTask task = buffer.poll();
 								if(task!=null){
 									HashSet<Integer> taskIds=task.getTaskIds();
-									HashMap<Integer,NodeDescriptor> taskMap = node
-											.getLocalClusters()
+									HashMap<Integer,NodeDescriptor> taskMap = localClusters
 											.get(task.getTopologyId())
 											.getTopology()
 											.getEmbedding()
@@ -132,7 +147,7 @@ public class Router {
 												task.getTopologyId());
 										//log.debug("seding to "+desc+" "+nt);
 										try {
-											node.getComms().sendNetworkTask(desc, nt);
+											comms.sendNetworkTask(desc, nt);
 										} catch (DragonCommsException e) {
 											log.error("failed to send network task to ["+desc+"]");
 										}
@@ -147,6 +162,7 @@ public class Router {
 							log.info("interrupted while taking from queue");
 						}
 					}
+					log.info("starting up");
 				}
 			});
 			outgoingThreads.get(i).setName("router outgoing "+i);
@@ -156,19 +172,20 @@ public class Router {
 			incomingThreads.add(new Thread() {
 				@Override
 				public void run() {
+					log.info("starting up");
 					while(!shouldTerminate) {
 						NetworkTask task;
 						try {
-							task = node.getComms().receiveNetworkTask();
+							task = comms.receiveNetworkTask();
 						} catch (InterruptedException e1) {
 							log.info("interrupted");
 							break;
 						}
 						try {
-							if(node.getLocalClusters().containsKey(task.getTopologyId())) {
+							if(localClusters.containsKey(task.getTopologyId())) {
 								RecycleStation.getInstance().getNetworkTaskRecycler().shareRecyclable(task, 1);
 								inputQueues.put(task);
-								node.getLocalClusters().get(task.getTopologyId()).outputPending(inputQueues.getBuffer(task));
+								localClusters.get(task.getTopologyId()).outputPending(inputQueues.getBuffer(task));
 								RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 							} else {
 								log.error("received a network task for a non-existant topology ["+task.getTopologyId()+"]");
@@ -178,6 +195,7 @@ public class Router {
 							break;
 						}
 					}
+					log.info("shutting down");
 				}
 			});
 			incomingThreads.get(i).setName("router incoming "+i);
@@ -224,7 +242,7 @@ public class Router {
 	 */
 	public void submitTopology(String topologyName, DragonTopology topology) {
 		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
-			if(!desc.equals(node.getComms().getMyNodeDesc())) {
+			if(!desc.equals(comms.getMyNodeDesc())) {
 				for(String componentId : topology.getReverseEmbedding().get(desc).keySet()) {
 					if(!topology.getBoltMap().containsKey(componentId))continue;
 					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {
@@ -255,7 +273,7 @@ public class Router {
 	 */
 	public void terminateTopology(String topologyName, DragonTopology topology) {
 		for(NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
-			if(!desc.equals(node.getComms().getMyNodeDesc())) {
+			if(!desc.equals(comms.getMyNodeDesc())) {
 				for(String componentId : topology.getReverseEmbedding().get(desc).keySet()) {
 					if(!topology.getBoltMap().containsKey(componentId))continue;
 					for(String listened : topology.getBoltMap().get(componentId).groupings.keySet()) {

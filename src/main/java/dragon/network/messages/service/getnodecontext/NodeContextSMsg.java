@@ -2,7 +2,6 @@ package dragon.network.messages.service.getnodecontext;
 
 import dragon.network.NodeContext;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 
 /**
  * @author aaron

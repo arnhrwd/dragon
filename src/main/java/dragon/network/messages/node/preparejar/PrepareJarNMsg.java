@@ -1,7 +1,6 @@
 package dragon.network.messages.node.preparejar;
 
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * @author aaron

@@ -2,7 +2,6 @@ package dragon.network.messages.node.resumetopo;
 
 import dragon.network.messages.node.NodeErrorMessage;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * @author aaron

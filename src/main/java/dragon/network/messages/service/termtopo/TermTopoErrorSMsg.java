@@ -2,7 +2,6 @@ package dragon.network.messages.service.termtopo;
 
 import dragon.network.messages.service.ServiceErrorMessage;
 import dragon.network.messages.service.ServiceMessage;
-import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 
 /**
  * Error attempting to terminate the topology.

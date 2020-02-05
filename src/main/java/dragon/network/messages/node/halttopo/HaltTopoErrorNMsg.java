@@ -2,7 +2,6 @@ package dragon.network.messages.node.halttopo;
 
 import dragon.network.messages.node.NodeErrorMessage;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * Error attempting to halt the topology.

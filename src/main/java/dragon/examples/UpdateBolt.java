@@ -1,5 +1,7 @@
 package dragon.examples;
 
+import java.util.Map;
+
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
@@ -7,8 +9,6 @@ import dragon.topology.base.BaseRichBolt;
 import dragon.tuple.Fields;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
-
-import java.util.Map;
 
 /**
  * 

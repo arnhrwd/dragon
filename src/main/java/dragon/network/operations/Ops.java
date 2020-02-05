@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.network.Node;
 import dragon.network.NodeContext;
@@ -76,7 +76,6 @@ public class Ops extends Thread {
 		readyQueue = new LinkedBlockingQueue<Op>();
 		conditionalOps = new ArrayList<ConditionalOp>();
 		setName("ops processor");
-		log.info("starting operations thread");
 		start();
 	}
 
@@ -228,6 +227,29 @@ public class Ops extends Thread {
 		return apgo;
 	}
 	
+	/**
+	 * 
+	 * @param partitionId
+	 * @param allocation
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
+	public AllocPartGroupOp newDeallocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
+		AllocPartGroupOp apgo = new AllocPartGroupOp(partitionId,allocation,success,failure);
+		for(NodeDescriptor desc : allocation.keySet()) {
+			apgo.add(desc);
+		}
+		register(apgo);
+		return apgo;
+	}
+	
+	/**
+	 * 
+	 * @param success
+	 * @param failure
+	 * @return
+	 */
 	public GetStatusGroupOp newGetStatusGroupOp(IOpSuccess success, IOpFailure failure) {
 		GetStatusGroupOp apgo = new GetStatusGroupOp(success,failure);
 		// this group operation goes to EVERY dragon daemon
@@ -304,6 +326,7 @@ public class Ops extends Thread {
 	public void run() {
 		final ArrayList<ConditionalOp> removed = new ArrayList<ConditionalOp>();
 		boolean hit;
+		log.info("starting up");
 		while (!isInterrupted()) {
 			hit=false;
 			
@@ -339,5 +362,6 @@ public class Ops extends Thread {
 			}
 
 		}
+		log.info("shutting down");
 	}
 }

@@ -2,8 +2,8 @@ package dragon.topology.base;
 
 import java.util.Map;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import dragon.LocalCluster;
 import dragon.spout.SpoutOutputCollector;

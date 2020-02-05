@@ -3,9 +3,10 @@ package dragon.metrics;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.time.Instant;
+import java.util.HashMap;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
@@ -13,8 +14,9 @@ import com.influxdb.client.WriteApi;
 import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
 
+import dragon.Config;
 import dragon.LocalCluster;
-import dragon.network.Node;
+import dragon.network.NodeDescriptor;
 
 /**
  * Log metrics at a regular interval. Store metrics in memory and also
@@ -26,14 +28,24 @@ public class Metrics extends Thread {
 	private static Logger log = LogManager.getLogger(Metrics.class);
 	
 	/**
-	 * The node that this metrics class belongs to.
+	 * 
 	 */
-	private Node node;
+	private final Config conf;
+	
+	/**
+	 * 
+	 */
+	private final NodeDescriptor desc;
+	
+	/**
+	 * 
+	 */
+	private final HashMap<String, LocalCluster> localClusters;
 	
 	/**
 	 * The topology metric map for storing samples on topologies.
 	 */
-	private TopologyMetricMap samples;
+	private final TopologyMetricMap samples;
 	
 	/**
 	 * The InfluxDBClient, null if none given in conf. 
@@ -48,11 +60,15 @@ public class Metrics extends Thread {
 	/**
 	 * When initialized it will open a DB connection to InfluxDB if
 	 * available. The connection will remain open until metrics shuts down.
-	 * @param node
+	 * @param conf
+	 * @param localClusters
+	 * @param desc
 	 */
-	public Metrics(Node node){
-		samples=new TopologyMetricMap((int)node.getConf().getDragonMetricsSampleHistory());
-		this.node = node;
+	public Metrics(Config conf,HashMap<String, LocalCluster> localClusters,NodeDescriptor desc){
+		this.conf=conf;
+		this.localClusters=localClusters;
+		this.desc=desc;
+		samples=new TopologyMetricMap((int)conf.getDragonMetricsSampleHistory());
 		setName("metrics");
 		start();
 	}
@@ -88,29 +104,29 @@ public class Metrics extends Thread {
 	@Override
 	public void run(){
 		log.info("starting up");
-		if(node.getConf().getInfluxDBUrl()!=null) {
-			log.info("using InfluxDB ["+node.getConf().getInfluxDBUrl()+"]");
-			influxDBClient = InfluxDBClientFactory.create(node.getConf().getInfluxDBUrl(), node.getConf().getInfluxDBToken().toCharArray());
+		if(conf.getInfluxDBUrl()!=null) {
+			log.info("using InfluxDB ["+conf.getInfluxDBUrl()+"]");
+			influxDBClient = InfluxDBClientFactory.create(conf.getInfluxDBUrl(),conf.getInfluxDBToken().toCharArray());
 			writeApi = influxDBClient.getWriteApi();
 		}
 		Point point;
 		while(!isInterrupted()){
 			try {
-				sleep((int)node.getConf().getDragonMetricsSamplePeriodMs());
+				sleep((int)conf.getDragonMetricsSamplePeriodMs());
 			} catch (InterruptedException e) {
 				log.info("shutting down");
 			}
 			synchronized(samples){
 				
 				if(writeApi!=null) {
-					point = Point.measurement("gcTime").addTag("node", node.getComms().getMyNodeDesc().toString())
+					point = Point.measurement("gcTime").addTag("node", desc.toString())
 							.addField("value", gcTime()).time(Instant.now().toEpochMilli(), WritePrecision.MS);
-					writeApi.writePoint(node.getConf().getInfluxDBBucket(), node.getConf().getInfluxDBOrganization(), point);
+					writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
 				}
 				
-				for(String topologyId : node.getLocalClusters().keySet()){
+				for(String topologyId : localClusters.keySet()){
 					log.info("sampling topology ["+topologyId+"]");
-					LocalCluster localCluster = node.getLocalClusters().get(topologyId);
+					LocalCluster localCluster = localClusters.get(topologyId);
 					for(String componentId : localCluster.getSpouts().keySet()){
 						for(Integer taskId : localCluster.getSpouts().get(componentId).keySet()){
 							Sample sample = new Sample(localCluster.getSpouts().get(componentId).get(taskId));
@@ -148,26 +164,26 @@ public class Metrics extends Thread {
 	 */
 	private void writeToInfluxDB(String topologyId, String componentId, Integer taskId, Sample sample) {
 		Point point;
-		point = Point.measurement("outputQueueSize").addTag("node", node.getComms().getMyNodeDesc().toString())
+		point = Point.measurement("outputQueueSize").addTag("node", desc.toString())
 				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
 				.addField("value", sample.outputQueueSize).time(Instant.now().toEpochMilli(), WritePrecision.MS);
-		writeApi.writePoint(node.getConf().getInfluxDBBucket(), node.getConf().getInfluxDBOrganization(), point);
-		point = Point.measurement("inputQueueSize").addTag("node", node.getComms().getMyNodeDesc().toString())
+		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
+		point = Point.measurement("inputQueueSize").addTag("node", desc.toString())
 				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
 				.addField("value", sample.inputQueueSize).time(Instant.now().toEpochMilli(), WritePrecision.MS);
-		writeApi.writePoint(node.getConf().getInfluxDBBucket(), node.getConf().getInfluxDBOrganization(), point);
-		point = Point.measurement("processed").addTag("node", node.getComms().getMyNodeDesc().toString())
+		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
+		point = Point.measurement("processed").addTag("node", desc.toString())
 				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
 				.addField("value", sample.processed).time(Instant.now().toEpochMilli(), WritePrecision.MS);
-		writeApi.writePoint(node.getConf().getInfluxDBBucket(), node.getConf().getInfluxDBOrganization(), point);
-		point = Point.measurement("emitted").addTag("node", node.getComms().getMyNodeDesc().toString())
+		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
+		point = Point.measurement("emitted").addTag("node", desc.toString())
 				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
 				.addField("value", sample.emitted).time(Instant.now().toEpochMilli(), WritePrecision.MS);
-		writeApi.writePoint(node.getConf().getInfluxDBBucket(), node.getConf().getInfluxDBOrganization(), point);
-		point = Point.measurement("transferred").addTag("node", node.getComms().getMyNodeDesc().toString())
+		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
+		point = Point.measurement("transferred").addTag("node", desc.toString())
 				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
 				.addField("value", sample.transferred).time(Instant.now().toEpochMilli(), WritePrecision.MS);
-		writeApi.writePoint(node.getConf().getInfluxDBBucket(), node.getConf().getInfluxDBOrganization(), point);
+		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
 	}
 
 }

@@ -2,7 +2,6 @@ package dragon.network.messages.node.stoptopo;
 
 import dragon.network.messages.node.NodeErrorMessage;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * Error attempting to stop a topology.

@@ -2,7 +2,6 @@ package dragon.network.messages.node.context;
 
 import dragon.network.NodeContext;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 
 /**
  * @author aaron
