@@ -3,6 +3,10 @@ package dragon.network;
 import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
 /**
  * The NodeDescriptor provides information that is required to identify a node,
@@ -53,6 +57,11 @@ public class NodeDescriptor implements Serializable {
 	private String partition;
 	
 	/**
+	 * The parent (primary) node for this node, if exists.
+	 */
+	private NodeDescriptor parent;
+	
+	/**
 	 * @param hostName
 	 * @param dataPort
 	 * @param servicePort
@@ -61,7 +70,7 @@ public class NodeDescriptor implements Serializable {
 	 * @throws UnknownHostException
 	 */
 	public NodeDescriptor (String hostName, int dataPort, int servicePort,
-			boolean primary, String partition) throws UnknownHostException {
+			boolean primary, String partition, NodeDescriptor parent) throws UnknownHostException {
 		this.host=InetAddress.getByName(hostName);
 		this.dataPort=dataPort;
 		this.servicePort=servicePort;
@@ -69,6 +78,7 @@ public class NodeDescriptor implements Serializable {
 		this.fullName=toString();
 		this.primary=primary;
 		this.partition=partition;
+		this.parent=parent;
 	}
 	
 	/* (non-Javadoc)
@@ -111,6 +121,14 @@ public class NodeDescriptor implements Serializable {
 	}
 	
 	/**
+	 * 
+	 * @return the parent
+	 */
+	public NodeDescriptor getParent() {
+		return parent;
+	}
+	
+	/**
 	 * @return
 	 */
 	public int getDataPort() {
@@ -149,6 +167,25 @@ public class NodeDescriptor implements Serializable {
 	 */
 	public String getPartition(){
 		return partition;
+	}
+	
+	public HashMap<String,Object> toMap() {
+		HashMap<String, Object> map = new HashMap<String,Object>();
+		map.put("hostname",getHostName());
+		map.put("dport",getDataPort());
+		map.put("sport",getServicePort());
+		map.put("primary",isPrimary());
+		map.put("partition",getPartition());
+		return map;
+	}
+	
+	public String toYaml() {
+		DumperOptions options = new DumperOptions();
+		options.setPrettyFlow(false);
+		options.setSplitLines(false);
+		Yaml config = new Yaml(options);
+		String ret = config.dump(toMap());
+		return ret;
 	}
 	
 	/* (non-Javadoc)

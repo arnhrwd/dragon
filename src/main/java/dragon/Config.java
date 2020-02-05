@@ -136,6 +136,11 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_NETWORK_PARTITION="dragon.network.partition";
 	
 	/**
+	 * the parent of this daemon
+	 */
+	public static final String DRAGON_NETWORK_PARENT="dragon.network.parent";
+	
+	/**
 	 * the sample period in milliseconds
 	 */
 	public static final String DRAGON_METRICS_SAMPLE_PERIOD_MS="dragon.metrics.sample.period.ms";
@@ -821,6 +826,34 @@ public class Config extends HashMap<String, Object> {
 	//
 	
 	/**
+	 * 
+	 * @return the node's parent node, if it exists or null otherwise
+	 * @throws UnknownHostException
+	 */
+	@SuppressWarnings("unchecked")
+	public NodeDescriptor getDragonNetworkParentDescriptor() throws UnknownHostException {
+		if(containsKey("DRAGON_NETWORK_PARENT")) {
+			HashMap<String,?> host = (HashMap<String, ?>) get(DRAGON_NETWORK_PARENT);
+			String hostname = (String) host.get("hostname");
+			int dport = getDragonNetworkDefaultDataPort();
+			int sport = getDragonNetworkDefaultServicePort();
+			boolean primary = true;
+			String partition = Constants.DRAGON_PRIMARY_PARTITION;
+			if(host.containsKey("dport")) dport = (Integer) host.get("dport");
+			if(host.containsKey("sport")) sport = (Integer) host.get("sport");
+			if(host.containsKey("primary")) primary = (Boolean) host.get("primary");
+			if(host.containsKey("partition")) partition = (String) host.get("partition");
+			return new NodeDescriptor(hostname,
+					dport,
+					sport,
+					primary,
+					partition,null);
+		} else {
+			return null;
+		}
+	}
+	
+	/**
 	 * The jar path is the concatenation of base dir and jar dir.
 	 * @return the jar path
 	 */
@@ -831,7 +864,7 @@ public class Config extends HashMap<String, Object> {
 	/**
 	 * The node descriptor for this node is a combination of other
 	 * parameters in the configuration: network local host, network local data port,
-	 * network local service port, network primary, network paritition.
+	 * network local service port, network primary, network paritition, parent.
 	 * @return the node descriptor for this node
 	 * @throws UnknownHostException if the node descriptor hostname cannot be looked up.
 	 */
@@ -840,7 +873,7 @@ public class Config extends HashMap<String, Object> {
 				getDragonNetworkLocalDataPort(),
 				getDragonNetworkLocalServicePort(),
 				getDragonNetworkPrimary(),
-				getDragonNetworkPartition());
+				getDragonNetworkPartition(),null);
 	}
 	
 	/**
@@ -869,7 +902,7 @@ public class Config extends HashMap<String, Object> {
 						dport,
 						sport,
 						primary,
-						partition));
+						partition,null));
 			} catch (UnknownHostException e) {
 				log.error(hostname + " is not found");
 			}

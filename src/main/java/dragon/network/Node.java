@@ -580,6 +580,7 @@ public class Node {
 			c.put(Config.DRAGON_NETWORK_PRIMARY,false);
 			c.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,conf.getDragonNetworkLocalServicePort()+(daemons.keySet().size()+1)*10);
 			c.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,conf.getDragonNetworkLocalDataPort()+(daemons.keySet().size()+1)*10);
+			c.put(Config.DRAGON_NETWORK_PARENT,comms.getMyNodeDesc().toMap());
 			String home = c.getDragonHomeDir();
 			try {
 				writeConf(c,home+"/conf/dragon-"+c.getDragonNetworkLocalDataPort()+".yaml");

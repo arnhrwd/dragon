@@ -427,22 +427,24 @@ public class ServiceMsgProcessor extends Thread {
 		final String partitionId = apsm.partitionId;
 		int daemons = apsm.number;
 		final NodeContext context = node.getNodeProcessor().getContext();
+		
+		/*
+		 * Who will allocate new processes and how many.
+		 */
 		final HashMap<NodeDescriptor,Integer> allocation = new HashMap<NodeDescriptor,Integer>();
+		
+		/*
+		 * The load of a machine.
+		 */
 		final HashMap<NodeDescriptor,Integer> load = new HashMap<NodeDescriptor,Integer>();
-		// list of machines to consider, with the primary node that will be contacted
-		// for the group operation
+		
+		/* list of machines to consider, with the primary node that will be contacted
+		 * for the group operation
+		 */
 		final HashMap<String,NodeDescriptor> machines = new HashMap<String,NodeDescriptor>();
-		log.debug("retrieve machine load");
+		
 		// first build a list of machines, and designate a primary
 		for(NodeDescriptor desc : context.values()) {
-//			if(desc.getPartition().equals(partitionId)) {
-//				try {
-//					comms.sendServiceMsg(new AllocPartErrorSMsg(partitionId,0,"partition already exists"),msg);
-//				} catch (DragonCommsException e) {
-//					log.fatal("can't communicate with client: " + e.getMessage());
-//				}
-//				return;
-//			}
 			if(!machines.containsKey(desc.getHostName())) {
 				if(desc.isPrimary()) {
 					machines.put(desc.getHostName(),desc);
@@ -459,7 +461,7 @@ public class ServiceMsgProcessor extends Thread {
 						load.get(machines.get(hostname))+1);
 			}
 		}
-		log.debug("considering strategy "+apsm.strategy.name());
+		
 		switch(apsm.strategy) {
 		case BALANCED:
 			PriorityQueue<NodeDescriptor> pQueue = 
@@ -513,10 +515,6 @@ public class ServiceMsgProcessor extends Thread {
 			}
 			return;
 		}
-		for(NodeDescriptor desc : allocation.keySet()) {
-			log.debug("allocating to ["+desc+"] "+allocation.get(desc));
-		}
-		log.debug("calling group op");
 		Ops.inst().newAllocPartGroupOp(partitionId,allocation, (op)->{
 			try {
 				comms.sendServiceMsg(new PartAllocedSMsg(partitionId,0), msg);
@@ -548,6 +546,10 @@ public class ServiceMsgProcessor extends Thread {
 		final String partitionId = apsm.partitionId;
 		int daemons = apsm.daemons;
 		final NodeContext context = node.getNodeProcessor().getContext();
+		
+		/**
+		 * list of existing partitions with their parent nodes...
+		 */
 	}
 
 	/**
