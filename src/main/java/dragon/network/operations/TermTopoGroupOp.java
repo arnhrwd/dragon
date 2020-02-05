@@ -5,9 +5,9 @@ import org.apache.logging.log4j.LogManager;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.StopTopoErrorNMsg;
-import dragon.network.messages.node.StopTopoNMsg;
-import dragon.network.messages.node.TopoStoppedNMsg;
+import dragon.network.messages.node.stoptopo.StopTopoErrorNMsg;
+import dragon.network.messages.node.stoptopo.StopTopoNMsg;
+import dragon.network.messages.node.stoptopo.TopoStoppedNMsg;
 
 
 /**

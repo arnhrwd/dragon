@@ -3,9 +3,9 @@ package dragon.network.operations;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.TopoRemovedNMsg;
-import dragon.network.messages.node.RemoveTopoErrorNMsg;
-import dragon.network.messages.node.RemoveTopoNMsg;
+import dragon.network.messages.node.removetopo.RemoveTopoErrorNMsg;
+import dragon.network.messages.node.removetopo.RemoveTopoNMsg;
+import dragon.network.messages.node.removetopo.TopoRemovedNMsg;
 
 
 /**

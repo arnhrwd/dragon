@@ -1,6 +1,7 @@
 package dragon.network.messages.service;
 
 /**
+ * Sent to conclude the service session and thereby close the socket.
  * @author aaron
  *
  */

@@ -2,9 +2,9 @@ package dragon.network.operations;
 
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
-import dragon.network.messages.node.AcceptingJoinNMsg;
-import dragon.network.messages.node.JoinRequestNMsg;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.node.join.AcceptingJoinNMsg;
+import dragon.network.messages.node.join.JoinRequestNMsg;
 
 /**
  * @author aaron

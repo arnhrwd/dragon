@@ -3,10 +3,10 @@ package dragon.network.operations;
 import java.util.HashMap;
 
 import dragon.network.NodeDescriptor;
-import dragon.network.messages.node.AllocPartErrorNMsg;
-import dragon.network.messages.node.AllocPartNMsg;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.PartAllocedNMsg;
+import dragon.network.messages.node.allocpart.AllocPartErrorNMsg;
+import dragon.network.messages.node.allocpart.AllocPartNMsg;
+import dragon.network.messages.node.allocpart.PartAllocedNMsg;
 
 /**
  * @author aaron

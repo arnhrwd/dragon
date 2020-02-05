@@ -3,10 +3,10 @@ package dragon.network.operations;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.PrepareTopoErrorNMsg;
-import dragon.network.messages.node.PrepareTopoNMsg;
-import dragon.network.messages.node.TopoReadyNMsg;
-import dragon.network.messages.service.RunTopoSMsg;
+import dragon.network.messages.node.preparetopo.PrepareTopoErrorNMsg;
+import dragon.network.messages.node.preparetopo.PrepareTopoNMsg;
+import dragon.network.messages.node.preparetopo.TopoReadyNMsg;
+import dragon.network.messages.service.runtopo.RunTopoSMsg;
 
 
 /**

@@ -1,10 +1,10 @@
 package dragon.network.operations;
 
 import dragon.network.NodeDescriptor;
-import dragon.network.messages.node.JarReadyNMsg;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.PrepareJarErrorNMsg;
-import dragon.network.messages.node.PrepareJarNMsg;
+import dragon.network.messages.node.preparejar.JarReadyNMsg;
+import dragon.network.messages.node.preparejar.PrepareJarErrorNMsg;
+import dragon.network.messages.node.preparejar.PrepareJarNMsg;
 
 /**
  * @author aaron

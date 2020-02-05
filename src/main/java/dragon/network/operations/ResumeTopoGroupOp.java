@@ -2,9 +2,9 @@ package dragon.network.operations;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.ResumeTopoErrorNMsg;
-import dragon.network.messages.node.ResumeTopoNMsg;
-import dragon.network.messages.node.TopoResumedNMsg;
+import dragon.network.messages.node.resumetopo.ResumeTopoErrorNMsg;
+import dragon.network.messages.node.resumetopo.ResumeTopoNMsg;
+import dragon.network.messages.node.resumetopo.TopoResumedNMsg;
 
 /**
  * @author aaron

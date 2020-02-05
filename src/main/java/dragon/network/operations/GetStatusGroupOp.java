@@ -4,10 +4,10 @@ import java.util.ArrayList;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.NodeStatus;
-import dragon.network.messages.node.GetStatusErrorNMsg;
-import dragon.network.messages.node.GetStatusNMsg;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.StatusNMsg;
+import dragon.network.messages.node.getstatus.GetStatusErrorNMsg;
+import dragon.network.messages.node.getstatus.GetStatusNMsg;
+import dragon.network.messages.node.getstatus.StatusNMsg;
 
 /**
  * Get the status of the daemons

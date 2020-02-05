@@ -20,10 +20,10 @@ import dragon.network.NodeDescriptor;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
-import dragon.network.messages.service.GetMetricsSMsg;
-import dragon.network.messages.service.MetricsSMsg;
 import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
+import dragon.network.messages.service.getmetrics.GetMetricsSMsg;
+import dragon.network.messages.service.getmetrics.MetricsSMsg;
 
 /**
  * Stand-alone utility to continuously monitor metrics for the entire Dragon network.

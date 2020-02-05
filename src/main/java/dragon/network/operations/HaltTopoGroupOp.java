@@ -1,10 +1,10 @@
 package dragon.network.operations;
 
 import dragon.network.NodeDescriptor;
-import dragon.network.messages.node.HaltTopoErrorNMsg;
-import dragon.network.messages.node.HaltTopoNMsg;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.TopoHaltedNMsg;
+import dragon.network.messages.node.halttopo.HaltTopoErrorNMsg;
+import dragon.network.messages.node.halttopo.HaltTopoNMsg;
+import dragon.network.messages.node.halttopo.TopoHaltedNMsg;
 
 /**
  * @author aaron

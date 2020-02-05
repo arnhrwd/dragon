@@ -5,9 +5,9 @@ import java.util.HashMap;
 
 import dragon.ComponentError;
 import dragon.network.NodeDescriptor;
-import dragon.network.messages.node.GetTopoInfoNMsg;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.TopoInfoNMsg;
+import dragon.network.messages.node.gettopoinfo.GetTopoInfoNMsg;
+import dragon.network.messages.node.gettopoinfo.TopoInfoNMsg;
 
 /**
  * @author aaron
