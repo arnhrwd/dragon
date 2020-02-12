@@ -1,5 +1,7 @@
 package dragon.task;
 
+import org.jctools.queues.MpscArrayQueue;
+
 import dragon.LocalCluster;
 import dragon.topology.base.Bolt;
 import dragon.tuple.Tuple;
@@ -13,7 +15,7 @@ public class InputCollector {
 	/**
 	 * 
 	 */
-	private final CircularBlockingQueue<Tuple> inputQueue;
+	private final MpscArrayQueue<Tuple> inputQueue;
 	
 	/**
 	 * 
@@ -32,7 +34,8 @@ public class InputCollector {
 	 * @param bolt
 	 */
 	public InputCollector(LocalCluster localCluster,Bolt bolt){
-		inputQueue=new CircularBlockingQueue<Tuple>(localCluster.getConf().getDragonInputBufferSize());
+		//inputQueue=new CircularBlockingQueue<Tuple>(localCluster.getConf().getDragonInputBufferSize());
+		inputQueue=new MpscArrayQueue<Tuple>(localCluster.getConf().getDragonInputBufferSize());
 		this.localCluster = localCluster;
 		this.bolt=bolt;
 		
@@ -41,7 +44,7 @@ public class InputCollector {
 	/**
 	 * @return
 	 */
-	public CircularBlockingQueue<Tuple> getQueue(){
+	public MpscArrayQueue<Tuple> getQueue(){
 		return inputQueue;
 	}
 }
