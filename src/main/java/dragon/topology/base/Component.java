@@ -165,9 +165,9 @@ public class Component implements Cloneable, Serializable{
 	/**
 	 * 
 	 */
-	public void run() {
+	public boolean run() {
 		// TODO Auto-generated method stub
-		
+		return false;
 	}
 	
 	/**

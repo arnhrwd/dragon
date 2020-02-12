@@ -3,6 +3,8 @@ package dragon.topology.base;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,6 +16,7 @@ import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 import dragon.tuple.RecycleStation;
 import dragon.tuple.Tuple;
+import dragon.utils.NetworkTaskBuffer;
 
 /**
  * @author aaron
@@ -57,24 +60,20 @@ public class Bolt extends Component {
 	/* (non-Javadoc)
 	 * @see dragon.topology.base.Component#run()
 	 */
-	@Override
-	public final void run() {
+	
+	public final boolean run() {
 		Tuple tuple=null;
-		if(closed)return;
+		if(closed)return false;
 		if(tickTuple!=null) {
 			tuple=tickTuple;
 			tickTuple=null;
 		} else {
-			try {
-				tuple = getInputCollector().getQueue().remove();
-			} catch (NoSuchElementException e) {
-				try {
-					Thread.sleep(1);
-				} catch (InterruptedException e1) {
-					return;
-				}
-				return;
-			}
+			
+				tuple = getInputCollector().getQueue().poll();
+				if(tuple==null) return false;
+			
+			
+			
 		}
 		if(tuple!=null){
 			switch(tuple.getType()) {
@@ -137,8 +136,10 @@ public class Bolt extends Component {
 				
 			}
 			RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
+			return true;
 		} else {
 			log.error("nothing on the queue!");
+			return false;
 		}
 	}
 	

@@ -390,7 +390,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_DATA_DIR,"/tmp/dragon");
 		put(DRAGON_PERSISTENCE_DIR,"persistance");
 		put(DRAGON_JAR_DIR,"jars");
-		put(DRAGON_LOCALCLUSTER_THREADS,5);
+		put(DRAGON_LOCALCLUSTER_THREADS,2);
 		put(DRAGON_ROUTER_INPUT_THREADS,1);
 		put(DRAGON_ROUTER_OUTPUT_THREADS,1);
 		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,16);

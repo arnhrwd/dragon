@@ -175,11 +175,19 @@ public class Collector {
 					.getNetworkTaskRecycler().newObject();
 			
 			task.init(tuple, localTaskIds, componentId, localCluster.getTopologyId());
-			try {
-				getQueue(componentId,streamId).put(task);
-			} catch (InterruptedException e) {
-				log.info("interrupted");	
+			
+			while(!getQueue(componentId,streamId).offer(task)) {
+			
+					
+					try {
+						Thread.sleep(1);
+					} catch (InterruptedException e) {
+						log.info("interrupted");
+						return;
+					}
+				
 			}
+			 
 			localCluster.outputPending(getQueue(componentId,streamId));
 		}
 	}

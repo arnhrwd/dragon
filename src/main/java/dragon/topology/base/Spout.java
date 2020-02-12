@@ -26,17 +26,17 @@ public class Spout extends Component {
 	 * @see dragon.topology.base.Component#run()
 	 */
 	@Override
-	public final void run() {
+	public final boolean run() {
 		getOutputCollector().resetEmit();
 		if(closed) {
 			log.warn("spout is already closed");
-			return;
+			return false;
 		}
 		if(closing) {
 			close();
 			log.debug(getComponentId()+":"+getTaskId()+" closed");
 			closed=true;
-			return;
+			return false;
 		}
 		try {
 			nextTuple();
@@ -58,6 +58,7 @@ public class Spout extends Component {
 //			}
 //			getLocalCluster().componentPending(this);
 //		}
+		return true;
 	}
 
 	/**

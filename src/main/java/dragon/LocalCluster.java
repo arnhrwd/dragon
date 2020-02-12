@@ -5,11 +5,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jctools.queues.MpmcArrayQueue;
 
 import dragon.grouping.AbstractGrouping;
 import dragon.network.Node;
@@ -68,7 +70,10 @@ public class LocalCluster {
 	 * that are waiting to be serviced. One reference to such a queue is placed
 	 * on outputsPending for each NetworkTask it contains.
 	 */
-	private CircularBlockingQueue<NetworkTaskBuffer> outputsPending;
+	//private CircularBlockingQueue<NetworkTaskBuffer> outputsPending;
+	private MpmcArrayQueue<NetworkTaskBuffer> outputsPending;
+	
+	private Object[] outputsPendingArray;
 
 	/**
 	 * Map from component id to the conf for spouts, for only those instances
@@ -92,6 +97,8 @@ public class LocalCluster {
 	 * spouts combined, allocated on this daemon.
 	 */
 	private ArrayList<Thread> componentExecutorThreads;
+	
+	
 	
 	/**
 	 * Threads that are allocated to transfer NetworkTasks from the outputs of 
@@ -335,6 +342,7 @@ public class LocalCluster {
 		}
 	}
 
+	int totalOutputsBufferSize;
 	/**
 	 * Submit a toplogy and run it if start is true, otherwise wait for a start topology message.
 	 * This method determines which spout and bolt instances will run on this local cluster, based
@@ -361,7 +369,7 @@ public class LocalCluster {
 		
 		RecycleStation.getInstance().createTupleRecycler(new Tuple(tickFields));
 		
-		int totalOutputsBufferSize=0;
+		totalOutputsBufferSize=0;
 		int totalInputsBufferSize=0;
 		int spoutsAllocated=0;
 		
@@ -477,7 +485,8 @@ public class LocalCluster {
 		}
 		
 		log.info("total outputs buffer size is "+totalOutputsBufferSize);
-		outputsPending = new CircularBlockingQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
+		//outputsPending = new CircularBlockingQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
+		outputsPending = new MpmcArrayQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
 		log.info("total inputs buffer size is "+totalInputsBufferSize);
 		
 		componentExecutorThreads = new ArrayList<Thread>();
@@ -515,34 +524,66 @@ public class LocalCluster {
 				});
 			}
 		}
+		int numBoltInstancesPerThread=1;
+		int instanceCount=0;
+		ArrayList<Component> compList=new ArrayList<>();
 		for(HashMap<Integer,Bolt> bolts : bolts.values()) {
 			for(Component component : bolts.values()) {
-				componentExecutorThreads.add(new Thread(){
-					@Override
-					public void run(){
-						Component thisComponent=component;
-						while(!isInterrupted()){
-							if(state==LocalCluster.State.HALTED) {
-								log.info(getName()+" halted");
-								try {
-									haltLock.lock();
+				// component is an instance of a bolt
+				compList.add(component);
+				instanceCount++;
+				if(instanceCount<numBoltInstancesPerThread) {
+					
+					
+				} else if(instanceCount==numBoltInstancesPerThread) {
+					
+					final ArrayList<Component> boltGroup = new ArrayList<>();
+					boltGroup.addAll(compList);
+					compList.clear();
+					Thread thread = new Thread(){
+						
+						@Override
+						public void run(){
+							log.info("starting up");
+							ArrayList<Component> components = boltGroup;
+							boolean hit=false;
+							while(!isInterrupted()){
+								if(state==LocalCluster.State.HALTED) {
+									log.info(getName()+" halted");
 									try {
-										restartCondition.await();
+										haltLock.lock();
+										try {
+											restartCondition.await();
+										} catch (InterruptedException e) {
+											log.info(getName()+" interrupted");
+											break;
+										}
+										log.info(getName()+" resuming");
+									} finally {
+										haltLock.unlock();
+									}
+									continue;
+								}
+								hit=false;
+								for(Component thisComponent : components) {
+									//log.info("running component: "+thisComponent.getComponentId()+":"+thisComponent.getTaskId());
+									if(thisComponent.run()) hit=true;
+								}
+								if(!hit) {
+									try {
+										Thread.sleep(1);
 									} catch (InterruptedException e) {
-										log.info(getName()+" interrupted");
+										log.info("interrupted");
 										break;
 									}
-									log.info(getName()+" resuming");
-								} finally {
-									haltLock.unlock();
 								}
-								continue;
 							}
-							thisComponent.run();
+							log.info("shutting down");
 						}
-						log.info(getName()+" done");
-					}
-				});
+					};
+					componentExecutorThreads.add(thread);
+					instanceCount=0;
+				}
 			}
 		}
 		
@@ -902,52 +943,114 @@ public class LocalCluster {
 	 * Startup a thread per component.
 	 */
 	private void runComponentThreads() {
-		log.info("starting component executor threads with "+totalParallelismHint+" threads");
-		for(int i=0;i<totalParallelismHint;i++){
+		log.info("starting component executor threads with "+componentExecutorThreads.size()+" threads");
+		for(int i=0;i<componentExecutorThreads.size();i++){
 			
 			componentExecutorThreads.get(i).setName("component executor "+i);
 			componentExecutorThreads.get(i).start();
 		}
 	}
 
+	public boolean outputsSchedulerKernel(NetworkTaskBuffer gqueue) {
+		boolean hit=false;
+		HashSet<Integer> doneTaskIds=new HashSet<Integer>();
+		NetworkTaskBuffer queue;
+		if(gqueue==null) {
+			queue = outputsPending.poll();
+		} else {
+			queue = gqueue;
+		}
+		if(queue==null) return false;
+		queue.bufferLock.lock();
+		try {
+			//if(shouldTerminate) System.out.println("count "+queue.size());
+			NetworkTask networkTask = (NetworkTask) queue.peek();
+			if(networkTask!=null) {
+				//System.out.println("processing task");
+				Tuple tuple = networkTask.getTuple();
+				String name = networkTask.getComponentId();
+				doneTaskIds.clear();
+				for(Integer taskId : networkTask.getTaskIds()) {
+					RecycleStation.getInstance()
+					.getTupleRecycler(tuple.getFields()
+							.getFieldNamesAsString()).shareRecyclable(tuple,1);
+					if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
+						doneTaskIds.add(taskId);
+						hit=true;
+					} else {
+						RecycleStation.getInstance()
+						.getTupleRecycler(tuple.getFields()
+								.getFieldNamesAsString()).crushRecyclable(tuple,1);
+						//log.debug("blocked");
+					}
+				}
+				networkTask.getTaskIds().removeAll(doneTaskIds);
+				if(networkTask.getTaskIds().size()==0) {
+					queue.poll();
+					RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(networkTask, 1);
+				} else {
+					outputPending(queue);
+				}
+			} else {
+				//log.error("queue empty!");
+			}	
+		} finally {
+			queue.bufferLock.unlock();
+		}
+		return hit;
+	}
+	
 	/**
 	 * Check the output queues of components, processing network tasks found there and
 	 * deliver tuples to the input queues of components.
 	 */
 	private void outputsScheduler(){
 		log.debug("starting the outputs scheduler with "+conf.getDragonLocalclusterThreads()+" threads");
+		outputsPendingArray= new  Object[conf.getDragonLocalclusterThreads()];
 		for(int i=0;i<conf.getDragonLocalclusterThreads();i++) {
+			final int me = i;
+			outputsPendingArray[i]=new MpmcArrayQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
 			networkExecutorThreads.add(new Thread() {
 				@Override
 				public void run(){
 					HashSet<Integer> doneTaskIds=new HashSet<Integer>();
-					NetworkTaskBuffer queue;
+					NetworkTaskBuffer queue=null;
 					while(!isInterrupted()) {
 						if(state==LocalCluster.State.HALTED) {
-							log.info(getName()+" halted");
+							log.info("halted");
 							try {
 								haltLock.lock();
 								try {
 									restartCondition.await();
 								} catch (InterruptedException e) {
-									log.info(getName()+" interrupted");
+									log.info("interrupted");
 									break;
 								}
-								log.info(getName()+" resuming");
+								log.info("resuming");
 							} finally {
 								haltLock.unlock();
 							}
 							continue;
 						}
-						try {
-							queue = outputsPending.take();
-						} catch (InterruptedException e) {
-							log.info(getName()+" interrupted");
-							break;
+						queue=((MpmcArrayQueue<NetworkTaskBuffer>)outputsPendingArray[me]).poll();;
+						while(queue==null) {
+							try {
+								Thread.sleep(1);
+							} catch (InterruptedException e1) {
+								log.info("interrupted");
+								break;
+							}
+								queue = ((MpmcArrayQueue<NetworkTaskBuffer>)outputsPendingArray[me]).poll();;
+								
+//							
+								
+//							}
 						}
-						// while the queue is thread safe, we lock on it because of the use of peek
-						queue.bufferLock.lock();
-						try {
+						if(queue==null) break;
+						
+						// whilse the queue is thread safe, we lock on it because of the use of peek
+						//queue.bufferLock.lock();
+						//try {
 							//if(shouldTerminate) System.out.println("count "+queue.size());
 							NetworkTask networkTask = (NetworkTask) queue.peek();
 							if(networkTask!=null) {
@@ -961,6 +1064,7 @@ public class LocalCluster {
 											.getFieldNamesAsString()).shareRecyclable(tuple,1);
 									if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuple)){
 										doneTaskIds.add(taskId);
+										
 										
 									} else {
 										RecycleStation.getInstance()
@@ -977,13 +1081,13 @@ public class LocalCluster {
 									outputPending(queue);
 								}
 							} else {
-								log.error(getName()+" queue empty!");
+								//log.error("queue empty!");
 							}	
-						} finally {
-							queue.bufferLock.unlock();
-						}
+						//} finally {
+						//	queue.bufferLock.unlock();
+						//}
 					}
-					log.info(getName()+" done");
+					log.info("done");
 				}
 			});
 			networkExecutorThreads.get(i).setName("network executor "+i);
@@ -999,12 +1103,12 @@ public class LocalCluster {
 	 * @param queue the reference of the queue to process
 	 */
 	public void outputPending(final NetworkTaskBuffer queue) {
-		try {
-			outputsPending.put(queue);
-			//log.debug("outputPending pending "+outputsPending.size());
-		} catch (InterruptedException e) {
-			log.error("interrupted while adding output pending");
+		if(!((MpmcArrayQueue<NetworkTaskBuffer>)outputsPendingArray[queue.hashCode()%conf.getDragonLocalclusterThreads()]).offer(queue)){
+			log.error("queue was full");
 		}
+	
+			//log.debug("outputPending pending "+outputsPending.size());
+		
 	}
 	
 	/**
