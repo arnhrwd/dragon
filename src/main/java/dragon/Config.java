@@ -832,7 +832,7 @@ public class Config extends HashMap<String, Object> {
 	 */
 	@SuppressWarnings("unchecked")
 	public NodeDescriptor getDragonNetworkParentDescriptor() throws UnknownHostException {
-		if(containsKey("DRAGON_NETWORK_PARENT")) {
+		if(containsKey(DRAGON_NETWORK_PARENT)) {
 			HashMap<String,?> host = (HashMap<String, ?>) get(DRAGON_NETWORK_PARENT);
 			String hostname = (String) host.get("hostname");
 			int dport = getDragonNetworkDefaultDataPort();
@@ -873,7 +873,8 @@ public class Config extends HashMap<String, Object> {
 				getDragonNetworkLocalDataPort(),
 				getDragonNetworkLocalServicePort(),
 				getDragonNetworkPrimary(),
-				getDragonNetworkPartition(),null);
+				getDragonNetworkPartition(),
+				getDragonNetworkParentDescriptor());
 	}
 	
 	/**

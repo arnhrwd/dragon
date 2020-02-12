@@ -7,8 +7,13 @@ import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
 
 /**
+ * The BaseRichSpout includes a number of methods for you to selectively
+ * override.
  * @author aaron
- *
+ * @see #open(Map, TopologyContext, SpoutOutputCollector)
+ * @see #nextTuple()
+ * @see #close()
+ * @see #declareOutputFields(OutputFieldsDeclarer)
  */
 public class BaseRichSpout extends Spout implements IRichSpout {
 	private static final long serialVersionUID = -4721210469464274871L;
@@ -17,7 +22,8 @@ public class BaseRichSpout extends Spout implements IRichSpout {
 	 * @see dragon.topology.base.Spout#open(java.util.Map, dragon.task.TopologyContext, dragon.spout.SpoutOutputCollector)
 	 */
 	@Override
-	public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
+	@SuppressWarnings("rawtypes")
+	public void open(Map conf, TopologyContext context,
 			SpoutOutputCollector collector) {
 		
 	}

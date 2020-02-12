@@ -21,6 +21,8 @@ import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.allocpart.AllocPartErrorSMsg;
 import dragon.network.messages.service.allocpart.AllocPartSMsg;
+import dragon.network.messages.service.dealloc.DeallocPartErrorSMsg;
+import dragon.network.messages.service.dealloc.DeallocPartSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsErrorSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsSMsg;
 import dragon.network.messages.service.getmetrics.MetricsSMsg;
@@ -463,6 +465,49 @@ public class DragonSubmitter {
 			break;
 		case PARTITION_ALLOCATED:
 			System.out.println("partition allocated");
+			break;
+		default:
+			System.out.println("unexpected response: "+message.getType().name());
+			comms.close();
+			System.exit(-1);
+		}
+		comms.sendServiceMsg(new ServiceDoneSMsg());
+		comms.close();
+	}
+	
+	public static void deallocatePartition(Config conf,List<String> argList) throws ParseException, 
+		DragonCommsException, InterruptedException {
+		initComms(conf);
+		if(argList.size()!=3) {
+			throw new ParseException("required arguments: PARTITIONID NUMBER STRATEGY\n"+
+					"where strategy is: each|uniform|balanced");
+		}
+		String partitionId = argList.get(0);
+		Integer number = Integer.parseInt(argList.get(1));
+		DeallocPartSMsg.Strategy strat;
+		switch(argList.get(2)) {
+		case "each":
+			strat=DeallocPartSMsg.Strategy.EACH;
+			break;
+		case "uniform":
+			strat=DeallocPartSMsg.Strategy.UNIFORM;
+			break;
+		case "balanced":
+			strat=DeallocPartSMsg.Strategy.BALANCED;
+			break;
+		default:
+			throw new ParseException("strategy must be: each|uniform|balanced");
+		}
+		comms.sendServiceMsg(new DeallocPartSMsg(partitionId,number,strat));
+		ServiceMessage message = comms.receiveServiceMsg();
+		DeallocPartErrorSMsg apem;
+		switch(message.getType()) {
+		case DEALLOCATE_PARTITION_ERROR:
+			apem = (DeallocPartErrorSMsg) message;
+			System.out.println("error: "+apem.getError());
+			break;
+		case PARTITION_DEALLOCATED:
+			System.out.println("partition deallocated");
 			break;
 		default:
 			System.out.println("unexpected response: "+message.getType().name());

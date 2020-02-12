@@ -50,7 +50,12 @@ public class NodeStatus implements Serializable {
 	/**
 	 * 
 	 */
+	public NodeDescriptor parent;
+	
+	/**
+	 * 
+	 */
 	public NodeStatus() {
-		localClusterStates=new HashMap<String,LocalCluster.State>();
+		localClusterStates=new HashMap<>();
 	}
 }

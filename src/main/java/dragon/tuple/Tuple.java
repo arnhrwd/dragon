@@ -9,6 +9,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
+ * The message unit, which is basically a fixed set of fields, which
+ * can be any Java objects that are serializable.
+ * 
  * @author aaron
  *
  */
@@ -42,10 +45,31 @@ public class Tuple implements IRecyclable, Serializable {
 	 *
 	 */
 	public static enum Type {
+		/**
+		 * Tuple is part of the application.
+		 */
 		APPLICATION,
+		
+		/**
+		 * Used to indicate the topology
+		 * is terminating.
+		 */
 		TERMINATE,
+		
+		/**
+		 * Used to indicate the topology
+		 * is freezing (halting).
+		 */
 		FREEZE,
+		
+		/**
+		 * Used to indicate a checkpoint.
+		 */
 		CHECKPOINT,
+		
+		/**
+		 * Used prior to any application data.
+		 */
 		PRECYCLE
 	}
 	
