@@ -6,7 +6,10 @@ import org.apache.logging.log4j.Logger;
 import dragon.topology.base.Spout;
 
 /**
+ * Spout declarer doesn't have much to declare because spouts do not listen
+ * to any other component. They simply emit tuples.
  * @author aaron
+ * @see dragon.tuple.Tuple
  *
  */
 public class SpoutDeclarer extends Declarer {

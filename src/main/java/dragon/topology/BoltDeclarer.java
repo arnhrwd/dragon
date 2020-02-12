@@ -15,15 +15,15 @@ import dragon.topology.base.Bolt;
 import dragon.tuple.Fields;
 
 /**
+ * The bolt declarer allows you to declare the components that this
+ * bolt listens to, including the <i>grouping</i> that defines which
+ * instances of this bolt will receive tuples for the particular 
+ * declaration.
  * @author aaron
- *
+ * @see dragon.tuple.Tuple
  */
 public class BoltDeclarer extends Declarer {
 	private static final long serialVersionUID = 4947955477005135498L;
-	
-	/**
-	 * 
-	 */
 	@SuppressWarnings("unused")
 	private static final Logger log = LogManager.getLogger(BoltDeclarer.class);
 	
