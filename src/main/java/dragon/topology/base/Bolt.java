@@ -2,6 +2,7 @@ package dragon.topology.base;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -58,16 +59,20 @@ public class Bolt extends Component {
 	 */
 	@Override
 	public final void run() {
-		Tuple tuple;
+		Tuple tuple=null;
 		if(closed)return;
 		if(tickTuple!=null) {
 			tuple=tickTuple;
 			tickTuple=null;
 		} else {
 			try {
-				tuple = getInputCollector().getQueue().take();
-			} catch (InterruptedException e) {
-				log.debug("interrupted");
+				tuple = getInputCollector().getQueue().remove();
+			} catch (NoSuchElementException e) {
+				try {
+					Thread.sleep(1);
+				} catch (InterruptedException e1) {
+					return;
+				}
 				return;
 			}
 		}
