@@ -235,8 +235,8 @@ public class Ops extends Thread {
 	 * @param failure
 	 * @return
 	 */
-	public AllocPartGroupOp newDeallocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
-		AllocPartGroupOp apgo = new AllocPartGroupOp(partitionId,allocation,success,failure);
+	public DeallocPartGroupOp newDeallocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
+		DeallocPartGroupOp apgo = new DeallocPartGroupOp(partitionId,allocation,success,failure);
 		for(NodeDescriptor desc : allocation.keySet()) {
 			apgo.add(desc);
 		}
@@ -335,18 +335,55 @@ public class Ops extends Thread {
 				hit=true;
 				if (op instanceof GroupOp) {
 					GroupOp go = (GroupOp) op;
-					go.initiate(node.getComms());
+					try {
+						node.getOperationsLock().lockInterruptibly();
+						go.initiate(node.getComms());
+					} catch(InterruptedException e) {
+						log.error("interrupted while waiting for node operations lock");
+						break;
+					} finally {
+						node.getOperationsLock().unlock();
+					}
+					
 				} else if(op instanceof ConditionalOp){
-					op.start();
+					try {
+						node.getOperationsLock().lockInterruptibly();
+						op.start();
+					} catch(InterruptedException e) {
+						log.error("interrupted while waiting for node operations lock");
+						break;
+					} finally {
+						node.getOperationsLock().unlock();
+					}
+					
 					conditionalOps.add((ConditionalOp)op);
 				} else {
-					op.start();
+					try {
+						node.getOperationsLock().lockInterruptibly();
+						op.start();
+					} catch(InterruptedException e) {
+						log.error("interrupted while waiting for node operations lock");
+						break;
+					} finally {
+						node.getOperationsLock().unlock();
+					}
+					
 				}
 			}
 			
 			removed.clear();
 			for(ConditionalOp cop : conditionalOps) {
-				if(cop.check()) {
+				boolean check = false;
+				try  {
+					node.getOperationsLock().lockInterruptibly();
+					check = cop.check();
+				} catch(InterruptedException e) {
+					log.error("interrupted while waiting for node operations lock");
+					break;
+				} finally {
+					node.getOperationsLock().unlock();
+				}
+				if(check) {
 					hit=true;
 					removed.add(cop);
 				}
@@ -358,10 +395,13 @@ public class Ops extends Thread {
 					Thread.sleep(50);
 				} catch (InterruptedException e) {
 					log.info("interrupted");
+					break;
 				}
 			}
 
 		}
 		log.info("shutting down");
+		if(!readyQueue.isEmpty()) log.error("some ops are still on the ready queue");
+		if(!conditionalOps.isEmpty()) log.error("some conditional ops did not complete");
 	}
 }

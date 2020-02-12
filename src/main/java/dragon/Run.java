@@ -883,6 +883,9 @@ public class Run {
             	DragonSubmitter.allocatePartition(conf,argList);
             	break;
             case "deallocate":
+            	DragonSubmitter.node = conf.getLocalHost();
+            	checkOptionsDaemonCommand(cmd);
+            	DragonSubmitter.deallocatePartition(conf,argList);
             	break;
             case "status":
             	DragonSubmitter.node = conf.getLocalHost();

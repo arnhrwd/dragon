@@ -176,6 +176,7 @@ public class NodeDescriptor implements Serializable {
 		map.put("sport",getServicePort());
 		map.put("primary",isPrimary());
 		map.put("partition",getPartition());
+		if(getParent()!=null)map.put("parent",getParent().toMap());
 		return map;
 	}
 	

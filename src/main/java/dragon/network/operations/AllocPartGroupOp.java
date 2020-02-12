@@ -28,7 +28,7 @@ public class AllocPartGroupOp extends GroupOp {
 	/**
 	 * 
 	 */
-	public transient int daemons;
+	public transient int number;
 	
 	/**
 	 * @param partitionId
@@ -55,7 +55,7 @@ public class AllocPartGroupOp extends GroupOp {
 	 */
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new PartAllocedNMsg(partitionId,daemons);
+		return new PartAllocedNMsg(partitionId,number);
 	}
 
 	/* (non-Javadoc)
@@ -63,7 +63,7 @@ public class AllocPartGroupOp extends GroupOp {
 	 */
 	@Override
 	protected NodeMessage errorNodeMessage(String error) {
-		return new AllocPartErrorNMsg(partitionId,daemons,error);
+		return new AllocPartErrorNMsg(partitionId,number,error);
 	}
 
 }

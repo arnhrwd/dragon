@@ -1,7 +1,11 @@
 package dragon.process;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -103,6 +107,17 @@ public class ProcessManager extends Thread {
 					pos.process(p);
 				}
 				unboundedRunning.put(p.pid(),new ProcessContainer(p,pb,pos,pof,poe));
+				p.onExit().thenRunAsync(new Runnable() {
+
+					@Override
+					public void run() {
+						// TODO Auto-generated method stub
+						if(poe!=null) {
+							poe.process(p);
+						}
+					}
+					
+				});
 			} catch (IOException e) {
 				if(pof!=null) {
 					pof.fail(pb);
@@ -184,6 +199,9 @@ public class ProcessManager extends Thread {
 			}
 		}
 		log.info("shutting down");
+		if(!boundedRunning.isEmpty() || !boundedWaiting.isEmpty()) {
+			log.error("still some bounded process that were not complete");
+		}
 	}
 	
 	public static ProcessBuilder createDaemon(Config conf) {
@@ -194,6 +212,17 @@ public class ProcessManager extends Thread {
 				"-d","-C",home+"/conf/dragon-"+conf.getDragonNetworkLocalDataPort()+".yaml")
 				.redirectOutput(stdout)
 				.redirectError(stderr);
+		return pb;
+	}
+	
+	public static ProcessBuilder killDaemon(Config conf) throws IOException {
+		String pidfile=conf.getDragonDataDir()+"/dragon-"+conf.getDragonNetworkLocalDataPort()+".pid";
+		File file = new File(pidfile);
+		FileInputStream fos = new FileInputStream(file);
+		BufferedReader bw = new BufferedReader(new InputStreamReader(fos));
+		String pid=bw.readLine();
+		bw.close();
+		ProcessBuilder pb = new ProcessBuilder("kill","-KILL",pid);
 		return pb;
 	}
 }

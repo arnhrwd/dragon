@@ -12,6 +12,9 @@ import dragon.network.messages.node.allocpart.AllocPartErrorNMsg;
 import dragon.network.messages.node.allocpart.AllocPartNMsg;
 import dragon.network.messages.node.allocpart.PartAllocedNMsg;
 import dragon.network.messages.node.context.ContextUpdateNMsg;
+import dragon.network.messages.node.deallocpart.DeallocPartErrorNMsg;
+import dragon.network.messages.node.deallocpart.DeallocPartNMsg;
+import dragon.network.messages.node.deallocpart.PartDeallocedNMsg;
 import dragon.network.messages.node.getstatus.GetStatusErrorNMsg;
 import dragon.network.messages.node.getstatus.GetStatusNMsg;
 import dragon.network.messages.node.getstatus.StatusNMsg;
@@ -37,6 +40,7 @@ import dragon.network.messages.node.stoptopo.StopTopoErrorNMsg;
 import dragon.network.messages.node.stoptopo.StopTopoNMsg;
 import dragon.network.messages.node.stoptopo.TopoStoppedNMsg;
 import dragon.network.operations.AllocPartGroupOp;
+import dragon.network.operations.DeallocPartGroupOp;
 import dragon.network.operations.GetStatusGroupOp;
 import dragon.network.operations.JoinGroupOp;
 import dragon.network.operations.ListToposGroupOp;
@@ -405,11 +409,11 @@ public class NodeMsgProcessor extends Thread {
 		AllocPartGroupOp apgo = (AllocPartGroupOp) apm.getGroupOp();
 		int a=node.allocatePartition(apm.partitionId, apm.number);
 		apgo.partitionId=apm.partitionId;
-		apgo.daemons=a;
+		apgo.number=a;
 		if(a==apm.number) {
 			apgo.sendSuccess(node.getComms());
 		} else {
-			apgo.sendError(node.getComms(), "failed to start daemon processes on ["+msg.getSender()+"]");
+			apgo.sendError(node.getComms(), "failed to allocate partitions on ["+msg.getSender()+"]");
 		}
 	}
 	
@@ -464,6 +468,49 @@ public class NodeMsgProcessor extends Thread {
 				.aggregate(gsnm.nodeStatus);
 		receiveSuccess(msg);
 	}
+	
+	/**
+	 * @param msg
+	 */
+	private synchronized void processDeallocatePartition(NodeMessage msg) {
+		DeallocPartNMsg apm = (DeallocPartNMsg) msg;
+		DeallocPartGroupOp apgo = (DeallocPartGroupOp) apm.getGroupOp();
+		int a=node.deallocatePartition(apm.partitionId, apm.number);
+		apgo.partitionId=apm.partitionId;
+		apgo.number=a;
+		if(a==apm.number) {
+			apgo.sendSuccess(node.getComms());
+		} else {
+			apgo.sendError(node.getComms(), "failed to deallocate partitions on ["+msg.getSender()+"]");
+		}
+	}
+	
+	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processPartitionDeallocated(NodeMessage msg) {
+		PartDeallocedNMsg pam = (PartDeallocedNMsg) msg;
+		receiveSuccess(pam);
+	}
+	
+	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processDeallocatePartitionError(NodeMessage msg) {
+		DeallocPartErrorNMsg apem = (DeallocPartErrorNMsg) msg;
+		receiveError(apem);
+	}
+	
+	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processTerminateNode(NodeMessage msg) {
+		node.terminate();
+	}
+	
 	
 	/**
 	 * @param msg
@@ -557,6 +604,18 @@ public class NodeMsgProcessor extends Thread {
 		case STATUS:
 			processStatus(msg);
 			break;
+		case DEALLOCATE_PARTITION:
+			processDeallocatePartition(msg);
+			break;
+		case DEALLOCATE_PARTITION_ERROR:
+			processDeallocatePartitionError(msg);
+			break;
+		case PARTITION_DEALLOCATED:
+			processPartitionDeallocated(msg);
+			break;
+		case TERMINATE_NODE:
+			processTerminateNode(msg);
+			break;
 		default:
 			break;
 		}
@@ -615,6 +674,10 @@ public class NodeMsgProcessor extends Thread {
 			case GET_STATUS:
 			case GET_STATUS_ERROR:
 			case STATUS:
+			case DEALLOCATE_PARTITION:
+			case DEALLOCATE_PARTITION_ERROR:
+			case PARTITION_DEALLOCATED:
+			case TERMINATE_NODE:
 				// do when appropriate
 				node.getOpsProcessor().newConditionOp((op)->{
 					return node.getNodeState()==NodeState.OPERATIONAL;

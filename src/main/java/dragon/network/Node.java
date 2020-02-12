@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -95,8 +96,11 @@ public class Node {
 	 */
 	private final Router router;
 	
+	/**
+	 * The parent if one exists.
+	 */
+	NodeDescriptor parentDesc;
 	
-
 	/**
 	 * The possible states that the node is in.
 	 * <li>{@link #JOINING}</li>
@@ -126,7 +130,12 @@ public class Node {
 		/**
 		 * The node is available to process general messages. 
 		 */
-		OPERATIONAL
+		OPERATIONAL,
+		
+		/**
+		 * The node is going down.
+		 */
+		TERMINATING
 		
 	}
 
@@ -138,8 +147,8 @@ public class Node {
 	/**
 	 * Secondary daemons started by this primary daemon
 	 */
-	private HashMap<String,Process> daemons;	
-
+	private HashMap<NodeDescriptor,Process> childProcesses;	
+	
 	/**
 	 * Process manager
 	 */
@@ -161,9 +170,10 @@ public class Node {
 	public Node(Config conf) throws IOException {
 		
 		this.conf = conf;
+		this.parentDesc = conf.getDragonNetworkParentDescriptor();
 		writePid();
-		localClusters = new HashMap<String, LocalCluster>();
-		daemons=new HashMap<String,Process>();
+		localClusters = new HashMap<>();
+		childProcesses=new HashMap<>();
 		
 		
 		processManager = new ProcessManager(conf);
@@ -535,7 +545,7 @@ public class Node {
 	 */
 	public synchronized void listTopologies(ListToposGroupOp ltgo) {
 		HashMap<String, String> state = new HashMap<String, String>();
-		HashMap<String, HashMap<String, ArrayList<ComponentError>>> errors = new HashMap<String, HashMap<String, ArrayList<ComponentError>>>();
+		HashMap<String, HashMap<String, ArrayList<ComponentError>>> errors = new HashMap<>();
 		for (String topologyId : localClusters.keySet()) {
 			state.put(topologyId, localClusters.get(topologyId).getState().name());
 			errors.put(topologyId, new HashMap<String, ArrayList<ComponentError>>());
@@ -573,34 +583,70 @@ public class Node {
 	 * @throws IOException 
 	 */
 	public synchronized int allocatePartition(String partitionId,int numDaemons) {
+		log.debug("allocating ["+numDaemons+"] partitions ["+partitionId+"]");
+		int size = childProcesses.keySet().size();
 		for(int i=0;i<numDaemons;i++) {
 			Config c = new Config();
 			c.putAll(conf);
 			c.put(Config.DRAGON_NETWORK_PARTITION,partitionId);
 			c.put(Config.DRAGON_NETWORK_PRIMARY,false);
-			c.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,conf.getDragonNetworkLocalServicePort()+(daemons.keySet().size()+1)*10);
-			c.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,conf.getDragonNetworkLocalDataPort()+(daemons.keySet().size()+1)*10);
+			c.put(Config.DRAGON_NETWORK_LOCAL_SERVICE_PORT,conf.getDragonNetworkLocalServicePort()+(size+1)*2);
+			c.put(Config.DRAGON_NETWORK_LOCAL_DATA_PORT,conf.getDragonNetworkLocalDataPort()+(size+1)*2);
 			c.put(Config.DRAGON_NETWORK_PARENT,comms.getMyNodeDesc().toMap());
 			String home = c.getDragonHomeDir();
 			try {
 				writeConf(c,home+"/conf/dragon-"+c.getDragonNetworkLocalDataPort()+".yaml");
-				String hostname=c.getLocalHost().toString();
+				NodeDescriptor child=c.getLocalHost();
 				ProcessBuilder pb = ProcessManager.createDaemon(c);
+				
 				processManager.startProcess(pb,false,(p)->{
-					daemons.put(hostname,p);
+					Process proc = (Process) p;
+					childProcesses.put(child,p);
+					try {
+						proc.getInputStream().close();
+					} catch (IOException e) {
+						log.warn("could not close the input stream to the process");
+					}
 				},(pb2)->{
 					log.error("process failed to start: "+pb.toString());
 				},(p)->{
-					log.error("process has exited: "+p.exitValue());
+					log.warn("process has exited: "+p.exitValue());
 				});
 			} catch (IOException e) {
 				return i;
 			}
-			
-			
-			
+			size++;
 		}
 		return numDaemons;
+	}
+	
+	/**
+	 * Deallocate partitions
+	 * @param partitionId
+	 * @param numDaemons
+	 * @return
+	 */
+	public synchronized int deallocatePartition(String partitionId,int numDaemons) {
+		int killed=0;
+		HashSet<NodeDescriptor> deleted = new HashSet<>();
+		for(NodeDescriptor node : childProcesses.keySet()) {
+			if(numDaemons==0) break;
+			if(node.getPartition().equals(partitionId)) {
+				// kill node
+				// the following does not work reliably, if at all
+				//childProcesses.get(node).destroyForcibly(); 
+				// so...
+				
+				
+				deleted.add(node);
+				killed++;
+				numDaemons--;
+			}
+		}
+		for(NodeDescriptor nodeDescriptor : deleted) {
+			childProcesses.remove(nodeDescriptor);
+		}
+		return killed;
 	}
 	
 	/**
@@ -631,7 +677,25 @@ public class Node {
 		}
 		nodeStatus.partitionId=conf.getDragonNetworkPartition();
 		nodeStatus.primary=conf.getDragonNetworkPrimary();
+		nodeStatus.parent=parentDesc;
 		return nodeStatus;
+	}
+	
+	/**
+	 * terminate this node and quit the jvm
+	 */
+	public synchronized void terminate() {
+		log.info("going down...");
+		comms.close();
+		setNodeState(NodeState.TERMINATING);
+		if(!localClusters.isEmpty()) {
+			log.error("topologies are still allocated");
+		}
+		processManager.interrupt();
+		operationsThread.interrupt();
+		serviceThread.interrupt();
+		nodeThread.interrupt();
+		metricsThread.interrupt();
 	}
 
 }

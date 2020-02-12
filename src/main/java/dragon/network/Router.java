@@ -92,17 +92,27 @@ public class Router {
 		this.conf=conf;
 		inputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterInputBufferSize());
 		outputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterOutputBufferSize());
-		outgoingThreads = new ArrayList<Thread>();
-		incomingThreads = new ArrayList<Thread>();
+		outgoingThreads = new ArrayList<>();
+		incomingThreads = new ArrayList<>();
 		
 		// A circular blocking queue is not so applicable here because the input and output queues
 		// change in response to topologies being started and stopped. TODO: write a linked 
 		// blocking queue that reuses reference objects from a pool, rather than new'ing and
 		// dereferencing them.
-		outputsPending=new LinkedBlockingQueue<NetworkTaskBuffer>();
+		outputsPending=new LinkedBlockingQueue<>();
 		
 		// Startup the thread
 		runExecutors();
+	}
+	
+	/**
+	 * terminate the router
+	 */
+	public void terminate() {
+		for(Thread thread : outgoingThreads) thread.interrupt();
+		for(Thread thread : incomingThreads) thread.interrupt();
+		if(outputsPending.size()>0) log.error("there are still outputs pending");
+		if(!inputQueues.isEmpty()||!outputQueues.isEmpty()) log.error("some io queues are not empty");
 	}
 	
 	/**
@@ -117,8 +127,7 @@ public class Router {
 					while(!shouldTerminate) {
 						try {
 							NetworkTaskBuffer buffer = outputsPending.take();
-							HashMap<NodeDescriptor,HashSet<Integer>> destinations = 
-									new HashMap<NodeDescriptor,HashSet<Integer>>();
+							HashMap<NodeDescriptor,HashSet<Integer>> destinations = new HashMap<>();
 							buffer.bufferLock.lock();
 							try {
 								NetworkTask task = buffer.poll();

@@ -7,6 +7,7 @@ import java.util.PriorityQueue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import dragon.Constants;
 import dragon.DragonRequiresClonableException;
 import dragon.metrics.ComponentMetricMap;
 import dragon.network.Node.NodeState;
@@ -16,7 +17,9 @@ import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.allocpart.AllocPartErrorSMsg;
 import dragon.network.messages.service.allocpart.AllocPartSMsg;
 import dragon.network.messages.service.allocpart.PartAllocedSMsg;
+import dragon.network.messages.service.dealloc.DeallocPartErrorSMsg;
 import dragon.network.messages.service.dealloc.DeallocPartSMsg;
+import dragon.network.messages.service.dealloc.PartDeallocedSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsErrorSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsSMsg;
 import dragon.network.messages.service.getmetrics.MetricsSMsg;
@@ -41,6 +44,7 @@ import dragon.network.messages.service.uploadjar.UploadJarFailedSMsg;
 import dragon.network.messages.service.uploadjar.UploadJarSMsg;
 import dragon.network.messages.service.uploadjar.UploadJarSuccessSMsg;
 import dragon.network.operations.AllocPartGroupOp;
+import dragon.network.operations.DeallocPartGroupOp;
 import dragon.network.operations.GetStatusGroupOp;
 import dragon.network.operations.HaltTopoGroupOp;
 import dragon.network.operations.ListToposGroupOp;
@@ -425,23 +429,23 @@ public class ServiceMsgProcessor extends Thread {
 	private void processAllocatePartition(ServiceMessage msg) {
 		final AllocPartSMsg apsm = (AllocPartSMsg) msg;
 		final String partitionId = apsm.partitionId;
-		int daemons = apsm.number;
+		int number = apsm.number;
 		final NodeContext context = node.getNodeProcessor().getContext();
 		
 		/*
 		 * Who will allocate new processes and how many.
 		 */
-		final HashMap<NodeDescriptor,Integer> allocation = new HashMap<NodeDescriptor,Integer>();
+		final HashMap<NodeDescriptor,Integer> allocation = new HashMap<>();
 		
 		/*
 		 * The load of a machine.
 		 */
-		final HashMap<NodeDescriptor,Integer> load = new HashMap<NodeDescriptor,Integer>();
+		final HashMap<NodeDescriptor,Integer> load = new HashMap<>();
 		
 		/* list of machines to consider, with the primary node that will be contacted
 		 * for the group operation
 		 */
-		final HashMap<String,NodeDescriptor> machines = new HashMap<String,NodeDescriptor>();
+		final HashMap<String,NodeDescriptor> machines = new HashMap<>();
 		
 		// first build a list of machines, and designate a primary
 		for(NodeDescriptor desc : context.values()) {
@@ -462,6 +466,15 @@ public class ServiceMsgProcessor extends Thread {
 			}
 		}
 		
+		if(partitionId.equals(Constants.DRAGON_PRIMARY_PARTITION)) {
+			try {
+				comms.sendServiceMsg(new AllocPartErrorSMsg(partitionId,0,"can not add to the primary partition"),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+			return;
+		}
+		
 		switch(apsm.strategy) {
 		case BALANCED:
 			PriorityQueue<NodeDescriptor> pQueue = 
@@ -476,7 +489,7 @@ public class ServiceMsgProcessor extends Thread {
 			for(NodeDescriptor host: load.keySet()) {
 				pQueue.add(host);
 			}
-			while(daemons>0) {
+			while(number>0) {
 				NodeDescriptor host = pQueue.remove();
 				if(!allocation.containsKey(host)) {
 					allocation.put(host,1);
@@ -485,25 +498,25 @@ public class ServiceMsgProcessor extends Thread {
 				}
 				load.put(host,load.get(host)+1);
 				pQueue.add(host);
-				daemons--;
+				number--;
 			}
 			break;
 		case EACH:
 			for(NodeDescriptor host : load.keySet()) {
-				allocation.put(host,daemons);
+				allocation.put(host,number);
 			}
 			break;
 		case UNIFORM:
-			while(daemons>0) {
-				int inc = daemons>load.size() ? daemons/load.size():1;
+			while(number>0) {
+				int inc = number>load.size() ? number/load.size():1;
 				for(NodeDescriptor host : load.keySet()) {
 					if(!allocation.containsKey(host)) {
 						allocation.put(host,1);
 					} else {
 						allocation.put(host,allocation.get(host)+1);
 					}
-					daemons-=inc;
-					if(daemons==0) break;
+					number-=inc;
+					if(number==0) break;
 				}
 			}
 			break;
@@ -532,7 +545,7 @@ public class ServiceMsgProcessor extends Thread {
 				int a = node.allocatePartition(partitionId, allocation.get(node.getComms().getMyNodeDesc()));
 				AllocPartGroupOp apgo = (AllocPartGroupOp) op;
 				if(a!=allocation.get(node.getComms().getMyNodeDesc())) {
-					apgo.receiveError(comms, comms.getMyNodeDesc(), "failed to start daemon processes on ["+node.getComms().getMyNodeDesc()+"]");
+					apgo.receiveError(comms, comms.getMyNodeDesc(), "failed to allocate partitions on ["+node.getComms().getMyNodeDesc()+"]");
 				} else {
 					apgo.receiveSuccess(comms,comms.getMyNodeDesc());
 				}
@@ -546,10 +559,148 @@ public class ServiceMsgProcessor extends Thread {
 		final String partitionId = apsm.partitionId;
 		int daemons = apsm.daemons;
 		final NodeContext context = node.getNodeProcessor().getContext();
+		// total partition counts
+		final HashMap<String,Integer> partitionCount = new HashMap<>();
+		// individual node codes
+		final HashMap<NodeDescriptor,HashMap<String,Integer>> nodeCounts = new HashMap<>();
+		// list of nodes that manage the partition, ordered by their individual counts
+		final HashMap<String,PriorityQueue<NodeDescriptor>> pQueueMap = new HashMap<>();
+		// list of deletions
+		final HashMap<NodeDescriptor,Integer> deletions = new HashMap<>();
 		
+		if(partitionId.equals(Constants.DRAGON_PRIMARY_PARTITION)) {
+			try {
+				comms.sendServiceMsg(new DeallocPartErrorSMsg(partitionId,0,"can not delete the primary partition"),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+			return;
+		}
 		/**
 		 * list of existing partitions with their parent nodes...
 		 */
+		for(NodeDescriptor desc : context.values()) {
+			String part = desc.getPartition();
+			NodeDescriptor parent = desc.getParent();
+			if(!partitionCount.containsKey(part)) {
+				partitionCount.put(part,1);
+			} else {
+				partitionCount.put(part,partitionCount.get(part)+1);
+			}
+			if(!nodeCounts.containsKey(parent)) {
+				nodeCounts.put(parent,new HashMap<>());
+			}
+			if(!nodeCounts.get(parent).containsKey(part)) {
+				nodeCounts.get(parent).put(part,1);
+			} else {
+				nodeCounts.get(parent).put(part,nodeCounts.get(parent).get(part)+1);
+			}
+			
+		}
+		for(NodeDescriptor desc : context.values()) {
+			String part = desc.getPartition();
+			if(!part.equals(Constants.DRAGON_PRIMARY_PARTITION)) {
+				if(!pQueueMap.containsKey(part)) {
+					pQueueMap.put(part,new PriorityQueue<NodeDescriptor>(
+							new Comparator<NodeDescriptor>() {
+						@Override
+						public int compare(NodeDescriptor arg0, NodeDescriptor arg1) {
+							return nodeCounts.get(arg1).get(part).compareTo(nodeCounts.get(arg0).get(part));
+						}
+					}));
+				}
+				pQueueMap.get(part).add(desc.getParent());
+			}
+		}
+		
+		if(!partitionCount.containsKey(partitionId)) {
+			try {
+				comms.sendServiceMsg(new DeallocPartErrorSMsg(partitionId,0,"partition does not exist ["+partitionId+"]"),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+			return;
+		}
+		if(partitionCount.get(partitionId)<daemons) {
+			try {
+				comms.sendServiceMsg(new DeallocPartErrorSMsg(partitionId,0,"only ["+partitionCount.get(partitionId)+"] partition instances exist"),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+			return;
+		}
+		switch(apsm.strategy) {
+		case BALANCED:
+			while(daemons>0 && partitionCount.get(partitionId)>0) {
+				NodeDescriptor desc = pQueueMap.get(partitionId).poll();
+				nodeCounts.get(desc).put(partitionId,nodeCounts.get(desc).get(partitionId)-1);
+				partitionCount.put(partitionId,partitionCount.get(partitionId)-1);
+				daemons--;
+				if(!deletions.containsKey(desc)) {
+					deletions.put(desc,1);
+				} else {
+					deletions.put(desc,deletions.get(desc)+1);
+				}
+			}
+			break;
+		case EACH:
+			for(NodeDescriptor host : nodeCounts.keySet()) {
+				if(nodeCounts.get(host).containsKey(partitionId) &&
+						nodeCounts.get(host).get(partitionId)>0) {
+					int amount = Math.min(nodeCounts.get(host).get(partitionId),daemons);
+					deletions.put(host,amount);
+				}
+			}
+			break;
+		case UNIFORM:
+			while(daemons>0) {
+				int inc = daemons>partitionCount.get(partitionId) 
+						? daemons/partitionCount.get(partitionId):1;
+				for(NodeDescriptor host : nodeCounts.keySet()) {
+					if(nodeCounts.get(host).get(partitionId)>0) {
+						if(!deletions.containsKey(host)) {
+							deletions.put(host,1);
+						} else {
+							deletions.put(host,deletions.get(host)+1);
+						}
+						daemons-=inc;
+						if(daemons==0) break;
+					}
+				}
+			}
+			break;
+		default:
+			try {
+				comms.sendServiceMsg(new DeallocPartErrorSMsg(partitionId,0,"invalid strategy ["+apsm.strategy+"]"),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+			return;
+		}
+		Ops.inst().newDeallocPartGroupOp(partitionId,deletions, (op)->{
+			try {
+				comms.sendServiceMsg(new PartDeallocedSMsg(partitionId,0), msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+		}, (op,error)->{
+			try {
+				comms.sendServiceMsg(new DeallocPartErrorSMsg(partitionId,0,error),msg);
+			} catch (DragonCommsException e) {
+				log.fatal("can't communicate with client: " + e.getMessage());
+			}
+		}).onRunning((op)->{
+			if(deletions.containsKey(node.getComms().getMyNodeDesc())) {
+				int a = node.deallocatePartition(partitionId, deletions.get(node.getComms().getMyNodeDesc()));
+				DeallocPartGroupOp apgo = (DeallocPartGroupOp) op;
+				if(a!=deletions.get(node.getComms().getMyNodeDesc())) {
+					apgo.receiveError(comms, comms.getMyNodeDesc(), "failed to delete partition on ["+node.getComms().getMyNodeDesc()+"]");
+				} else {
+					apgo.receiveSuccess(comms,comms.getMyNodeDesc());
+				}
+			}
+			
+		});
 	}
 
 	/**
