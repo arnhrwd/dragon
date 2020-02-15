@@ -328,7 +328,7 @@ public class ServiceMsgProcessor extends Thread {
 		Ops.inst().newListToposGroupOp((op) -> {
 			ListToposGroupOp ltgo = (ListToposGroupOp) op;
 			try {
-				comms.sendServiceMsg(new TopoListSMsg(ltgo.descState, ltgo.descErrors), msg);
+				comms.sendServiceMsg(new TopoListSMsg(ltgo.descState, ltgo.descErrors, ltgo.components), msg);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: " + e.getMessage());
 			}
@@ -337,7 +337,7 @@ public class ServiceMsgProcessor extends Thread {
 		}).onRunning((op) -> {
 			ListToposGroupOp ltgo = (ListToposGroupOp) op;
 			node.listTopologies(ltgo);
-			ltgo.aggregate(comms.getMyNodeDesc(), ltgo.state, ltgo.errors);
+			ltgo.aggregate(comms.getMyNodeDesc(), ltgo.state, ltgo.errors, ltgo.components);
 			ltgo.receiveSuccess(comms,comms.getMyNodeDesc());
 		});
 	}

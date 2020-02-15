@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -545,9 +546,21 @@ public class Node {
 	 */
 	public synchronized void listTopologies(ListToposGroupOp ltgo) {
 		HashMap<String, String> state = new HashMap<String, String>();
+		HashMap<String, List<String>> comps = new HashMap<>();
 		HashMap<String, HashMap<String, ArrayList<ComponentError>>> errors = new HashMap<>();
 		for (String topologyId : localClusters.keySet()) {
 			state.put(topologyId, localClusters.get(topologyId).getState().name());
+			comps.put(topologyId, new ArrayList<String>());
+			for(String spoutid : localClusters.get(topologyId).getBolts().keySet()) {
+				for(Integer taskId : localClusters.get(topologyId).getSpouts().get(spoutid).keySet()) {
+					comps.get(topologyId).add(spoutid+":"+taskId);
+				}
+			}
+			for(String boltid : localClusters.get(topologyId).getBolts().keySet()) {
+				for(Integer taskId : localClusters.get(topologyId).getBolts().get(boltid).keySet()) {
+					comps.get(topologyId).add(boltid+":"+taskId);
+				}
+			}
 			errors.put(topologyId, new HashMap<String, ArrayList<ComponentError>>());
 			for (Component component : localClusters.get(topologyId).getComponentErrors().keySet()) {
 				String name = component.getComponentId() + ":" + component.getTaskId();
@@ -558,6 +571,7 @@ public class Node {
 		/*
 		 * Store the data into the holding variables prior to sending the response.
 		 */
+		ltgo.components = comps;
 		ltgo.state = state;
 		ltgo.errors = errors;
 	}
