@@ -551,7 +551,7 @@ public class Node {
 		for (String topologyId : localClusters.keySet()) {
 			state.put(topologyId, localClusters.get(topologyId).getState().name());
 			comps.put(topologyId, new ArrayList<String>());
-			for(String spoutid : localClusters.get(topologyId).getBolts().keySet()) {
+			for(String spoutid : localClusters.get(topologyId).getSpouts().keySet()) {
 				for(Integer taskId : localClusters.get(topologyId).getSpouts().get(spoutid).keySet()) {
 					comps.get(topologyId).add(spoutid+":"+taskId);
 				}
