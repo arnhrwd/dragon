@@ -93,7 +93,7 @@ public class ListToposGroupOp extends GroupOp {
 	 */
 	@Override
 	public NodeMessage successNodeMessage() {
-		return new TopoInfoNMsg(state,errors);
+		return new TopoInfoNMsg(state,errors,components);
 	}
 
 	/* (non-Javadoc)

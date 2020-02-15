@@ -397,7 +397,7 @@ public class NodeMsgProcessor extends Thread {
 		TopoInfoNMsg tim = (TopoInfoNMsg) msg;
 		((ListToposGroupOp)(node.getOpsProcessor()
 				.getGroupOp(tim.getGroupOp().getId())))
-				.aggregate(tim.getSender(),tim.state,tim.errors);
+				.aggregate(tim.getSender(),tim.state,tim.errors,tim.components);
 		receiveSuccess(tim);
 	}
 	

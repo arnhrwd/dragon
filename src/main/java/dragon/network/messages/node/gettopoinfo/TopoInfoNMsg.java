@@ -2,6 +2,7 @@ package dragon.network.messages.node.gettopoinfo;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import dragon.ComponentError;
 import dragon.network.messages.node.NodeMessage;
@@ -24,13 +25,21 @@ public class TopoInfoNMsg extends NodeMessage {
 	public final HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors;
 	
 	/**
+	 * 
+	 */
+	public final HashMap<String,List<String>> components;
+	
+	/**
 	 * @param state
 	 * @param errors
+	 * @param components
 	 */
 	public TopoInfoNMsg(HashMap<String,String> state,
-			HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors) {
+			HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors,
+			HashMap<String,List<String>> components) {
 		super(NodeMessage.NodeMessageType.TOPOLOGY_INFORMATION);
 		this.state=state;
 		this.errors=errors;
+		this.components=components;
 	}
 }

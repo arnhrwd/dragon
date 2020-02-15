@@ -328,7 +328,7 @@ public class ServiceMsgProcessor extends Thread {
 		Ops.inst().newListToposGroupOp((op) -> {
 			ListToposGroupOp ltgo = (ListToposGroupOp) op;
 			try {
-				comms.sendServiceMsg(new TopoListSMsg(ltgo.descState, ltgo.descErrors, ltgo.components), msg);
+				comms.sendServiceMsg(new TopoListSMsg(ltgo.descState, ltgo.descErrors, ltgo.descComponents), msg);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: " + e.getMessage());
 			}
