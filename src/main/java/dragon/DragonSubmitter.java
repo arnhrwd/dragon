@@ -124,6 +124,7 @@ public class DragonSubmitter {
 	 * @param topology the topology to submit
 	 */
 	public static void submitTopology(String string, Config conf, DragonTopology topology) {
+		System.out.println("connecting to dragon daemon: +["+node+"]");
 		initComms(conf);
 		System.out.println("requesting context from ["+node+"]");
 		try {

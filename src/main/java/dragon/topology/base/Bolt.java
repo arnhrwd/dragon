@@ -121,7 +121,11 @@ public class Bolt extends Component {
 				upstreamComponents.remove(tuple.getSourceComponent()+","+tuple.getSourceTaskId()+","+tuple.getSourceStreamId());
 				if(upstreamComponents.isEmpty()) {
 					log.debug(getComponentId()+":"+getTaskId()+" closed");
-					close();
+					try {
+						close();
+					} catch (Exception e) {
+						log.warn("bolt threw exception when closing: "+e.getMessage());
+					}
 					getOutputCollector().emitTerminateTuple(); //TODO: see how to call this safely _after_ calling setClosed()
 					closed=true;
 					

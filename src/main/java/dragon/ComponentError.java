@@ -35,5 +35,13 @@ public class ComponentError implements Serializable {
 		}
 		this.stackTrace=msg;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public String toString() {
+		return message+"\n"+stackTrace;
+	}
 
 }

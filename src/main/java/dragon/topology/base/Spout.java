@@ -33,7 +33,11 @@ public class Spout extends Component {
 			return;
 		}
 		if(closing) {
-			close();
+			try {
+				close();
+			} catch (Exception e) {
+				log.warn("exception thrown by spout when closing: "+e.getMessage());
+			}
 			log.debug(getComponentId()+":"+getTaskId()+" closed");
 			closed=true;
 			return;

@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import dragon.grouping.AbstractGrouping;
+import dragon.network.DragonTopologyException;
 import dragon.network.Node;
 import dragon.network.operations.GroupOp;
 import dragon.network.operations.TermTopoGroupOp;
@@ -736,16 +737,27 @@ public class LocalCluster {
 	
 	/**
 	 * Start a topology by opening all its components and scheduling the spouts.
+	 * @throws DragonTopologyException 
 	 */
-	public void openAll() {
+	public void openAll() throws DragonTopologyException {
 		log.info("opening bolts");
 		for(BoltPrepare boltPrepare : boltPrepareList) {
 			//log.debug("calling prepare on bolt "+boltPrepare+" with collector "+boltPrepare.collector);
-			boltPrepare.bolt.prepare(conf, boltPrepare.context, boltPrepare.collector);
+			try {
+				boltPrepare.bolt.prepare(conf, boltPrepare.context, boltPrepare.collector);
+			} catch (Exception e) {
+				ComponentError ce = new ComponentError(e.getMessage(),e.getStackTrace());
+				throw new DragonTopologyException(ce.toString());
+			}
 		}
 		for(SpoutOpen spoutOpen : spoutOpenList) {
 			//log.debug("calling open on spout "+spoutOpen.spout+" with collector "+spoutOpen.collector);
-			spoutOpen.spout.open(conf, spoutOpen.context, spoutOpen.collector);
+			try {
+				spoutOpen.spout.open(conf, spoutOpen.context, spoutOpen.collector);
+			} catch (Exception e) {
+				ComponentError ce = new ComponentError(e.getMessage(),e.getStackTrace());
+				throw new DragonTopologyException(ce.toString());
+			}
 		}
 		log.debug("scheduling spouts");
 		scheduleSpouts();
