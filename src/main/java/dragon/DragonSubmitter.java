@@ -372,19 +372,22 @@ public class DragonSubmitter {
 			for(String descid : message.descState.keySet()) {
 				TreeNode machine= new TreeNode("["+descid+"] "+message.descState.get(descid).get(topologyId));
 				topo.addChild(machine);
-				if(message.descErrors.get(descid).containsKey(topologyId)) {
-					for(String cid : message.descErrors.get(descid).get(topologyId).keySet()) {
-						TreeNode comp = new TreeNode("["+cid+"]");
-						machine.addChild(comp);
-						for(ComponentError ce : message.descErrors.get(descid).get(topologyId).get(cid)) {
-							TreeNode error=new TreeNode(ce.message);
-							comp.addChild(error);
-							for(String line : ce.stackTrace.split("\n")) {
-								TreeNode errline=new TreeNode(line);
-								error.addChild(errline);
+				// list components
+				for(String cid : message.descComponents.get(descid).get(topologyId)) {
+					TreeNode component = new TreeNode("["+cid+"]");
+					machine.addChild(component);
+					// list errors
+					if(message.descErrors.get(descid).containsKey(topologyId)) {
+						if(message.descErrors.get(descid).get(topologyId).containsKey(cid)) {
+							for(ComponentError ce : message.descErrors.get(descid).get(topologyId).get(cid)) {
+								TreeNode error=new TreeNode(ce.message);
+								component.addChild(error);
+								for(String line : ce.stackTrace.split("\n")) {
+									TreeNode errline=new TreeNode(line);
+									error.addChild(errline);
+								}
 							}
 						}
-						
 					}
 				}
 			}

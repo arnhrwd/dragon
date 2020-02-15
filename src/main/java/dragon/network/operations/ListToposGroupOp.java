@@ -2,6 +2,7 @@ package dragon.network.operations;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import dragon.ComponentError;
 import dragon.network.NodeDescriptor;
@@ -21,7 +22,7 @@ public class ListToposGroupOp extends GroupOp {
 	 */
 	
 	/**
-	 * 
+	 *
 	 */
 	public transient HashMap<String,String> state;
 	
@@ -29,6 +30,11 @@ public class ListToposGroupOp extends GroupOp {
 	 * 
 	 */
 	public transient HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors;
+	
+	/**
+	 * 
+	 */
+	public transient HashMap<String,List<String>> components;
 	
 	/*
 	 * Holding variables for collecting all of the responses.
@@ -45,13 +51,19 @@ public class ListToposGroupOp extends GroupOp {
 	public transient final HashMap<String,HashMap<String,HashMap<String,ArrayList<ComponentError>>>> descErrors;
 	
 	/**
+	 * 
+	 */
+	public transient final HashMap<String,HashMap<String,List<String>>> descComponents;
+	
+	/**
 	 * @param success
 	 * @param failure
 	 */
 	public ListToposGroupOp(IOpSuccess success, IOpFailure failure) {
 		super(success,failure);
-		descState=new HashMap<String,HashMap<String,String>>();
-		descErrors=new HashMap<String,HashMap<String,HashMap<String,ArrayList<ComponentError>>>>();
+		descState=new HashMap<>();
+		descErrors=new HashMap<>();
+		descComponents=new HashMap<>();
 	}
 	
 	/**
@@ -61,9 +73,11 @@ public class ListToposGroupOp extends GroupOp {
 	 */
 	public synchronized void aggregate(NodeDescriptor desc,
 			HashMap<String,String> state,
-			HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors) {
+			HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors,
+			HashMap<String,List<String>> comps) {
 			descState.put(desc.toString(),state);
 			descErrors.put(desc.toString(),errors);
+			descComponents.put(desc.toString(),comps);
 	}
 
 	/* (non-Javadoc)
