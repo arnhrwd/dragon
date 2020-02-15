@@ -871,10 +871,10 @@ public class LocalCluster {
 				
 				// interrupt all the threads 
 				log.debug("interrupting all threads");
-				for(int i=0;i<totalParallelismHint;i++) {
+				for(int i=0;i<componentExecutorThreads.size();i++) {
 					componentExecutorThreads.get(i).interrupt();
 				}
-				for(int i=0;i<conf.getDragonLocalclusterThreads();i++) {
+				for(int i=0;i<networkExecutorThreads.size();i++) {
 					networkExecutorThreads.get(i).interrupt();
 				}
 				
@@ -1060,11 +1060,18 @@ public class LocalCluster {
 			}
 		}
 		state=State.TERMINATING;
-		for(String componentId : spouts.keySet()) {
-			HashMap<Integer,Spout> component = spouts.get(componentId);
-			for(Integer taskId : component.keySet()) {
-				Spout spout = component.get(taskId);
-				spout.setClosed();
+		int index=0;
+		for(HashMap<Integer,Spout> spouts : spouts.values()) {
+			for(Spout component : spouts.values()) {
+				componentExecutorThreads.get(index).interrupt();
+				try {
+					component.close();
+				} catch (Exception e) {
+					log.warn("exception thrown by spout when closing: "+e.getMessage());
+				}
+				log.debug(component.getComponentId()+":"+component.getTaskId()+" closed");
+				component.setClosed();
+				index++;
 			}
 		}
 		checkCloseCondition();
