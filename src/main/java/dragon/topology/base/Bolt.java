@@ -81,6 +81,7 @@ public class Bolt extends Component {
 					log.warn("bolt ["+getComponentId()+"]: "+e.getMessage());
 					if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
 				} catch (Exception e) {
+					e.printStackTrace();
 					log.warn("bolt ["+getComponentId()+"]: "+e.toString());
 					if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.toString(),e.getStackTrace());
 				}

@@ -320,6 +320,7 @@ public class LocalCluster {
 	 */
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology) {
 		Config lconf=null;
+		
 		try {
 			lconf = new Config(Constants.DRAGON_PROPERTIES,true);
 		} catch (IOException e) {
@@ -327,6 +328,7 @@ public class LocalCluster {
 			e.printStackTrace();
 		}
 		lconf.putAll(conf);
+		RecycleStation.instanceInit(lconf);
 		try {
 			submitTopology(topologyName, lconf, dragonTopology, true);
 		} catch (DragonRequiresClonableException e) {
@@ -1150,6 +1152,7 @@ public class LocalCluster {
 		}
 		if(componentErrors.get(component).size()>tolerance) {
 			log.fatal("component ["+component.getComponentId()+"] has failed more than ["+tolerance+"] times");
+			log.fatal(stackTrace);
 			if(state==LocalCluster.State.RUNNING)node.signalHaltTopology(topologyName);
 		}
 	}
