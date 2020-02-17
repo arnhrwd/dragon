@@ -34,7 +34,7 @@ public class StreamQueueMap extends HashMap<String,NetworkTaskBuffer>{
 	 * @throws InterruptedException
 	 */
 	public void put(NetworkTask task) throws InterruptedException {
-		String streamId = task.getTuple().getSourceStreamId();
+		String streamId = task.getTuples()[0].getSourceStreamId();
 		NetworkTaskBuffer buffer=get(streamId);
 		buffer.put(task);
 	}
@@ -44,7 +44,7 @@ public class StreamQueueMap extends HashMap<String,NetworkTaskBuffer>{
 	 * @return
 	 */
 	public NetworkTaskBuffer getBuffer(NetworkTask task){
-		return get(task.getTuple().getSourceStreamId());
+		return get(task.getTuples()[0].getSourceStreamId());
 	}
 
 	/**

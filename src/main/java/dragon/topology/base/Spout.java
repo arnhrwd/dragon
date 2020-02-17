@@ -44,10 +44,12 @@ public class Spout extends Component {
 		}
 		try {
 			nextTuple();
+			if(!getOutputCollector().didEmit())getOutputCollector().expireAllTupleBundles();
 		} catch (DragonEmitRuntimeException e) {
 			log.warn("spout ["+getComponentId()+"]: "+e.getMessage());
 			if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
 		} catch (Exception e) {
+			e.printStackTrace();
 			log.warn("spout ["+getComponentId()+"]: "+e.getMessage());
 			if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
 		} 

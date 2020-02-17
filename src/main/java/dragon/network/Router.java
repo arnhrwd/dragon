@@ -150,10 +150,13 @@ public class Router {
 									for(NodeDescriptor desc : destinations.keySet()) {
 										NetworkTask nt = RecycleStation.getInstance()
 												.getNetworkTaskRecycler().newObject();
-										nt.init(task.getTuple(),
+										nt.init(task.getTuples(),
 												destinations.get(desc),
 												task.getComponentId(),
 												task.getTopologyId());
+										RecycleStation.getInstance()
+										.getTupleRecycler(task.getTuples()[0].getFields()
+												.getFieldNamesAsString()).shareRecyclables(task.getTuples(),1);
 										//log.debug("seding to "+desc+" "+nt);
 										try {
 											comms.sendNetworkTask(desc, nt);
