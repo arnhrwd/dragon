@@ -2,10 +2,12 @@ package dragon.topology.base;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
@@ -69,29 +71,49 @@ public class Collector {
 	 */
 	private final HashSet<Integer> doneTaskIds;
 	
+	/*
+	 * Tuple and NetworkTask pools keep an array of
+	 * objects from the recycler, to avoid fine-grain
+	 * recycler calls.
+	 */
+	
 	/**
 	 * 
 	 */
 	private final HashMap<String,Tuple[]> tuplePool;
-	private HashMap<String,Integer> tuplePoolIndex;
-	private final NetworkTask[] ntPool;
-	private int ntPoolIndex;
-	
 	
 	/**
 	 * 
+	 */
+	private HashMap<String,Integer> tuplePoolIndex;
+	
+	/**
+	 * 
+	 */
+	private final NetworkTask[] ntPool;
+	
+	/**
+	 * 
+	 */
+	private int ntPoolIndex;
+	
+	/**
+	 * A bundle of tuples that will be sent when full, or
+	 * when it expires.
 	 * @author aaron
 	 *
 	 */
 	private class TupleBundle {
-		public long timestamp;
+		public Long expireTime;
 		public Tuple[] tuples;
 		public int size=0;
 		public String componentId;
 		public String streamId;
 		public HashSet<Integer> taskIds;
+		public boolean transmitted=false;
 		public TupleBundle(String componentId,String streamId,HashSet<Integer> taskIds) {
-			timestamp=Instant.now().toEpochMilli();
+			expireTime=Instant.now().toEpochMilli()+linger_ms;
+			if(nextExpire>expireTime) nextExpire=expireTime;
 			tuples=new Tuple[bundleSize];
 			this.componentId=componentId;
 			this.streamId=streamId;
@@ -99,27 +121,33 @@ public class Collector {
 		}
 		public void add(Tuple tuple) {
 			tuples[size++]=tuple;
-//			RecycleStation.getInstance()
-//			.getTupleRecycler(tuple.getFields()
-//					.getFieldNamesAsString()).shareRecyclable(tuple,1);
 		}
 	}
 	
 	/**
-	 * 
+	 * cached value from conf for the linger time
 	 */
 	private final long linger_ms;
 
 	/**
-	 * 
+	 * cached value from conf for the bundle size
 	 */
 	private final int bundleSize;
 	
 	/**
-	 * 
+	 * the time at which the next bundle expires
+	 */
+	private long nextExpire;
+	
+	/**
+	 * A map to the tuple bundles that currently exist.
 	 */
 	private HashMap<String,HashMap<String,HashMap<HashSet<Integer>,TupleBundle>>> bundleMap;
-	private ArrayList<TupleBundle> bundleList;
+	
+	/**
+	 * A priority queue of tuple bundles, ordered by expire time.
+	 */
+	private PriorityQueue<TupleBundle> bundleQueue;
 	
 	/**
 	 * @param component
@@ -138,7 +166,15 @@ public class Collector {
 		bundleSize=localCluster.getConf().getDragonTupleBundleSize();
 		outputQueues=new ComponentTaskBuffer(bufSize);
 		bundleMap=new HashMap<>();
-		bundleList=new ArrayList<>();
+		nextExpire=Instant.now().toEpochMilli()+linger_ms;
+		bundleQueue = new PriorityQueue<TupleBundle>((Comparator<TupleBundle>) new Comparator<TupleBundle>() {
+
+			@Override
+			public int compare(TupleBundle arg0, TupleBundle arg1) {
+				return arg0.expireTime.compareTo(arg1.expireTime);
+			}
+			
+		});
 		tuplePool=new HashMap<>();//Tuple[localCluster.getConf().getDragonTupleBundleSize()];
 		tuplePoolIndex=new HashMap<>();
 		ntPool=new NetworkTask[localCluster.getConf().getDragonTupleBundleSize()];
@@ -167,8 +203,10 @@ public class Collector {
 		totalBufferSpace=tbs;
 		doneTaskIds=new HashSet<>();
 	}
-	
-	public void freePools() {
+	/**
+	 * Recycle any unused pooled objects.
+	 */
+	public void recyclePools() {
 		for(;ntPoolIndex<ntPool.length;ntPoolIndex++) {
 			RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(ntPool[ntPoolIndex], 1);
 		}
@@ -232,72 +270,36 @@ public class Collector {
 	}
 	
 	/**
-	 * 
-	 * @param tb
-	 */
-	private void transmitBundle(TupleBundle tb) {
-		transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
-		tb.timestamp=0; // nullify this in the list
-	}
-	
-	/**
-	 * 
+	 * Transmit tuple bundles that have expired. 
 	 */
 	public void expireTupleBundles() {
-		if(bundleList.size()==0)return;
 		long now = Instant.now().toEpochMilli();
-		boolean hit=true;
-		while(hit && bundleList.size()>0) {
-			hit=false;
-			TupleBundle tb = bundleList.remove(0);
-			while(tb.timestamp==0 && bundleList.size()>0) tb=bundleList.remove(0);
-			if(tb.timestamp==0) return;
-			if(now-tb.timestamp > linger_ms) {
-				transmitBundle(tb);
+		while(bundleQueue.size()>0 && bundleQueue.peek().expireTime<=now) {
+			TupleBundle tb = bundleQueue.poll();
+			if(!tb.transmitted) {
+				transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
 				bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
-				hit=true;
-			} 
+			}
 		}
-		
+		if(bundleQueue.size()>0) {
+			TupleBundle tb = bundleQueue.peek();
+			nextExpire=tb.expireTime;
+		}
 	}
 	
 	/**
-	 * 
+	 * Transmit all tuple bundles, regardless of expire time.
 	 */
 	public void expireAllTupleBundles() {
-		while(bundleList.size()>0) {
-			TupleBundle tb = bundleList.remove(0);
-			if(tb.timestamp > 0) {
-				transmitBundle(tb);
+		log.debug("expiring all tuple bundles");
+		while(bundleQueue.size()>0) {
+			TupleBundle tb = bundleQueue.poll();
+			if(!tb.transmitted) {
+				transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
 				bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
-			} 
+			}
 		}
-		
-	}
-	
-	/**
-	 * 
-	 * @param tuple
-	 * @param taskIds
-	 * @param componentId
-	 * @param streamId
-	 */
-	private void transmit(Tuple tuple,
-			List<Integer> taskIds,
-			String componentId,
-			String streamId) {
-		HashSet<Integer> taskIdSet=new HashSet<Integer>(taskIds);
-		if(!bundleMap.get(componentId).get(streamId).containsKey(taskIdSet)) {
-			TupleBundle tb=new TupleBundle(componentId,streamId,taskIdSet);
-			bundleMap.get(componentId).get(streamId).put(taskIdSet,tb);
-			bundleList.add(tb);
-		}
-		TupleBundle tb = bundleMap.get(componentId).get(streamId).get(taskIdSet);
-		tb.add(tuple);
-		if(tb.size==tb.tuples.length)  {
-			transmitBundle(tb);
-			bundleMap.get(componentId).get(streamId).remove(taskIdSet);
-		} 
+		nextExpire = Instant.now().toEpochMilli()+linger_ms;
 	}
 	
 	/**
@@ -343,7 +345,7 @@ public class Collector {
 		RecycleStation.getInstance()
 			.getTupleRecycler(tuples[0].getFields()
 			.getFieldNamesAsString())
-			.shareRecyclables(tuples,localTaskIds.size()-1);
+			.shareRecyclables(tuples,localTaskIds.size());
 		if(!localTaskIds.isEmpty()){
 			/*
 			 * First try to directly send the tuple to the input queue(s).
@@ -377,18 +379,69 @@ public class Collector {
 				}
 				task.init(tuples, localTaskIds, componentId, localCluster.getTopologyId());
 				try {
-					getQueue(componentId,streamId).put(task);
+					queue.put(task);
 					if(queue.size()==1)localCluster.outputPending(queue);
 				} catch (InterruptedException e) {
 					log.info("interrupted");
+					RecycleStation.getInstance()
+					.getTupleRecycler(tuples[0].getFields()
+					.getFieldNamesAsString())
+					.crushRecyclables(tuples,localTaskIds.size()+1);
 					return;
 				}
 				
+			} else {
+				// we didn't need to send a network task, so remove the tuple ref's we
+				// created for that
+				RecycleStation.getInstance()
+				.getTupleRecycler(tuples[0].getFields()
+				.getFieldNamesAsString())
+				.crushRecyclables(tuples,1);
 			}
 		}
 	}
 	
 	/**
+	 * Transmit a tuple bundle, marking it transmitted, and remove it
+	 * from the bundle map.
+	 * @param tb
+	 */
+	private void transmitBundle(TupleBundle tb) {
+		transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
+		bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
+		tb.transmitted=true;
+	}
+	
+	/**
+	 * Transmit a tuple, which will likely just bundle it into an existing
+	 * tuple bundle, waiting to be transmitted.
+	 * @param tuple
+	 * @param taskIds
+	 * @param componentId
+	 * @param streamId
+	 */
+	private void transmit(Tuple tuple,
+			List<Integer> taskIds,
+			String componentId,
+			String streamId) {
+		HashSet<Integer> taskIdSet=new HashSet<Integer>(taskIds);
+		//transmit(new Tuple[] {tuple,null},taskIdSet,componentId,streamId);
+		TupleBundle tb;
+		if(!bundleMap.get(componentId).get(streamId).containsKey(taskIdSet)) {
+			tb=new TupleBundle(componentId,streamId,taskIdSet);
+			bundleMap.get(componentId).get(streamId).put(taskIdSet,tb);
+			bundleQueue.add(tb);
+		} else {
+			tb = bundleMap.get(componentId).get(streamId).get(taskIdSet);
+		}
+		tb.add(tuple);
+		if(tb.size==tb.tuples.length)  {
+			transmitBundle(tb);
+		} 
+	}
+	
+	/**
+	 * 
 	 * @param streamId
 	 * @param values
 	 * @return
@@ -412,7 +465,7 @@ public class Collector {
 		}
 		final String fieldsName = fields.getFieldNamesAsString();
 		final int index=tuplePoolIndex.get(fieldsName);
-		Tuple tuple = tuplePool.get(fieldsName)[index];
+		final Tuple tuple = tuplePool.get(fieldsName)[index];
 		if(index+1==tuplePool.get(fieldsName).length) {
 			RecycleStation.getInstance()
 			.getTupleRecycler(fieldsName)
@@ -421,8 +474,6 @@ public class Collector {
 		} else {
 			tuplePoolIndex.put(fieldsName,index+1);
 		}
-		
-		
 		tuple.setValues(values);
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
@@ -563,6 +614,14 @@ public class Collector {
 	 */
 	public int getBundleSize() {
 		return bundleSize;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public long getNextExpire() {
+		return nextExpire;
 	}
 	
 }

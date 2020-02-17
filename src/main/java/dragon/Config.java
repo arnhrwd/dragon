@@ -397,12 +397,12 @@ public class Config extends HashMap<String, Object> {
 	public void defaults() {
 		put(DRAGON_OUTPUT_BUFFER_SIZE,16);
 		put(DRAGON_INPUT_BUFFER_SIZE,16);
-		put(DRAGON_TUPLE_BUNDLE_SIZE,16);
+		put(DRAGON_TUPLE_BUNDLE_SIZE,64);
 		put(DRAGON_TUPLE_BUNDLE_LINGER_MS,50L);
 		put(DRAGON_DATA_DIR,"/tmp/dragon");
 		put(DRAGON_PERSISTENCE_DIR,"persistance");
 		put(DRAGON_JAR_DIR,"jars");
-		put(DRAGON_LOCALCLUSTER_THREADS,5);
+		put(DRAGON_LOCALCLUSTER_THREADS,2);
 		put(DRAGON_ROUTER_INPUT_THREADS,1);
 		put(DRAGON_ROUTER_OUTPUT_THREADS,1);
 		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,16);
@@ -523,6 +523,7 @@ public class Config extends HashMap<String, Object> {
 	 *  
 	 * @return the JAR directory.
 	 */
+	@Deprecated
 	public String getDragonJarDir() {
 		return (String)get(DRAGON_JAR_DIR);
 	}
@@ -774,6 +775,7 @@ public class Config extends HashMap<String, Object> {
 	 * postfixed.
 	 * @return the java bin
 	 */
+	@Deprecated
 	public String getDragonJavaBin() {
 		if(containsKey(DRAGON_JAVA_BIN)) {
 			return (String)get(DRAGON_JAVA_BIN);

@@ -10,7 +10,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jctools.queues.MpscArrayQueue;
 
 import dragon.grouping.AbstractGrouping;
 import dragon.network.DragonTopologyException;
@@ -351,6 +350,7 @@ public class LocalCluster {
 	 * @param start whether to start the topology immediately or not
 	 * @throws DragonRequiresClonableException if the topology contains components that are not clonable
 	 */
+	@SuppressWarnings("unchecked")
 	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) throws DragonRequiresClonableException {
 		this.topologyName=topologyName;
 		this.conf=conf;
@@ -491,23 +491,23 @@ public class LocalCluster {
 		componentExecutorThreads = new ArrayList<Thread>();
 		for(HashMap<Integer,Spout> spouts : spouts.values()) {
 			for(Component component : spouts.values()) {
-				componentExecutorThreads.add(new Thread(){
+				Thread thread=new Thread(){
 					@Override
 					public void run(){
 						log.info("starting up");
 						Component thisComponent=component;
 						while(!isInterrupted()){
 							if(state==LocalCluster.State.HALTED) {
-								log.info(getName()+" halted");
+								log.info("halted");
 								try {
 									haltLock.lock();
 									try {
 										restartCondition.await();
 									} catch (InterruptedException e) {
-										log.info(getName()+" interrupted");
+										log.info("interrupted");
 										break;
 									}
-									log.info(getName()+" resuming");
+									log.info("resuming");
 								} finally {
 									haltLock.unlock();
 								}
@@ -519,31 +519,33 @@ public class LocalCluster {
 								break;
 							
 						}
-						thisComponent.getOutputCollector().freePools();
+						thisComponent.getOutputCollector().recyclePools();
 						log.info("shutting down");
 					}
-				});
+				};
+				thread.setName(topologyName+":"+component.getComponentId()+":"+component.getTaskId());
+				componentExecutorThreads.add(thread);
 			}
 		}
 		for(HashMap<Integer,Bolt> bolts : bolts.values()) {
 			for(Component component : bolts.values()) {
-				componentExecutorThreads.add(new Thread(){
+				Thread thread=new Thread(){
 					@Override
 					public void run(){
 						log.info("starting up");
 						Component thisComponent=component;
 						while(!isInterrupted()){
 							if(state==LocalCluster.State.HALTED) {
-								log.info(getName()+" halted");
+								log.info("halted");
 								try {
 									haltLock.lock();
 									try {
 										restartCondition.await();
 									} catch (InterruptedException e) {
-										log.info(getName()+" interrupted");
+										log.info("interrupted");
 										break;
 									}
-									log.info(getName()+" resuming");
+									log.info("resuming");
 								} finally {
 									haltLock.unlock();
 								}
@@ -551,10 +553,12 @@ public class LocalCluster {
 							}
 							thisComponent.run();
 						}
-						thisComponent.getOutputCollector().freePools();
+						thisComponent.getOutputCollector().recyclePools();
 						log.info("shutting down");
 					}
-				});
+				};
+				thread.setName(topologyName+":"+component.getComponentId()+":"+component.getTaskId());
+				componentExecutorThreads.add(thread);
 			}
 		}
 		
@@ -799,17 +803,6 @@ public class LocalCluster {
 		Thread shutdownThread = new Thread() {
 			@Override
 			public void run() {
-				// cycle the spouts
-//				log.debug("cycling spouts");
-//				for(String componentId : spouts.keySet()) {
-//					HashMap<Integer,Spout> component = spouts.get(componentId);
-//					for(Integer taskId : component.keySet()) {
-//						Spout spout = component.get(taskId);
-//						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] pending");
-//						componentPending(spout);
-//					}
-//				}
-				
 				// wait for spouts to close
 				log.debug("waiting for spouts to close");
 				while(true) {
@@ -925,10 +918,8 @@ public class LocalCluster {
 	 * Startup a thread per component.
 	 */
 	private void runComponentThreads() {
-		log.info("starting component executor threads with "+totalParallelismHint+" threads");
-		for(int i=0;i<totalParallelismHint;i++){
-			
-			componentExecutorThreads.get(i).setName("component executor "+i);
+		log.info("starting "+componentExecutorThreads.size()+" component executor threads");
+		for(int i=0;i<componentExecutorThreads.size();i++){
 			componentExecutorThreads.get(i).start();
 		}
 	}
@@ -949,16 +940,16 @@ public class LocalCluster {
 					NetworkTaskBuffer queue;
 					while(!isInterrupted()) {
 						if(state==LocalCluster.State.HALTED) {
-							log.info(getName()+" halted");
+							log.info("halted");
 							try {
 								haltLock.lock();
 								try {
 									restartCondition.await();
 								} catch (InterruptedException e) {
-									log.info(getName()+" interrupted");
+									log.info("interrupted");
 									break;
 								}
-								log.info(getName()+" resuming");
+								log.info("resuming");
 							} finally {
 								haltLock.unlock();
 							}
@@ -980,7 +971,6 @@ public class LocalCluster {
 							for(Integer taskId : networkTask.getTaskIds()) {
 								if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuples)){
 									doneTaskIds.add(taskId);
-									
 								} 
 							}
 							networkTask.getTaskIds().removeAll(doneTaskIds);
@@ -997,7 +987,7 @@ public class LocalCluster {
 					log.info("shutting down");
 				}
 			});
-			networkExecutorThreads.get(i).setName("network executor "+i);
+			networkExecutorThreads.get(i).setName("netex "+i);
 			networkExecutorThreads.get(i).start();
 		}
 		
@@ -1168,8 +1158,11 @@ public class LocalCluster {
 		}
 		if(componentErrors.get(component).size()>tolerance) {
 			log.fatal("component ["+component.getComponentId()+"] has failed more than ["+tolerance+"] times");
-			log.fatal(stackTrace);
-			if(state==LocalCluster.State.RUNNING)node.signalHaltTopology(topologyName);
+			if(state==LocalCluster.State.RUNNING && node!=null) {
+				node.signalHaltTopology(topologyName);
+			} else {
+				System.exit(-1);
+			}
 		}
 	}
 	

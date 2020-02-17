@@ -1,5 +1,6 @@
 package dragon.topology.base;
 
+import java.time.Instant;
 import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
@@ -44,7 +45,14 @@ public class Spout extends Component {
 		}
 		try {
 			nextTuple();
-			if(!getOutputCollector().didEmit())getOutputCollector().expireAllTupleBundles();
+			if(!getOutputCollector().didEmit()) {
+				getOutputCollector().expireAllTupleBundles();
+			} else {
+				long now = Instant.now().toEpochMilli();
+				if(now >= getOutputCollector().getNextExpire()) {
+					getOutputCollector().expireTupleBundles();
+				}
+			}
 		} catch (DragonEmitRuntimeException e) {
 			log.warn("spout ["+getComponentId()+"]: "+e.getMessage());
 			if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());

@@ -27,11 +27,6 @@ public class NetworkTask implements IRecyclable {
 	/**
 	 * 
 	 */
-	private int size;
-	
-	/**
-	 * 
-	 */
 	private HashSet<Integer> taskIds;
 	
 	/**
@@ -115,9 +110,8 @@ public class NetworkTask implements IRecyclable {
 	 */
 	@Override
 	public void recycle() {
-		for(int i=0;i<size;i++) {
-			RecycleStation.getInstance().getTupleRecycler(tuples[i].getFields().getFieldNamesAsString()).crushRecyclable(tuples[i], 1);
-		}
+		if(tuples!=null)
+			RecycleStation.getInstance().getTupleRecycler(tuples[0].getFields().getFieldNamesAsString()).crushRecyclables(tuples, 1);
 		tuples=null;
 		taskIds=null;
 		componentId=null;

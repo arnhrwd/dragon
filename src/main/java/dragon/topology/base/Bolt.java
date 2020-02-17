@@ -1,5 +1,6 @@
 package dragon.topology.base;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -60,14 +61,15 @@ public class Bolt extends Component {
 	@Override
 	public final void run() {
 		Tuple[] tuples;
+		long now=Instant.now().toEpochMilli();
 		if(closed)return;
 		if(tickTuple!=null) {
 			tuples=new Tuple[] {tickTuple};
 			tickTuple=null;
 		} else {
 			try {
-				tuples = getInputCollector().getQueue().poll(getOutputCollector().getLinger_ms(),TimeUnit.MILLISECONDS);
-				
+				// poll, but timeout at a time when a bundle will expire
+				tuples = getInputCollector().getQueue().poll(Math.max(getOutputCollector().getNextExpire()-now,1),TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
 				return;
 			}
@@ -141,9 +143,12 @@ public class Bolt extends Component {
 				}
 				RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
 			} 
-		} else {
+		} 
+		now=Instant.now().toEpochMilli();
+		if(getOutputCollector().getNextExpire()<=now) {
 			getOutputCollector().expireTupleBundles();
 		}
+		
 	}
 	
 	/**
