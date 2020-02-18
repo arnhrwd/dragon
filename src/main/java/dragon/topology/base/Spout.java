@@ -45,14 +45,20 @@ public class Spout extends Component {
 		}
 		try {
 			nextTuple();
-			if(!getOutputCollector().didEmit()) {
-				getOutputCollector().expireAllTupleBundles();
-			} else {
-				long now = Instant.now().toEpochMilli();
-				if(now >= getOutputCollector().getNextExpire()) {
-					getOutputCollector().expireTupleBundles();
+			
+			long now = Instant.now().toEpochMilli();
+			if(now >= getOutputCollector().getNextExpire()) {
+				getOutputCollector().expireTupleBundles();
+			} else if(!getOutputCollector().didEmit()) {
+				try {
+					Thread.sleep(getOutputCollector().getNextExpire()-now);
+				} catch (InterruptedException e) {
+					log.info("interrupted");
+					return;
 				}
 			}
+			
+			
 		} catch (DragonEmitRuntimeException e) {
 			log.warn("spout ["+getComponentId()+"]: "+e.getMessage());
 			if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());

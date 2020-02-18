@@ -491,6 +491,7 @@ public class Collector {
 				// that is a single "all group".
 				GroupingsSet groupingsSet = streamMap.get(Constants.SYSTEM_STREAM_ID);
 				Tuple tuple = new Tuple();
+				tuple.setFields(new Fields(Constants.SYSTEM_TUPLE_FIELDS));
 				tuple.setSourceComponent(component.getComponentId());
 				tuple.setSourceStreamId(streamId);
 				tuple.setSourceTaskId(component.getTaskId());

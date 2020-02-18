@@ -511,8 +511,6 @@ public class LocalCluster {
 							}
 	
 							thisComponent.run();
-							if(!thisComponent.getOutputCollector().didEmit())
-								break;
 							
 						}
 						log.info("shutting down");
