@@ -35,9 +35,9 @@ Dragon is recommended to run on a cluster of Ubuntu machines. Ensure that you ha
 Unpack the distribution into a directory that will not be the deployment directory. Configure a `dragon.yaml` file with the set of Ubuntu machines. In the example below we have 3 Ubuntu machines that will be deployed to. The `dragon.deploy.dir` is the directory to put the distribution installation in, on each Ubuntu machine - in this case the user is called `ubuntu` and the installation will be deployed within the `packages` dir in the user's home directory.
 
     dragon.network.hosts:
-    - hostname: 45.113.235.125
-    - hostname: 45.113.235.146
-    - hostname: 45.113.235.116
+    - hostname: 45.114.235.125
+    - hostname: 45.114.235.146
+    - hostname: 45.114.235.116
     dragon.deploy.dir: /home/ubuntu/packages
 
 Dragon has a number of deployment commands available, with `deploy` bundling a number of them together. It takes the original distro package as a command line parameter.
@@ -63,13 +63,17 @@ It will also bring the daemons online using a command like:
 
     nohup /home/ubuntu/packages/dragon/bin/dragon.sh -d -C /home/ubuntu/packages/dragon/conf/dragon-4001.yaml > /home/ubuntu/packages/dragon/log/dragon-4001.stdout 2> /home/ubuntu/packages/dragon/log/dragon-4001.stderr &
 
-Now you can submit a topology to the Dragon cluster. Other commands that are useful for controlling deployment are:
+Now you can submit a topology to the Dragon cluster (see further below for detailed instructions):
+
+    ./dragon.sh -h 45.114.235.125 -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
+
+Other commands that are useful for controlling deployment are:
 
     ./dragon.sh offline [USERNAME]
     ./dragon.sh online [USERNAME]
     ./dragon.sh config [USERNAME]
     
-These allow you to kill all Dragon daemons (bring them offline), bring them back online and to redo their configuration file, e.g. if you have added more Ubuntu machines, or parameters, etc.
+These allow you to `kill` all Dragon daemons (bring them offline), bring them back online and to redo their configuration file, e.g. if you have added more Ubuntu machines, or parameters, etc.
 
 # Detailed Usage
  
@@ -86,7 +90,7 @@ To install Dragon into your local cache:
 Include the dependency in your project's `pom.xml`, where `VERSION` is replaced with whatever version you are using: 
 
     <dependency>
-        <groupId>au.edu.unimelb</groupId>
+        <groupId>tech.streamsoft</groupId>
         <artifactId>dragon</artifactId>
         <version>VERSION</version>
         <scope>provided</scope>
@@ -135,13 +139,18 @@ The available parameters and their defaults are listed below.
 
 ### General parameters
 
+Spouts have output buffers, while Bolts have both input and output buffers. There is a separate buffer for _each_ declared stream out of each component and an input buffer for each bolt. Each buffer element stores a bundle of tuples. Therefore the maximum number of tuples on a buffer is the size of the buffer by the size of the tuple bundle. Each Spout or Bolt can have a bundle of tuples lingering for each output stream on a per task destination basis, in addition to the output buffers. The memory consumption is dominated by these parameters. Each component instance is allocated 1 thread. In addition there are some threads that help to transfer tuples between components.
+
 - `dragon.output.buffer.size: 16` **Integer** - the size of the buffers on Spout and Bolt outputs
 - `dragon.input.buffer.size: 16` **Integer** - the size of the buffers on Spout and Bolt inputs
-- `dragon.data.dir: /tmp/dragon` **String** - the data directory where Dragon can store files such as submitted jar files and check point data
-- `dragon.jar.dir: jars` **String** - the sub-directory to store jars files within
+- `dragon.tuple.bundle.size: 64` **Integer** - the number of tuples to bundle up for transmission, rather than transmitting tuples one at a time
+- `dragon.tuple.bundle.linger.ms: 50` **Long** - the number of milliseconds that a tuple bundle, regardless of how many tuples it contains, can wait before being transmitted
 - `dragon.localcluster.threads: 2 ` **Integer** - the size of the thread pool that transfers tuples within a local cluster
-- `dragon.embedding.algorithm: dragon.topology.RoundRobinEmbedding` **String** - the embedding algorithm that maps a task in the topology to a host node
-- `dragon.java.bin: /usr/bin/java` **String** - the path of the Java binary
+
+**Performance note:** While there are many factors that influence performance, as `dragon.tuple.bundle.size` is lowered, the number of context switches increases which can negatively impact performance significantly. Conversely if the value becomes large then the total amount of memory consumed increases, bearing in mind that the size of a tuple depends on the application.
+
+
+
 
 ### Network mode parameters
 
@@ -214,6 +223,16 @@ Parameters concerning InfluxDB:
 - `influxdb.token: ` **String** the authorization token used to access the InfluxDB
 - `influxdb.bucket: ` **String** the InfluxDB bucket to use for storing data samples
 - `influxdb.organization: ` **String** the organization name for storing data samples
+
+Parameters concerning topology mapping:
+
+- `dragon.embedding.algorithm: dragon.topology.RoundRobinEmbedding` **String** - the embedding algorithm that maps a task in the topology to a host node
+
+Other parameters:
+
+- `dragon.data.dir: /tmp/dragon` **String** - the data directory where Dragon can store temporary files such as submitted jar files
+
+
 
 # Network mode
 

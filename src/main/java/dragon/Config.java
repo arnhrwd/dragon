@@ -43,6 +43,16 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_INPUT_BUFFER_SIZE="dragon.input.buffer.size";
 	
 	/**
+	 * the maximum number of tuples to bundle into a single object
+	 */
+	public static final String DRAGON_TUPLE_BUNDLE_SIZE="dragon.tuple.bundle.size";
+	
+	/**
+	 * the maximum time in milliseconds to linger a bundle before transmitting
+	 */
+	public static final String DRAGON_TUPLE_BUNDLE_LINGER_MS="dragon.tuple.bundle.linger.ms";
+	
+	/**
 	 * the base directory where Dragon can store files such as submitted jar files and check point data
 	 */
 	public static final String DRAGON_DATA_DIR="dragon.data.dir";
@@ -387,10 +397,12 @@ public class Config extends HashMap<String, Object> {
 	public void defaults() {
 		put(DRAGON_OUTPUT_BUFFER_SIZE,16);
 		put(DRAGON_INPUT_BUFFER_SIZE,16);
+		put(DRAGON_TUPLE_BUNDLE_SIZE,64);
+		put(DRAGON_TUPLE_BUNDLE_LINGER_MS,50L);
 		put(DRAGON_DATA_DIR,"/tmp/dragon");
 		put(DRAGON_PERSISTENCE_DIR,"persistance");
 		put(DRAGON_JAR_DIR,"jars");
-		put(DRAGON_LOCALCLUSTER_THREADS,5);
+		put(DRAGON_LOCALCLUSTER_THREADS,2);
 		put(DRAGON_ROUTER_INPUT_THREADS,1);
 		put(DRAGON_ROUTER_OUTPUT_THREADS,1);
 		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,16);
@@ -430,6 +442,8 @@ public class Config extends HashMap<String, Object> {
 	public void drop() {
 		remove(DRAGON_OUTPUT_BUFFER_SIZE);
 		remove(DRAGON_INPUT_BUFFER_SIZE);
+		remove(DRAGON_TUPLE_BUNDLE_SIZE);
+		remove(DRAGON_TUPLE_BUNDLE_LINGER_MS);
 		remove(DRAGON_DATA_DIR);
 		remove(DRAGON_PERSISTENCE_DIR);
 		remove(DRAGON_JAR_DIR);
@@ -469,6 +483,27 @@ public class Config extends HashMap<String, Object> {
 	}
 	
 	/**
+	 * 
+	 * @return the tuple bundle size
+	 */
+	public int getDragonTupleBundleSize() {
+		return (Integer)get(DRAGON_TUPLE_BUNDLE_SIZE);
+	}
+	
+	/**
+	 * 
+	 * @return the tuple bundle linger ms
+	 */
+	public long getDragonTupleBundleLingerMS() {
+		Object o=get(DRAGON_TUPLE_BUNDLE_LINGER_MS);
+		if(o instanceof Integer) {
+			return (Long) ((Integer)o).longValue(); 
+		} else {
+			return (Long) o;
+		}
+	}
+	
+	/**
 	 *  
 	 * @return the base directory.
 	 */
@@ -488,6 +523,7 @@ public class Config extends HashMap<String, Object> {
 	 *  
 	 * @return the JAR directory.
 	 */
+	@Deprecated
 	public String getDragonJarDir() {
 		return (String)get(DRAGON_JAR_DIR);
 	}
@@ -739,6 +775,7 @@ public class Config extends HashMap<String, Object> {
 	 * postfixed.
 	 * @return the java bin
 	 */
+	@Deprecated
 	public String getDragonJavaBin() {
 		if(containsKey(DRAGON_JAVA_BIN)) {
 			return (String)get(DRAGON_JAVA_BIN);

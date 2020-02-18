@@ -86,6 +86,12 @@
 		  <artifactId>console-tree-builder</artifactId>
 		  <version>2.0</version>
 		</dependency>
+		
+		<dependency>
+            <groupId>org.jctools</groupId>
+            <artifactId>jctools-core</artifactId>
+            <version>3.0.0</version>
+        </dependency>
 	</dependencies>
 
 	<build>

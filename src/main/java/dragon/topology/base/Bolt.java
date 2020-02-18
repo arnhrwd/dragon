@@ -1,7 +1,9 @@
 package dragon.topology.base;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -58,88 +60,95 @@ public class Bolt extends Component {
 	 */
 	@Override
 	public final void run() {
-		Tuple tuple;
+		Tuple[] tuples;
+		long now=Instant.now().toEpochMilli();
 		if(closed)return;
 		if(tickTuple!=null) {
-			tuple=tickTuple;
+			tuples=new Tuple[] {tickTuple};
 			tickTuple=null;
 		} else {
 			try {
-				tuple = getInputCollector().getQueue().take();
+				// poll, but timeout at a time when a bundle will expire
+				tuples = getInputCollector().getQueue().poll(Math.max(getOutputCollector().getNextExpire()-now,1),TimeUnit.MILLISECONDS);
 			} catch (InterruptedException e) {
-				log.debug("interrupted");
 				return;
 			}
 		}
-		if(tuple!=null){
-			switch(tuple.getType()) {
-			case APPLICATION:{
-				getOutputCollector().resetEmit();
-				try {
-					execute(tuple);
-				} catch (DragonEmitRuntimeException e) {
-					log.warn("bolt ["+getComponentId()+"]: "+e.getMessage());
-					if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
-				} catch (Exception e) {
-					e.printStackTrace();
-					log.warn("bolt ["+getComponentId()+"]: "+e.toString());
-					if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.toString(),e.getStackTrace());
-				}
-				processed++;
-				break;
-			}
-			case CHECKPOINT:{
-				break;
-			}
-			case FREEZE:
-				break;
-			case TERMINATE:{
-				if(upstreamComponents.isEmpty()) {
-				
-					for(String componentId : getLocalCluster()
-							.getTopology().getBoltMap()
-							.get(getComponentId()).groupings.keySet()) {
-						int numTasks=0;
-						if(getLocalCluster().getTopology().getSpoutMap().containsKey(componentId)) {
-							numTasks=getLocalCluster().getTopology().getSpoutMap().get(componentId).getNumTasks();
-						} else {
-							numTasks=getLocalCluster().getTopology().getBoltMap().get(componentId).getNumTasks();
-						}
-						
-						for(Integer taskId = 0;taskId<numTasks;taskId++) {
-							for(String streamId : getLocalCluster()
-									.getTopology().getBoltMap()
-									.get(getComponentId()).groupings.get(componentId).keySet()){
-								
-								upstreamComponents.add(componentId+","+taskId+","+streamId);
-							}
-						}
-					}	
-					//log.debug("waiting for "+upstreamComponents);
-				}
-			
-				upstreamComponents.remove(tuple.getSourceComponent()+","+tuple.getSourceTaskId()+","+tuple.getSourceStreamId());
-				if(upstreamComponents.isEmpty()) {
-					log.debug(getComponentId()+":"+getTaskId()+" closed");
+		if(tuples!=null) {
+			for(int i=0;i<tuples.length&&tuples[i]!=null;i++) {
+				Tuple tuple = tuples[i];
+				switch(tuple.getType()) {
+				case APPLICATION:{
+					getOutputCollector().resetEmit();
 					try {
-						close();
+						execute(tuple);
+					} catch (DragonEmitRuntimeException e) {
+						log.warn("bolt ["+getComponentId()+"]: "+e.getMessage());
+						if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
 					} catch (Exception e) {
-						log.warn("bolt threw exception when closing: "+e.getMessage());
+						e.printStackTrace();
+						log.warn("bolt ["+getComponentId()+"]: "+e.toString());
+						if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.toString(),e.getStackTrace());
 					}
-					getOutputCollector().emitTerminateTuple(); //TODO: see how to call this safely _after_ calling setClosed()
-					closed=true;
+					processed++;
+					break;
+				}
+				case CHECKPOINT:{
+					break;
+				}
+				case FREEZE:
+					break;
+				case TERMINATE:{
+					if(upstreamComponents.isEmpty()) {
+					
+						for(String componentId : getLocalCluster()
+								.getTopology().getBoltMap()
+								.get(getComponentId()).groupings.keySet()) {
+							int numTasks=0;
+							if(getLocalCluster().getTopology().getSpoutMap().containsKey(componentId)) {
+								numTasks=getLocalCluster().getTopology().getSpoutMap().get(componentId).getNumTasks();
+							} else {
+								numTasks=getLocalCluster().getTopology().getBoltMap().get(componentId).getNumTasks();
+							}
+							
+							for(Integer taskId = 0;taskId<numTasks;taskId++) {
+								for(String streamId : getLocalCluster()
+										.getTopology().getBoltMap()
+										.get(getComponentId()).groupings.get(componentId).keySet()){
+									
+									upstreamComponents.add(componentId+","+taskId+","+streamId);
+								}
+							}
+						}	
+						//log.debug("waiting for "+upstreamComponents);
+					}
+				
+					upstreamComponents.remove(tuple.getSourceComponent()+","+tuple.getSourceTaskId()+","+tuple.getSourceStreamId());
+					if(upstreamComponents.isEmpty()) {
+						log.debug(getComponentId()+":"+getTaskId()+" closed");
+						try {
+							close();
+						} catch (Exception e) {
+							log.warn("bolt threw exception when closing: "+e.getMessage());
+						}
+						getOutputCollector().emitTerminateTuple(); //TODO: see how to call this safely _after_ calling setClosed()
+						closed=true;
+						
+					}
+					break;
+				}
+				default:
+					break;
 					
 				}
-				break;
-			}
-			default:
-				break;
-				
-			}
-			RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
-		} else {
-			log.error("nothing on the queue!");
+				RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
+			} 
+		} 
+		now=Instant.now().toEpochMilli();
+		if(getOutputCollector().getNextExpire()<=now) {
+			getOutputCollector().expireTupleBundles();
 		}
+		
 	}
 	
 	/**
