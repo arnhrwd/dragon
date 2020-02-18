@@ -13,7 +13,6 @@ import dragon.task.InputCollector;
 import dragon.task.OutputCollector;
 import dragon.task.TopologyContext;
 import dragon.topology.OutputFieldsDeclarer;
-import dragon.tuple.RecycleStation;
 import dragon.tuple.Tuple;
 
 /**
@@ -141,7 +140,6 @@ public class Bolt extends Component {
 					break;
 					
 				}
-				RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
 			} 
 		} 
 		now=Instant.now().toEpochMilli();

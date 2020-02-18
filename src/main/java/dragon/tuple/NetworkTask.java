@@ -15,7 +15,7 @@ import org.apache.logging.log4j.Logger;
  * @author aaron
  *
  */
-public class NetworkTask implements IRecyclable {
+public class NetworkTask {
 	@SuppressWarnings("unused")
 	private static Logger log = LogManager.getLogger(NetworkTask.class);
 	
@@ -104,27 +104,6 @@ public class NetworkTask implements IRecyclable {
 	public String toString() {
 		return tuples.toString();
 	}
-
-	/* (non-Javadoc)
-	 * @see dragon.tuple.IRecyclable#recycle()
-	 */
-	@Override
-	public void recycle() {
-		if(tuples!=null)
-			RecycleStation.getInstance().getTupleRecycler(tuples[0].getFields().getFieldNamesAsString()).crushRecyclables(tuples, 1);
-		tuples=null;
-		taskIds=null;
-		componentId=null;
-		topologyId=null;
-	}
-
-	/* (non-Javadoc)
-	 * @see dragon.tuple.IRecyclable#newRecyclable()
-	 */
-	@Override
-	public IRecyclable newRecyclable() {
-		return new NetworkTask();
-	}
 	
 	/**
 	 * @param out
@@ -167,7 +146,7 @@ public class NetworkTask implements IRecyclable {
 		}
 		String componentId = (String) in.readUTF();
 		String topologyId = (String) in.readUTF();
-		NetworkTask nt = RecycleStation.getInstance().getNetworkTaskRecycler().newObject();
+		NetworkTask nt = new NetworkTask();
 		nt.init(tuples, taskIds, componentId, topologyId);
 		return nt;
 	}

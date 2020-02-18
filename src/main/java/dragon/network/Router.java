@@ -14,7 +14,6 @@ import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.topology.DragonTopology;
 import dragon.tuple.NetworkTask;
-import dragon.tuple.RecycleStation;
 import dragon.utils.NetworkTaskBuffer;
 
 /**
@@ -150,22 +149,17 @@ public class Router {
 										HashSet<Integer> tasks = destinations.get(desc);
 										tasks.add(taskId);
 									}
-//									NetworkTask nt = RecycleStation.getInstance()
-//											.getNetworkTaskRecycler().newObject();
 									for(NodeDescriptor desc : destinations.keySet()) {
 										task.init(task.getTuples(),
 												destinations.get(desc),
 												task.getComponentId(),
 												task.getTopologyId());
-										//log.debug("seding to "+desc+" "+nt);
 										try {
 											comms.sendNetworkTask(desc, task);
 										} catch (DragonCommsException e) {
 											log.error("failed to send network task to ["+desc+"]");
 										}
 									}
-									log.debug("crushing the task");
-									RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 								}
 							} finally {
 								buffer.bufferLock.unlock();
@@ -195,14 +189,6 @@ public class Router {
 						}
 						try {
 							if(localClusters.containsKey(task.getTopologyId())) {
-								/*
-								 * We already have 1 share of network task, and 1 share of tuples.
-								 * The local cluster will consume taskids + 1 share of tuples and 
-								 * will consume 1 share of network task. For safety we need to wrap
-								 * the following two lines in an additional share of each.
-								 */
-								RecycleStation.getInstance().getTupleRecycler(task.getTuples()[0].getFields().getFieldNamesAsString())
-									.shareRecyclables(task.getTuples(),task.getTaskIds().size());
 								final NetworkTaskBuffer ntb = inputQueues.getBuffer(task);
 								final String topologyId = task.getTopologyId();
 								ntb.put(task);
@@ -228,7 +214,6 @@ public class Router {
 	 * @return
 	 */
 	public boolean offer(NetworkTask task) {
-		RecycleStation.getInstance().getNetworkTaskRecycler().shareRecyclable(task, 1);
 		boolean ret = outputQueues.getBuffer(task).offer(task);
 		if(ret){
 			try {
@@ -238,7 +223,6 @@ public class Router {
 			}
 			
 		}
-		RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 		return ret;
 	}
 	

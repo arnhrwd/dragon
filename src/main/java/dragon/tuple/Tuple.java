@@ -15,7 +15,7 @@ import org.apache.logging.log4j.Logger;
  * @author aaron
  *
  */
-public class Tuple implements IRecyclable, Serializable {
+public class Tuple implements Serializable {
 	@SuppressWarnings("unused")
 	private final static Logger log = LogManager.getLogger(Tuple.class);
 	private static final long serialVersionUID = -8616313770722910200L;
@@ -222,26 +222,6 @@ public class Tuple implements IRecyclable, Serializable {
 	public String toString() {
 		return "source("+sourceComponent+":"+sourceStreamId+":"+sourceTaskId+")<"+fields.getValues().toString()+">";
 	}
-
-	/* (non-Javadoc)
-	 * @see dragon.tuple.IRecyclable#recycle()
-	 */
-	@Override
-	public void recycle() {
-		clearValues();
-		sourceComponent=null;
-		sourceStreamId=null;
-		sourceTaskId=null;
-		type=Tuple.Type.APPLICATION;
-	}
-
-	/* (non-Javadoc)
-	 * @see dragon.tuple.IRecyclable#newRecyclable()
-	 */
-	@Override
-	public IRecyclable newRecyclable() {
-		return new Tuple(this.fields);
-	}
 	
 	/**
 	 * @param out
@@ -267,7 +247,7 @@ public class Tuple implements IRecyclable, Serializable {
 		Integer sourceTaskId = in.readInt();
 		Type type = Type.valueOf(in.readUTF());
 		Fields fields = Fields.readFromStream(in);
-		Tuple t = RecycleStation.getInstance().getTupleRecycler(fields.getFieldNamesAsString()).newObject();
+		Tuple t = new Tuple();
 		t.setSourceComponent(sourceComponent);
 		t.setSourceStreamId(sourceStreamId);
 		t.setSourceTaskId(sourceTaskId);

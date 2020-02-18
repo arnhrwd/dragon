@@ -5,10 +5,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,8 +20,6 @@ import dragon.topology.GroupingsSet;
 import dragon.topology.StreamMap;
 import dragon.tuple.Fields;
 import dragon.tuple.NetworkTask;
-import dragon.tuple.RecycleStation;
-import dragon.tuple.Recycler;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 import dragon.utils.ComponentTaskBuffer;
@@ -70,32 +66,6 @@ public class Collector {
 	 * 
 	 */
 	private final HashSet<Integer> doneTaskIds;
-	
-	/*
-	 * Tuple and NetworkTask pools keep an array of
-	 * objects from the recycler, to avoid fine-grain
-	 * recycler calls.
-	 */
-	
-	/**
-	 * 
-	 */
-	private final HashMap<String,Tuple[]> tuplePool;
-	
-	/**
-	 * 
-	 */
-	private HashMap<String,Integer> tuplePoolIndex;
-	
-	/**
-	 * 
-	 */
-	private final NetworkTask[] ntPool;
-	
-	/**
-	 * 
-	 */
-	private int ntPoolIndex;
 	
 	/**
 	 * A bundle of tuples that will be sent when full, or
@@ -175,11 +145,7 @@ public class Collector {
 			}
 			
 		});
-		tuplePool=new HashMap<>();//Tuple[localCluster.getConf().getDragonTupleBundleSize()];
-		tuplePoolIndex=new HashMap<>();
-		ntPool=new NetworkTask[localCluster.getConf().getDragonTupleBundleSize()];
-		ntPoolIndex=0;
-		RecycleStation.getInstance().getNetworkTaskRecycler().fillPool(ntPool);
+		
 		DestComponentMap destComponentMap = localCluster.getTopology().getDestComponentMap(component.getComponentId());
 		int tbs=0;
 		if(destComponentMap!=null) {
@@ -189,32 +155,11 @@ public class Collector {
 					outputQueues.create(destId, streamId);
 					bundleMap.get(destId).put(streamId,new HashMap<>());
 					tbs+=bufSize;
-					Fields fields = component.getOutputFieldsDeclarer().getFields(streamId);
-					if(!tuplePool.containsKey(fields.getFieldNamesAsString())) {
-						log.debug("creating tuple pool for "+fields.getFieldNamesAsString());
-						Tuple[] tuples = new Tuple[localCluster.getConf().getDragonTupleBundleSize()];
-						RecycleStation.getInstance().getTupleRecycler(fields.getFieldNamesAsString()).fillPool(tuples);
-						tuplePool.put(fields.getFieldNamesAsString(),tuples);
-						tuplePoolIndex.put(fields.getFieldNamesAsString(),0);
-					}
 				}
 			}
 		}
 		totalBufferSpace=tbs;
 		doneTaskIds=new HashSet<>();
-	}
-	/**
-	 * Recycle any unused pooled objects.
-	 */
-	public void recyclePools() {
-		for(;ntPoolIndex<ntPool.length;ntPoolIndex++) {
-			RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(ntPool[ntPoolIndex], 1);
-		}
-		for(String name : tuplePool.keySet()) {
-			for(int i=tuplePoolIndex.get(name);i<tuplePool.get(name).length;i++) {
-				RecycleStation.getInstance().getTupleRecycler(name).crushRecyclable(tuplePool.get(name)[i], 1);
-			}
-		}
 	}
 	
 	/**
@@ -323,23 +268,8 @@ public class Collector {
 		localTaskIds.removeAll(remoteTaskIds);
 		
 		if(!remoteTaskIds.isEmpty()){
-			NetworkTask task = ntPool[ntPoolIndex++];
-			if(ntPoolIndex==ntPool.length) {
-				RecycleStation.getInstance().getNetworkTaskRecycler().fillPool(ntPool);
-				ntPoolIndex=0;
-			}
+			NetworkTask task = new NetworkTask();
 			task.init(tuples, remoteTaskIds, componentId, localCluster.getTopologyId());
-			/*
-			 * The Router will consume 1 share of tuples and one share of network task.
-			 * We already have 1 share of tuples, and if we don't have any local destinations
-			 * then 1 additional tuple share will be fine, otherwise we need 1 more since
-			 * the local destinations logic will assume it has 1 share already.
-			 */
-			if(!localTaskIds.isEmpty())
-				RecycleStation.getInstance()
-				.getTupleRecycler(tuples[0].getFields()
-				.getFieldNamesAsString())
-				.shareRecyclables(tuples,1);
 			try {
 				router.put(task);
 			} catch (InterruptedException e) {
@@ -350,15 +280,6 @@ public class Collector {
 		}
 		
 		if(!localTaskIds.isEmpty()){
-			/*
-			 * Bulk share these tuples:
-			 * We have 1 share, which we wont need anymore
-			 * We are are sharing to local task ids + one network task
-			 */
-			RecycleStation.getInstance()
-				.getTupleRecycler(tuples[0].getFields()
-				.getFieldNamesAsString())
-				.shareRecyclables(tuples,localTaskIds.size());
 			/*
 			 * First try to directly send the tuple to the input queue(s).
 			 *
@@ -384,32 +305,17 @@ public class Collector {
 			 * the output scheduler. 
 			 */
 			if(!localTaskIds.isEmpty()) {
-				NetworkTask task = ntPool[ntPoolIndex++];
-				if(ntPoolIndex==ntPool.length) {
-					RecycleStation.getInstance().getNetworkTaskRecycler().fillPool(ntPool);
-					ntPoolIndex=0;
-				}
+				NetworkTask task = new NetworkTask();
 				task.init(tuples, localTaskIds, componentId, localCluster.getTopologyId());
 				try {
 					queue.put(task);
 					if(queue.size()==1)localCluster.outputPending(queue);
 				} catch (InterruptedException e) {
 					log.info("interrupted");
-					RecycleStation.getInstance()
-					.getTupleRecycler(tuples[0].getFields()
-					.getFieldNamesAsString())
-					.crushRecyclables(tuples,localTaskIds.size()+1);
 					return;
 				}
 				
-			} else {
-				// we didn't need to send a network task, so remove the tuple ref's we
-				// created for that
-				RecycleStation.getInstance()
-				.getTupleRecycler(tuples[0].getFields()
-				.getFieldNamesAsString())
-				.crushRecyclables(tuples,1);
-			}
+			} 
 		} 
 	}
 	
@@ -437,7 +343,7 @@ public class Collector {
 			String componentId,
 			String streamId) {
 		HashSet<Integer> taskIdSet=new HashSet<Integer>(taskIds);
-		//transmit(new Tuple[] {tuple,null},taskIdSet,componentId,streamId);
+		//transmit(new Tuple[] {tuple},taskIdSet,componentId,streamId);
 		TupleBundle tb;
 		if(!bundleMap.get(componentId).get(streamId).containsKey(taskIdSet)) {
 			tb=new TupleBundle(componentId,streamId,taskIdSet);
@@ -475,17 +381,8 @@ public class Collector {
 					"] does not match the number of fields ["+
 					fields.getFieldNamesAsString()+"]");
 		}
-		final String fieldsName = fields.getFieldNamesAsString();
-		final int index=tuplePoolIndex.get(fieldsName);
-		final Tuple tuple = tuplePool.get(fieldsName)[index];
-		if(index+1==tuplePool.get(fieldsName).length) {
-			RecycleStation.getInstance()
-			.getTupleRecycler(fieldsName)
-			.fillPool(tuplePool.get(fieldsName));
-			tuplePoolIndex.put(fieldsName,0);
-		} else {
-			tuplePoolIndex.put(fieldsName,index+1);
-		}
+		Tuple tuple = new Tuple();
+		tuple.setFields(fields.copy());
 		tuple.setValues(values);
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
@@ -593,9 +490,7 @@ public class Collector {
 				// in this special case, we also use the grouping defined on the system stream, since 
 				// that is a single "all group".
 				GroupingsSet groupingsSet = streamMap.get(Constants.SYSTEM_STREAM_ID);
-				Tuple tuple = RecycleStation.getInstance()
-						.getTupleRecycler(new Fields(Constants.SYSTEM_TUPLE_FIELDS).getFieldNamesAsString())
-						.newObject();
+				Tuple tuple = new Tuple();
 				tuple.setSourceComponent(component.getComponentId());
 				tuple.setSourceStreamId(streamId);
 				tuple.setSourceTaskId(component.getTaskId());
@@ -607,7 +502,7 @@ public class Collector {
 							componentId,
 							streamId); 
 				}
-				RecycleStation.getInstance().getTupleRecycler(tuple.getFields().getFieldNamesAsString()).crushRecyclable(tuple, 1);
+				
 			}
 		}
 	}

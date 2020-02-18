@@ -31,7 +31,6 @@ import dragon.topology.base.Component;
 import dragon.topology.base.Spout;
 import dragon.tuple.Fields;
 import dragon.tuple.NetworkTask;
-import dragon.tuple.RecycleStation;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
 import dragon.utils.CircularBlockingQueue;
@@ -330,7 +329,6 @@ public class LocalCluster {
 			e.printStackTrace();
 		}
 		lconf.putAll(conf);
-		RecycleStation.instanceInit(lconf);
 		try {
 			submitTopology(topologyName, lconf, dragonTopology, true);
 		} catch (DragonRequiresClonableException e) {
@@ -363,8 +361,6 @@ public class LocalCluster {
 			spoutOpenList = new ArrayList<SpoutOpen>();
 			boltPrepareList = new ArrayList<BoltPrepare>();
 		}
-		
-		RecycleStation.getInstance().createTupleRecycler(new Tuple(tickFields));
 		
 		int totalOutputsBufferSize=0;
 		int totalInputsBufferSize=0;
@@ -519,7 +515,6 @@ public class LocalCluster {
 								break;
 							
 						}
-						thisComponent.getOutputCollector().recyclePools();
 						log.info("shutting down");
 					}
 				};
@@ -553,7 +548,6 @@ public class LocalCluster {
 							}
 							thisComponent.run();
 						}
-						thisComponent.getOutputCollector().recyclePools();
 						log.info("shutting down");
 					}
 				};
@@ -781,17 +775,15 @@ public class LocalCluster {
 	 * @param boltId
 	 */
 	private void issueTickTuple(String boltId) {
-		Tuple tuple=RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).newObject();;
+		Tuple tuple=new Tuple();
 		tuple.setValues(new Values("0"));
 		tuple.setSourceComponent(Constants.SYSTEM_COMPONENT_ID);
 		tuple.setSourceStreamId(Constants.SYSTEM_TICK_STREAM_ID);
 		for(Bolt bolt : bolts.get(boltId).values()) {
 			synchronized(bolt) {
-				RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).shareRecyclable(tuple, 1);
 				bolt.setTickTuple(tuple);
 			}
 		}
-		RecycleStation.getInstance().getTupleRecycler(tickFields.getFieldNamesAsString()).crushRecyclable(tuple, 1);
 	}
 	
 	/**
@@ -841,6 +833,7 @@ public class LocalCluster {
 						Spout spout = component.get(taskId);
 						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] emitting terminate tuple");
 						spout.getOutputCollector().emitTerminateTuple();
+						spout.getOutputCollector().expireAllTupleBundles();
 					}
 				}
 				
@@ -976,7 +969,6 @@ public class LocalCluster {
 							networkTask.getTaskIds().removeAll(doneTaskIds);
 							if(networkTask.getTaskIds().isEmpty()) {
 								queue.poll();
-								RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(networkTask, 1);
 								networkTask = (NetworkTask) queue.peek();
 							} else {
 								outputPending(queue);

@@ -300,15 +300,15 @@ public class TcpComms implements IComms {
 										NetworkTask message = (NetworkTask) NetworkTask.readFromStream(in);
 										incomingTaskQueue.put(message);
 									} catch (IOException e) {
-										log.error("ioexception on task stream from +["+desc+"]: "+e.toString());
+										log.error("ioexception on task stream from ["+desc+"]: "+e.toString());
 										socketManager.delete("task",desc);
 										break;
 									} catch (ClassNotFoundException e) {
-										log.error("incorrect class transmitted on task stream from +["+desc+"]");
+										log.error("incorrect class transmitted on task stream from ["+desc+"]");
 										socketManager.close("task",desc);
 										break;
 									} catch (InterruptedException e) {
-										log.warn("interrupted while reading node stream from +["+desc+"]");
+										log.warn("interrupted while reading node stream from ["+desc+"]");
 										socketManager.close("node",desc);
 									}
 								}

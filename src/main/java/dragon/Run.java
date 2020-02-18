@@ -33,7 +33,6 @@ import org.yaml.snakeyaml.Yaml;
 
 import dragon.network.Node;
 import dragon.process.ProcessManager;
-import dragon.tuple.RecycleStation;
 
 /**
  * Main entry point for Dragon nodes. Parses the command line and 
@@ -762,11 +761,6 @@ public class Run {
              * log if it needs to.
              */
     		conf = getConf(cmd,exec,true);
-    		/*
-    		 * The recycle station needs to be initialized even if we're just
-    		 * using the comms layer as a client.
-    		 */
-            RecycleStation.instanceInit(conf); 
             
             switch(exec) {
             case "":
