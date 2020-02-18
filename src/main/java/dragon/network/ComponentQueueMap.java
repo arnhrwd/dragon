@@ -70,4 +70,15 @@ public class ComponentQueueMap extends HashMap<String,StreamQueueMap>{
 		}
 		
 	}
+	
+	/**
+	 * 
+	 * @param task
+	 * @return
+	 */
+	public int size(NetworkTask task) {
+		String componentId = task.getComponentId();
+		StreamQueueMap streamQueueMap = get(componentId);
+		return streamQueueMap.size(task);
+	}
 }

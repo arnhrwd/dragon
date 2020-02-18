@@ -132,7 +132,7 @@ public class NetworkTask implements IRecyclable {
 	 */
 	public void sendToStream(ObjectOutputStream out) throws IOException {
 		int size=0;
-		for(;tuples[size]!=null&&size<tuples.length;size++); // TODO: binary search :-)
+		for(;size<tuples.length&&tuples[size]!=null;size++);
 		out.writeInt(size);
 		for(int i=0;i<size;i++) {
 			tuples[i].sendToStream(out);

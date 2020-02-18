@@ -68,4 +68,15 @@ public class StreamQueueMap extends HashMap<String,NetworkTaskBuffer>{
 			remove(streamId);
 		}
 	}
+
+	/**
+	 * 
+	 * @param task
+	 * @return
+	 */
+	public int size(NetworkTask task) {
+		String streamId = task.getTuples()[0].getSourceStreamId();
+		NetworkTaskBuffer buffer=get(streamId);
+		return buffer.size();
+	}
 }

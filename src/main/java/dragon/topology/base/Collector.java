@@ -319,6 +319,9 @@ public class Collector {
 				remoteTaskIds.add(taskId);
 			}
 		}
+		HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
+		localTaskIds.removeAll(remoteTaskIds);
+		
 		if(!remoteTaskIds.isEmpty()){
 			NetworkTask task = ntPool[ntPoolIndex++];
 			if(ntPoolIndex==ntPool.length) {
@@ -326,6 +329,17 @@ public class Collector {
 				ntPoolIndex=0;
 			}
 			task.init(tuples, remoteTaskIds, componentId, localCluster.getTopologyId());
+			/*
+			 * The Router will consume 1 share of tuples and one share of network task.
+			 * We already have 1 share of tuples, and if we don't have any local destinations
+			 * then 1 additional tuple share will be fine, otherwise we need 1 more since
+			 * the local destinations logic will assume it has 1 share already.
+			 */
+			if(!localTaskIds.isEmpty())
+				RecycleStation.getInstance()
+				.getTupleRecycler(tuples[0].getFields()
+				.getFieldNamesAsString())
+				.shareRecyclables(tuples,1);
 			try {
 				router.put(task);
 			} catch (InterruptedException e) {
@@ -334,19 +348,17 @@ public class Collector {
 			}
 			
 		}
-		HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
 		
-		localTaskIds.removeAll(remoteTaskIds);
-		/*
-		 * Bulk share these tuples:
-		 * We have 1 ref, which we wont need anymore
-		 * We are are sharing to local task ids + one network task
-		 */
-		RecycleStation.getInstance()
-			.getTupleRecycler(tuples[0].getFields()
-			.getFieldNamesAsString())
-			.shareRecyclables(tuples,localTaskIds.size());
 		if(!localTaskIds.isEmpty()){
+			/*
+			 * Bulk share these tuples:
+			 * We have 1 share, which we wont need anymore
+			 * We are are sharing to local task ids + one network task
+			 */
+			RecycleStation.getInstance()
+				.getTupleRecycler(tuples[0].getFields()
+				.getFieldNamesAsString())
+				.shareRecyclables(tuples,localTaskIds.size());
 			/*
 			 * First try to directly send the tuple to the input queue(s).
 			 *
@@ -398,7 +410,7 @@ public class Collector {
 				.getFieldNamesAsString())
 				.crushRecyclables(tuples,1);
 			}
-		}
+		} 
 	}
 	
 	/**

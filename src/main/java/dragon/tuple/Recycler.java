@@ -24,7 +24,7 @@ public class Recycler<T> {
 	/**
 	 * 
 	 */
-	private int expansion;
+	private volatile int expansion;
 	
 	/**
 	 * 
@@ -39,7 +39,7 @@ public class Recycler<T> {
 	/**
 	 * 
 	 */
-	private int capacity;
+	private volatile int capacity;
 	
 	/**
 	 * 
@@ -49,7 +49,7 @@ public class Recycler<T> {
 	/**
 	 * 
 	 */
-	private int stackIndex;
+	private volatile int stackIndex;
 	
 	/**
 	 * 
@@ -70,8 +70,8 @@ public class Recycler<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public Recycler(T obj,int capacity,int expansion, double compact) {
-		objects = new HashMap<Integer,AtomicReference<T>>(capacity);
-		refCount = new HashMap<T, AtomicInteger>(capacity);
+		objects = Collections.synchronizedMap(new HashMap<Integer,AtomicReference<T>>(capacity));
+		refCount = Collections.synchronizedMap(new HashMap<T, AtomicInteger>(capacity));
 		this.expansion=expansion;
 		this.obj=obj;
 		this.compact=compact;
@@ -171,6 +171,10 @@ public class Recycler<T> {
 		refCount.get(t).addAndGet(n);
 	}
 	
+	public synchronized void printShares(T t) {
+		log.debug("shares="+refCount.get(t).get());
+	}
+	
 	/**
 	 * Increase the reference count of all t up
 	 * to the first null by n.
@@ -183,6 +187,15 @@ public class Recycler<T> {
 			else break;
 		}
 	}
+	
+	public synchronized void printShares(T[] t) {
+		String p="";
+		for(int i=0;i<t.length;i++) {
+			if(t[i]!=null) p=p+refCount.get(t[i]).get()+",";
+			else break;
+		}
+		log.debug("shareds="+p);
+	}
 
 	/**
 	 * Reduce the reference count of t by n and
@@ -192,6 +205,10 @@ public class Recycler<T> {
 	 */
 	public synchronized void crushRecyclable(T t,int n) {
 		long c = refCount.get(t).addAndGet(-n);
+		if(c<0) {
+			System.out.println("ERROR: count is less than 0");
+			System.exit(-1);
+		}
 		if(c==0) {
 			((IRecyclable)t).recycle();
 			//lock.lock();
@@ -216,6 +233,10 @@ public class Recycler<T> {
 		for(int i=0;i<t.length;i++) {
 			if(t[i]!=null) {
 				c = refCount.get(t[i]).addAndGet(-n);
+				if(c<0) {
+					log.error("ERROR: count is less than 0");
+					System.exit(-1);
+				}
 				if(c==0) hit=true;
 			} else break;
 		}

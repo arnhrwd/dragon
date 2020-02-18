@@ -36,6 +36,17 @@ public class TopologyQueueMap extends HashMap<String,ComponentQueueMap> {
 	}
 	
 	/**
+	 * 
+	 * @param task
+	 * @return
+	 */
+	public int size(NetworkTask task) {
+		String topologyId = task.getTopologyId();
+		ComponentQueueMap componentQueueMap = get(topologyId);
+		return componentQueueMap.size(task);
+	}
+	
+	/**
 	 * @param task
 	 * @return
 	 */

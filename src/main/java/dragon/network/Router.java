@@ -139,6 +139,9 @@ public class Router {
 											.getEmbedding()
 											.get(task.getComponentId());
 									destinations.clear();
+									/*
+									 * Work out which task ids go to which machines.
+									 */
 									for(Integer taskId : taskIds) {
 										NodeDescriptor desc = taskMap.get(taskId);
 										if(!destinations.containsKey(desc)) {
@@ -147,24 +150,21 @@ public class Router {
 										HashSet<Integer> tasks = destinations.get(desc);
 										tasks.add(taskId);
 									}
+//									NetworkTask nt = RecycleStation.getInstance()
+//											.getNetworkTaskRecycler().newObject();
 									for(NodeDescriptor desc : destinations.keySet()) {
-										NetworkTask nt = RecycleStation.getInstance()
-												.getNetworkTaskRecycler().newObject();
-										nt.init(task.getTuples(),
+										task.init(task.getTuples(),
 												destinations.get(desc),
 												task.getComponentId(),
 												task.getTopologyId());
-										RecycleStation.getInstance()
-										.getTupleRecycler(task.getTuples()[0].getFields()
-												.getFieldNamesAsString()).shareRecyclables(task.getTuples(),1);
 										//log.debug("seding to "+desc+" "+nt);
 										try {
-											comms.sendNetworkTask(desc, nt);
+											comms.sendNetworkTask(desc, task);
 										} catch (DragonCommsException e) {
 											log.error("failed to send network task to ["+desc+"]");
 										}
-										RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(nt, 1);
 									}
+									log.debug("crushing the task");
 									RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
 								}
 							} finally {
@@ -177,7 +177,7 @@ public class Router {
 					log.info("starting up");
 				}
 			});
-			outgoingThreads.get(i).setName("router outgoing "+i);
+			outgoingThreads.get(i).setName("router out "+i);
 			outgoingThreads.get(i).start();
 		}
 		for(int i=0;i<(Integer)conf.getDragonRouterInputThreads();i++) {
@@ -195,10 +195,18 @@ public class Router {
 						}
 						try {
 							if(localClusters.containsKey(task.getTopologyId())) {
-								RecycleStation.getInstance().getNetworkTaskRecycler().shareRecyclable(task, 1);
-								inputQueues.put(task);
-								localClusters.get(task.getTopologyId()).outputPending(inputQueues.getBuffer(task));
-								RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
+								/*
+								 * We already have 1 share of network task, and 1 share of tuples.
+								 * The local cluster will consume taskids + 1 share of tuples and 
+								 * will consume 1 share of network task. For safety we need to wrap
+								 * the following two lines in an additional share of each.
+								 */
+								RecycleStation.getInstance().getTupleRecycler(task.getTuples()[0].getFields().getFieldNamesAsString())
+									.shareRecyclables(task.getTuples(),task.getTaskIds().size());
+								final NetworkTaskBuffer ntb = inputQueues.getBuffer(task);
+								final String topologyId = task.getTopologyId();
+								ntb.put(task);
+								if(ntb.size()==1) localClusters.get(topologyId).outputPending(ntb);
 							} else {
 								log.error("received a network task for a non-existant topology ["+task.getTopologyId()+"]");
 							}
@@ -210,7 +218,7 @@ public class Router {
 					log.info("shutting down");
 				}
 			});
-			incomingThreads.get(i).setName("router incoming "+i);
+			incomingThreads.get(i).setName("router in "+i);
 			incomingThreads.get(i).start();
 		}
 	}
@@ -242,10 +250,9 @@ public class Router {
 	public void put(NetworkTask task) throws InterruptedException {
 		
 		//log.debug("putting on queue "+task.getTopologyId()+","+task.getTuple().getSourceStreamId());
-		RecycleStation.getInstance().getNetworkTaskRecycler().shareRecyclable(task, 1);
-		outputQueues.getBuffer(task).put(task);
-		outputsPending.put(outputQueues.getBuffer(task));
-		RecycleStation.getInstance().getNetworkTaskRecycler().crushRecyclable(task, 1);
+		final NetworkTaskBuffer ntb = outputQueues.getBuffer(task);
+		ntb.put(task);
+		outputsPending.put(ntb);
 	}
 
 	/**
