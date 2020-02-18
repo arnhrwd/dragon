@@ -492,7 +492,7 @@ public class LocalCluster {
 					public void run(){
 						log.info("starting up");
 						Component thisComponent=component;
-						while(!isInterrupted()){
+						while(!isInterrupted()&&!component.isClosed()){
 							if(state==LocalCluster.State.HALTED) {
 								log.info("halted");
 								try {
@@ -1040,6 +1040,7 @@ public class LocalCluster {
 		int index=0;
 		for(HashMap<Integer,Spout> spouts : spouts.values()) {
 			for(Spout component : spouts.values()) {
+				component.setClosed();
 				componentExecutorThreads.get(index).interrupt();
 				try {
 					component.close();
@@ -1047,7 +1048,6 @@ public class LocalCluster {
 					log.warn("exception thrown by spout when closing: "+e.getMessage());
 				}
 				log.debug(component.getComponentId()+":"+component.getTaskId()+" closed");
-				component.setClosed();
 				index++;
 			}
 		}

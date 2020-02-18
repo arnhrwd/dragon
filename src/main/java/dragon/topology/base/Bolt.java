@@ -131,6 +131,7 @@ public class Bolt extends Component {
 							log.warn("bolt threw exception when closing: "+e.getMessage());
 						}
 						getOutputCollector().emitTerminateTuple(); //TODO: see how to call this safely _after_ calling setClosed()
+						getOutputCollector().expireAllTupleBundles();
 						closed=true;
 						
 					}

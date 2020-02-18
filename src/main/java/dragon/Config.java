@@ -176,38 +176,6 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_EMBEDDING_CUSTOM_FILE="dragon.embedding.custom.file";
 	
 	/**
-	 * number of tuple objects to allocate in advance
-	 */
-	public static final String DRAGON_RECYCLER_TUPLE_CAPACITY="dragon.recycler.tuple.capacity";
-	
-	/**
-	 * number of tuple objects to increase the tuple pool by 
-	 * when/if the tuple pool capacity is reached
-	 */
-	public static final String DRAGON_RECYCLER_TUPLE_EXPANSION="dragon.recycler.tuple.expansion";
-	
-	/**
-	 * fraction of capacity the tuple pool size must reach to trigger compaction of the pool
-	 */
-	public static final String DRAGON_RECYCLER_TUPLE_COMPACT="dragon.recycler.tuple.compact";
-	
-	/**
-	 * number of network task objects to allocate in advance
-	 */
-	public static final String DRAGON_RECYCLER_TASK_CAPACITY="dragon.recycler.task.capacity";
-	
-	/**
-	 * number of network task objects to increase the network task pool by 
-	 * when/if the tuple pool capacity is reached
-	 */
-	public static final String DRAGON_RECYCLER_TASK_EXPANSION="dragon.recycler.task.expansion";
-	
-	/**
-	 * fraction of capacity the network task pool size must reach to trigger compaction of the pool
-	 */
-	public static final String DRAGON_RECYCLER_TASK_COMPACT="dragon.recycler.task.compact";
-	
-	/**
 	 * (advanced) the number of network tasks transmitted over object stream before reseting
 	 *  the object stream handle table
 	 */
@@ -420,12 +388,6 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_NETWORK_HOSTS,new ArrayList<HashMap<String,?>>());
 		put(DRAGON_EMBEDDING_ALGORITHM, "dragon.topology.RoundRobinEmbedding");
 		put(DRAGON_EMBEDDING_CUSTOM_FILE, "embedding.yaml");
-		put(DRAGON_RECYCLER_TUPLE_CAPACITY,1024);
-		put(DRAGON_RECYCLER_TUPLE_EXPANSION,1024);
-		put(DRAGON_RECYCLER_TUPLE_COMPACT,0.20);
-		put(DRAGON_RECYCLER_TASK_CAPACITY,1024);
-		put(DRAGON_RECYCLER_TASK_EXPANSION,1024);
-		put(DRAGON_RECYCLER_TASK_COMPACT,0.20);
 		put(DRAGON_COMMS_RESET_COUNT,128);
 		put(DRAGON_COMMS_INCOMING_BUFFER_SIZE,1024);
 		put(DRAGON_FAULTS_COMPONENT_TOLERANCE,3);
@@ -454,12 +416,6 @@ public class Config extends HashMap<String, Object> {
 		remove(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE);
 		remove(DRAGON_METRICS_ENABLED);
 		remove(DRAGON_METRICS_SAMPLE_PERIOD_MS);
-		remove(DRAGON_RECYCLER_TUPLE_CAPACITY);
-		remove(DRAGON_RECYCLER_TUPLE_EXPANSION);
-		remove(DRAGON_RECYCLER_TUPLE_COMPACT);
-		remove(DRAGON_RECYCLER_TASK_CAPACITY);
-		remove(DRAGON_RECYCLER_TASK_EXPANSION);
-		remove(DRAGON_RECYCLER_TASK_COMPACT);
 	}
 	
 	//
@@ -694,54 +650,6 @@ public class Config extends HashMap<String, Object> {
 	 */
 	public String getDragonEmbeddingCustomFile() {
 		return (String)get(DRAGON_EMBEDDING_CUSTOM_FILE);
-	}
-	
-	/**
-	 * 
-	 * @return the recycler tuple capacity.
-	 */
-	public int getDragonRecyclerTupleCapacity() {
-		return (Integer)get(DRAGON_RECYCLER_TUPLE_CAPACITY);
-	}
-	
-	/**
-	 * 
-	 * @return the recycler tuple expansion size.
-	 */
-	public int getDragonRecyclerTupleExpansion() {
-		return (Integer)get(DRAGON_RECYCLER_TUPLE_EXPANSION);
-	}
-	
-	/**
-	 * 
-	 * @return the recycler tuple compact fraction.
-	 */
-	public double getDragonRecyclerTupleCompact() {
-		return (Double)get(DRAGON_RECYCLER_TUPLE_COMPACT);
-	}
-	
-	/**
-	 * 
-	 * @return the recycler task capacity.
-	 */
-	public int getDragonRecyclerTaskCapacity() {
-		return (Integer)get(DRAGON_RECYCLER_TASK_CAPACITY);
-	}
-	
-	/**
-	 * 
-	 * @return the recycler task expansion size.
-	 */
-	public int getDragonRecyclerTaskExpansion() {
-		return (Integer)get(DRAGON_RECYCLER_TASK_EXPANSION);
-	}
-	
-	/**
-	 * 
-	 * @return the recycler task compact fraction.
-	 */
-	public double getDragonRecyclerTaskCompact() {
-		return (Double)get(DRAGON_RECYCLER_TASK_COMPACT);
 	}
 	
 	/**

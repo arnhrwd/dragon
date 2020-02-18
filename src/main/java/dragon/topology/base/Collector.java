@@ -156,6 +156,7 @@ public class Collector {
 					bundleMap.get(destId).put(streamId,new HashMap<>());
 					tbs+=bufSize;
 				}
+				
 			}
 		}
 		totalBufferSpace=tbs;
@@ -229,6 +230,8 @@ public class Collector {
 		if(bundleQueue.size()>0) {
 			TupleBundle tb = bundleQueue.peek();
 			nextExpire=tb.expireTime;
+		} else {
+			nextExpire = now+linger_ms;
 		}
 	}
 	
@@ -257,7 +260,6 @@ public class Collector {
 			HashSet<Integer> taskIds,
 			String componentId,
 			String streamId) {
-		
 		HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
 		for(Integer taskId : taskIds){
 			if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){

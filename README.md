@@ -204,15 +204,6 @@ Parameters concerning metrics:
 - `dragon.metrics.sample.history: 1` **Integer** - how much sample history to record
 - `dragon.metrics.sample.period.ms: 60000` **Integer** - the sample period in milliseconds
 
-Parameters concerning object recycling (advanced):
-
-- `dragon.recycler.tuple.capacity: 1024` **Integer** - number of tuple objects to allocate in advance
-- `dragon.recycler.tuple.expansion: 1024` **Integer** - number of tuple objects to increase the tuple pool by when/if the tuple pool capacity is reached
-- `dragon.recycler.tuple.compact: 0.2` **Double** - fraction of capacity the tuple pool size must reach to trigger compaction of the pool
-- `dragon.recycler.task.capacity: 1024` **Integer** - number of network task objects to allocate in advance
-- `dragon.recycler.task.expansion: 1024` **Integer** - number of network task objects to increase the network task pool by when/if the tuple pool capacity is reached
-- `dragon.recycler.task.compact: 0.2` **Double** - fraction of capacity the network task pool size must reach to trigger compaction of the pool
-
 Parameters concerning fault tolerance:
 
 - `dragon.faults.component.tolerance: 3` **Integer** - number of faults (exceptions caught) for any component after which the topology is halted 
