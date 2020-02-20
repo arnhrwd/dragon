@@ -68,7 +68,6 @@ public class LocalCluster {
 	 * that are waiting to be serviced. One reference to such a queue is placed
 	 * on outputsPending for each NetworkTask it contains.
 	 */
-	//MpmcArrayQueue<NetworkTaskBuffer>
 	private CircularBlockingQueue<NetworkTaskBuffer>[] outputsPending;
 
 	/**
@@ -863,13 +862,7 @@ public class LocalCluster {
 				}
 				
 				// interrupt all the threads 
-				log.debug("interrupting all threads");
-				for(int i=0;i<componentExecutorThreads.size();i++) {
-					componentExecutorThreads.get(i).interrupt();
-				}
-				for(int i=0;i<networkExecutorThreads.size();i++) {
-					networkExecutorThreads.get(i).interrupt();
-				}
+				interruptAll();
 				
 				try {
 					for(Thread thread : componentExecutorThreads) {
@@ -881,9 +874,6 @@ public class LocalCluster {
 				} catch (InterruptedException e) {
 					log.warn("threads may not have terminated");
 				}
-				
-				tickThread.interrupt();
-				tickCounterThread.interrupt();
 				
 				try {
 					tickThread.join();
@@ -990,12 +980,8 @@ public class LocalCluster {
 	 * @param queue the reference of the queue to process
 	 */
 	public void outputPending(final NetworkTaskBuffer queue) {
-//		try {
-			outputsPending[queue.hashCode()%networkExecutorThreads.size()].offer(queue);
-			//log.debug("outputPending pending "+outputsPending.size());
-//		} catch (InterruptedException e) {
-//			log.error("interrupted while adding output pending");
-//		}
+		// there is always enough space on this queue
+		outputsPending[queue.hashCode()%networkExecutorThreads.size()].offer(queue);
 	}
 	
 	/**
@@ -1079,6 +1065,21 @@ public class LocalCluster {
 	}
 	
 	/**
+	 * Interrupt all threads.
+	 */
+	public void interruptAll() {
+		log.debug("interrupting all threads");
+		for(int i=0;i<componentExecutorThreads.size();i++) {
+			componentExecutorThreads.get(i).interrupt();
+		}
+		for(int i=0;i<networkExecutorThreads.size();i++) {
+			networkExecutorThreads.get(i).interrupt();
+		}
+		tickThread.interrupt();
+		tickCounterThread.interrupt();
+	}
+	
+	/**
 	 * 
 	 * @return the bolts that running on this local cluster.
 	 */
@@ -1147,9 +1148,12 @@ public class LocalCluster {
 			}
 		}
 		if(componentErrors.get(component).size()>tolerance) {
-			log.fatal("component ["+component.getComponentId()+"] has failed more than ["+tolerance+"] times");
-			if(state==LocalCluster.State.RUNNING && node!=null) {
-				node.signalHaltTopology(topologyName);
+			log.fatal("component ["+component.getComponentId()+":"+component.getTaskId()
+				+"] has failed more than ["+tolerance+"] times");
+			if(node!=null) {
+				if(state==LocalCluster.State.RUNNING) {
+					node.signalHaltTopology(topologyName);
+				}
 			} else {
 				System.exit(-1);
 			}

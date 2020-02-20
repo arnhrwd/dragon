@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import dragon.ComponentError;
+import dragon.metrics.Sample;
 import dragon.network.messages.node.NodeMessage;
 
 /**
@@ -30,16 +31,23 @@ public class TopoInfoNMsg extends NodeMessage {
 	public final HashMap<String,List<String>> components;
 	
 	/**
+	 * 
+	 */
+	public final HashMap<String,Sample> metrics;
+	
+	/**
 	 * @param state
 	 * @param errors
 	 * @param components
 	 */
 	public TopoInfoNMsg(HashMap<String,String> state,
 			HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors,
-			HashMap<String,List<String>> components) {
+			HashMap<String,List<String>> components,
+			HashMap<String,Sample> metrics) {
 		super(NodeMessage.NodeMessageType.TOPOLOGY_INFORMATION);
 		this.state=state;
 		this.errors=errors;
 		this.components=components;
+		this.metrics=metrics;
 	}
 }

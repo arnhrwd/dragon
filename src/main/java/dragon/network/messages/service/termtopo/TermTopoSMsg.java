@@ -13,13 +13,19 @@ public class TermTopoSMsg extends ServiceMessage {
 	 * 
 	 */
 	public String topologyId;
+	
+	/**
+	 * 
+	 */
+	public boolean purge;
 
 	/**
 	 * @param topologyId
 	 */
-	public TermTopoSMsg(String topologyId) {
+	public TermTopoSMsg(String topologyId,boolean purge) {
 		super(ServiceMessage.ServiceMessageType.TERMINATE_TOPOLOGY);
 		this.topologyId = topologyId;
+		this.purge=purge;
 	}
 
 }

@@ -21,13 +21,19 @@ public class RemoveTopoGroupOp extends GroupOp {
 	public final String topologyId;
 	
 	/**
+	 * 
+	 */
+	public final boolean purge;
+	
+	/**
 	 * @param topologyId
 	 * @param success
 	 * @param failure
 	 */
-	public RemoveTopoGroupOp(String topologyId,IOpSuccess success,IOpFailure failure) {
+	public RemoveTopoGroupOp(String topologyId,boolean purge,IOpSuccess success,IOpFailure failure) {
 		super(success,failure);
 		this.topologyId=topologyId;
+		this.purge=purge;
 	}
 	
 	/* (non-Javadoc)
@@ -35,7 +41,7 @@ public class RemoveTopoGroupOp extends GroupOp {
 	 */
 	@Override
 	protected NodeMessage initiateNodeMessage(NodeDescriptor desc) {
-		return new RemoveTopoNMsg(topologyId);
+		return new RemoveTopoNMsg(topologyId,purge);
 	}
 	
 	/* (non-Javadoc)

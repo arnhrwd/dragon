@@ -13,6 +13,7 @@ import dragon.LocalCluster;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.topology.DragonTopology;
+import dragon.topology.base.DragonEmitRuntimeException;
 import dragon.tuple.NetworkTask;
 import dragon.utils.NetworkTaskBuffer;
 
@@ -95,12 +96,10 @@ public class Router {
 		incomingThreads = new ArrayList<>();
 		
 		// A circular blocking queue is not so applicable here because the input and output queues
-		// change in response to topologies being started and stopped. TODO: write a linked 
-		// blocking queue that reuses reference objects from a pool, rather than new'ing and
-		// dereferencing them.
+		// change in response to topologies being started and stopped.
 		outputsPending=new LinkedBlockingQueue<>();
 		
-		// Startup the thread
+		// Startup the threads
 		runExecutors();
 	}
 	
@@ -132,6 +131,11 @@ public class Router {
 								NetworkTask task = buffer.poll();
 								if(task!=null){
 									HashSet<Integer> taskIds=task.getTaskIds();
+									/*
+									 * the following will fail with a null pointer exception
+									 * if the topology was abruptly removed just recently by
+									 * another thread, e.g. purged by the user
+									 */
 									HashMap<Integer,NodeDescriptor> taskMap = localClusters
 											.get(task.getTopologyId())
 											.getTopology()
@@ -161,6 +165,8 @@ public class Router {
 										}
 									}
 								}
+							} catch(NullPointerException e){
+								log.error("topology no longer exists, dropping network task");
 							} finally {
 								buffer.bufferLock.unlock();
 							}
@@ -168,7 +174,7 @@ public class Router {
 							log.info("interrupted while taking from queue");
 						}
 					}
-					log.info("starting up");
+					log.info("shutting down");
 				}
 			});
 			outgoingThreads.get(i).setName("router out "+i);
@@ -188,15 +194,13 @@ public class Router {
 							break;
 						}
 						try {
-							if(localClusters.containsKey(task.getTopologyId())) {
-								final NetworkTaskBuffer ntb = inputQueues.getBuffer(task);
-								final String topologyId = task.getTopologyId();
-								ntb.put(task);
-								if(ntb.size()==1) localClusters.get(topologyId).outputPending(ntb);
-							} else {
-								log.error("received a network task for a non-existant topology ["+task.getTopologyId()+"]");
-							}
-						} catch (InterruptedException e) {
+							final NetworkTaskBuffer ntb = inputQueues.getBuffer(task);
+							final String topologyId = task.getTopologyId();
+							ntb.put(task);
+							if(ntb.size()==1) localClusters.get(topologyId).outputPending(ntb);
+						} catch(NullPointerException e) {
+							log.error("received a network task for a non-existant topology ["+task.getTopologyId()+"]");
+						} catch(InterruptedException e) {
 							log.info("interrupted");
 							break;
 						}
@@ -207,36 +211,6 @@ public class Router {
 			incomingThreads.get(i).setName("router in "+i);
 			incomingThreads.get(i).start();
 		}
-	}
-	
-	/**
-	 * @param task
-	 * @return
-	 */
-	public boolean offer(NetworkTask task) {
-		boolean ret = outputQueues.getBuffer(task).offer(task);
-		if(ret){
-			try {
-				outputsPending.put(outputQueues.getBuffer(task));
-			} catch (InterruptedException e) {
-				log.error("interrupted while waiting to put on outputs pending");
-			}
-			
-		}
-		return ret;
-	}
-	
-	
-	/**
-	 * @param task
-	 * @throws InterruptedException
-	 */
-	public void put(NetworkTask task) throws InterruptedException {
-		
-		//log.debug("putting on queue "+task.getTopologyId()+","+task.getTuple().getSourceStreamId());
-		final NetworkTaskBuffer ntb = outputQueues.getBuffer(task);
-		ntb.put(task);
-		outputsPending.put(ntb);
 	}
 
 	/**
@@ -297,6 +271,30 @@ public class Router {
 					}
 				}
 			}
+		}
+	}
+	
+	/*
+	 * The following function is called directly by the local cluster object,
+	 * more specifically by the Collector class when emitting.
+	 */
+	
+	
+	/**
+	 * @param task
+	 * @throws InterruptedException
+	 */
+	public void put(NetworkTask task) throws InterruptedException {
+		try {
+			final NetworkTaskBuffer ntb = outputQueues.getBuffer(task);
+			ntb.put(task);
+			outputsPending.put(ntb);
+		} catch (NullPointerException e) {
+			/* Probably the topology queue no longer exists, which might
+			 * happen if the topology is being purged rather than gracefully
+			 * shutting down.
+			 */
+			throw new DragonEmitRuntimeException("could not put task on outgoing router queue: "+e.getMessage());
 		}
 	}
 	

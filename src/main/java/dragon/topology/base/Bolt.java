@@ -74,6 +74,9 @@ public class Bolt extends Component {
 			}
 		}
 		if(tuples!=null) {
+			/*
+			 * The entire array of tuples may not be used.
+			 */
 			for(int i=0;i<tuples.length&&tuples[i]!=null;i++) {
 				Tuple tuple = tuples[i];
 				switch(tuple.getType()) {
@@ -82,12 +85,32 @@ public class Bolt extends Component {
 					try {
 						execute(tuple);
 					} catch (DragonEmitRuntimeException e) {
-						log.warn("bolt ["+getComponentId()+"]: "+e.getMessage());
-						if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
-					} catch (Exception e) {
+						/*
+						 * Such exceptions generally catch user code that is not behaving according
+						 * to the dragon requirements.
+						 */
 						e.printStackTrace();
-						log.warn("bolt ["+getComponentId()+"]: "+e.toString());
-						if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.toString(),e.getStackTrace());
+						log.error(e.getMessage());
+						if(getLocalCluster().getState()==LocalCluster.State.RUNNING) {
+							/*
+							 * If we are in the running state then we might signal to halt the 
+							 * topology.
+							 */
+							getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
+						}
+					} catch (Exception e) {
+						/*
+						 * Other exceptions are generally just bad user code.
+						 */
+						e.printStackTrace();
+						log.error(e.getMessage());
+						if(getLocalCluster().getState()==LocalCluster.State.RUNNING) {
+							/*
+							 * If we are in the running state then we might signal to halt the 
+							 * topology.
+							 */
+							getLocalCluster().componentException(this,e.toString(),e.getStackTrace());
+						}
 					}
 					processed++;
 					break;
@@ -124,16 +147,19 @@ public class Bolt extends Component {
 				
 					upstreamComponents.remove(tuple.getSourceComponent()+","+tuple.getSourceTaskId()+","+tuple.getSourceStreamId());
 					if(upstreamComponents.isEmpty()) {
-						log.debug(getComponentId()+":"+getTaskId()+" closed");
 						try {
 							close();
 						} catch (Exception e) {
-							log.warn("bolt threw exception when closing: "+e.getMessage());
+							e.printStackTrace();
+							log.error("exception thrown when closing: "+e.getMessage());
 						}
+						log.debug("closed");
+						/*
+						 * push the terminate tuple down the stream
+						 */
 						getOutputCollector().emitTerminateTuple(); //TODO: see how to call this safely _after_ calling setClosed()
 						getOutputCollector().expireAllTupleBundles();
 						closed=true;
-						
 					}
 					break;
 				}
@@ -143,11 +169,13 @@ public class Bolt extends Component {
 				}
 			} 
 		} 
+		/*
+		 * check tuple bundles for expiration
+		 */
 		now=Instant.now().toEpochMilli();
 		if(getOutputCollector().getNextExpire()<=now) {
 			getOutputCollector().expireTupleBundles();
 		}
-		
 	}
 	
 	/**

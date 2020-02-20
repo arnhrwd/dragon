@@ -36,9 +36,9 @@ import dragon.network.messages.node.resumetopo.ResumeTopoNMsg;
 import dragon.network.messages.node.resumetopo.TopoResumedNMsg;
 import dragon.network.messages.node.starttopo.StartTopoNMsg;
 import dragon.network.messages.node.starttopo.TopoStartedNMsg;
-import dragon.network.messages.node.stoptopo.StopTopoErrorNMsg;
-import dragon.network.messages.node.stoptopo.StopTopoNMsg;
-import dragon.network.messages.node.stoptopo.TopoStoppedNMsg;
+import dragon.network.messages.node.stoptopo.TermTopoErrorNMsg;
+import dragon.network.messages.node.stoptopo.TermTopoNMsg;
+import dragon.network.messages.node.stoptopo.TopoTermdNMsg;
 import dragon.network.operations.AllocPartGroupOp;
 import dragon.network.operations.DeallocPartGroupOp;
 import dragon.network.operations.GetStatusGroupOp;
@@ -267,7 +267,7 @@ public class NodeMsgProcessor extends Thread {
 	 * @param msg
 	 */
 	private synchronized void processStopTopology(NodeMessage msg) {
-		StopTopoNMsg stm = (StopTopoNMsg) msg;
+		TermTopoNMsg stm = (TermTopoNMsg) msg;
 		try {
 			// starts a thread to stop the topology
 			log.debug("asking node to stop the topology ["+stm.topologyId+"]");
@@ -281,7 +281,7 @@ public class NodeMsgProcessor extends Thread {
 	 * @param msg
 	 */
 	private synchronized void processTopologyStopped(NodeMessage msg) {
-		TopoStoppedNMsg tsm = (TopoStoppedNMsg) msg;
+		TopoTermdNMsg tsm = (TopoTermdNMsg) msg;
 		receiveSuccess(tsm);
 	}
 	
@@ -289,7 +289,7 @@ public class NodeMsgProcessor extends Thread {
 	 * @param msg
 	 */
 	private synchronized void processStopTopologyError(NodeMessage msg) {
-		StopTopoErrorNMsg stem = (StopTopoErrorNMsg) msg;
+		TermTopoErrorNMsg stem = (TermTopoErrorNMsg) msg;
 		receiveError(stem);
 	}
 	
@@ -299,7 +299,7 @@ public class NodeMsgProcessor extends Thread {
 	private synchronized void processRemoveTopology(NodeMessage msg) {
 		RemoveTopoNMsg trm = (RemoveTopoNMsg) msg;
 		try {
-			node.removeTopo(trm.topologyId);
+			node.removeTopo(trm.topologyId,trm.purge);
 			sendSuccess(trm);
 		} catch (DragonTopologyException e) {
 			sendError(trm,e.getMessage());
@@ -397,7 +397,7 @@ public class NodeMsgProcessor extends Thread {
 		TopoInfoNMsg tim = (TopoInfoNMsg) msg;
 		((ListToposGroupOp)(node.getOpsProcessor()
 				.getGroupOp(tim.getGroupOp().getId())))
-				.aggregate(tim.getSender(),tim.state,tim.errors,tim.components);
+				.aggregate(tim.getSender(),tim.state,tim.errors,tim.components,tim.metrics);
 		receiveSuccess(tim);
 	}
 	
@@ -544,13 +544,13 @@ public class NodeMsgProcessor extends Thread {
 		case TOPOLOGY_STARTED:
 			processTopologyStarted(msg);
 			break;
-		case STOP_TOPOLOGY:
+		case TERMINATE_TOPOLOGY:
 			processStopTopology(msg);
 			break;
-		case TOPOLOGY_STOPPED:
+		case TOPOLOGY_TERMINATED:
 			processTopologyStopped(msg);
 			break;
-		case STOP_TOPOLOGY_ERROR:
+		case TERMINATE_TOPOLOGY_ERROR:
 			processStopTopologyError(msg);
 			break;
 		case REMOVE_TOPOLOGY:
@@ -659,15 +659,15 @@ public class NodeMsgProcessor extends Thread {
 			case RESUME_TOPOLOGY_ERROR:
 			case START_TOPOLOGY:
 			case START_TOPOLOGY_ERROR:
-			case STOP_TOPOLOGY:
-			case STOP_TOPOLOGY_ERROR:
+			case TERMINATE_TOPOLOGY:
+			case TERMINATE_TOPOLOGY_ERROR:
 			case TOPOLOGY_HALTED:
 			case TOPOLOGY_INFORMATION:
 			case TOPOLOGY_READY:
 			case TOPOLOGY_REMOVED:
 			case TOPOLOGY_RESUMED:
 			case TOPOLOGY_STARTED:
-			case TOPOLOGY_STOPPED:
+			case TOPOLOGY_TERMINATED:
 			case ALLOCATE_PARTITION:
 			case ALLOCATE_PARTITION_ERROR:
 			case PARTITION_ALLOCATED:

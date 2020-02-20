@@ -6,19 +6,20 @@ import dragon.network.messages.node.NodeMessage;
  * @author aaron
  *
  */
-public class TopoStoppedNMsg extends NodeMessage {
-	private static final long serialVersionUID = 2556748215092282932L;
+public class TermTopoNMsg extends NodeMessage {
+	private static final long serialVersionUID = -4627720827502632039L;
 	
 	/**
 	 * 
 	 */
 	public String topologyId;
+
 	
 	/**
 	 * @param topologyId
 	 */
-	public TopoStoppedNMsg(String topologyId) {
-		super(NodeMessage.NodeMessageType.TOPOLOGY_STOPPED);
+	public TermTopoNMsg(String topologyId) {
+		super(NodeMessage.NodeMessageType.TERMINATE_TOPOLOGY);
 		this.topologyId = topologyId;
 	}
 

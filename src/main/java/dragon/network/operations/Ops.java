@@ -155,7 +155,7 @@ public class Ops extends Thread {
 	 */
 	public RemoveTopoGroupOp newRemoveTopoGroupOp(TermTopoSMsg ttm, DragonTopology topology, IOpSuccess success,
 			IOpFailure failure) {
-		RemoveTopoGroupOp trgo = new RemoveTopoGroupOp(ttm.topologyId, success, failure);
+		RemoveTopoGroupOp trgo = new RemoveTopoGroupOp(ttm.topologyId,ttm.purge, success, failure);
 		return (RemoveTopoGroupOp) newGroupOp(trgo, topology);
 	}
 

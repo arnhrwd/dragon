@@ -15,11 +15,17 @@ public class RemoveTopoNMsg extends NodeMessage {
 	public final String topologyId;
 	
 	/**
+	 * 
+	 */
+	public final boolean purge;
+	
+	/**
 	 * @param topologyId
 	 */
-	public RemoveTopoNMsg(String topologyId) {
+	public RemoveTopoNMsg(String topologyId,boolean purge) {
 		super(NodeMessage.NodeMessageType.REMOVE_TOPOLOGY);
 		this.topologyId=topologyId;
+		this.purge=purge;
 	}
 
 }

@@ -6,8 +6,8 @@ import dragon.network.messages.node.NodeMessage;
  * @author aaron
  *
  */
-public class StopTopoNMsg extends NodeMessage {
-	private static final long serialVersionUID = -4627720827502632039L;
+public class TopoTermdNMsg extends NodeMessage {
+	private static final long serialVersionUID = 2556748215092282932L;
 	
 	/**
 	 * 
@@ -17,8 +17,8 @@ public class StopTopoNMsg extends NodeMessage {
 	/**
 	 * @param topologyId
 	 */
-	public StopTopoNMsg(String topologyId) {
-		super(NodeMessage.NodeMessageType.STOP_TOPOLOGY);
+	public TopoTermdNMsg(String topologyId) {
+		super(NodeMessage.NodeMessageType.TOPOLOGY_TERMINATED);
 		this.topologyId = topologyId;
 	}
 

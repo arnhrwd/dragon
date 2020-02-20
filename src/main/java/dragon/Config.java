@@ -93,6 +93,11 @@ public class Config extends HashMap<String, Object> {
 	 * the size of the buffers for tuples transferring out of the local cluster to the network
 	 */
 	public static final String DRAGON_ROUTER_OUTPUT_BUFFER_SIZE="dragon.router.output.buffer.size";
+	
+	/**
+	 * the number of milliseconds to wait before timing out a service command
+	 */
+	public static final String DRAGON_SERVICE_TIMEOUT_MS="dragon.service.timeout.ms";
 
 	/**
 	 * the number of milliseconds to wait between retries when attempting to make a connection
@@ -375,6 +380,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_ROUTER_OUTPUT_THREADS,1);
 		put(DRAGON_ROUTER_INPUT_BUFFER_SIZE,16);
 		put(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE,16);
+		put(DRAGON_SERVICE_TIMEOUT_MS,120000);
 		put(DRAGON_COMMS_RETRY_MS,10*1000);
 		put(DRAGON_COMMS_RETRY_ATTEMPTS,30);
 		put(DRAGON_NETWORK_LOCAL_HOST,"localhost");
@@ -522,6 +528,13 @@ public class Config extends HashMap<String, Object> {
 	 */
 	public int getDragonRouterOutputBufferSize() {
 		return (Integer)get(DRAGON_ROUTER_OUTPUT_BUFFER_SIZE);
+	}
+	
+	/**
+	 * @return the service timeout in milliseconds
+	 */
+	public int getDragonServiceTimeoutMs() {
+		return (Integer)get(DRAGON_SERVICE_TIMEOUT_MS);
 	}
 	
 	/**

@@ -1,6 +1,9 @@
 package dragon.network.operations;
 
 import java.io.Serializable;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,7 +29,6 @@ public class Op implements Serializable {
 	/**
 	 * 
 	 */
-	@SuppressWarnings("unused")
 	private static final Logger log = LogManager.getLogger(Op.class);
 	
 	/**
@@ -50,6 +52,22 @@ public class Op implements Serializable {
 	 * operation can either proceed to success or failure.
 	 */
 	private transient IOpRunning running;
+	
+	/**
+	 * Called if a timeout is set, after the timeout period expires.
+	 * Does not change the state of the operation.
+	 */
+	private transient IOpTimeout timeout;
+	
+	/**
+	 * Called if the op was canceled.
+	 */
+	private transient IOpCancel cancel;
+	
+	/**
+	 * Timer task
+	 */
+	private transient TimerTask timerTask;
 	
 	/**
 	 * Id used by the Ops processor to manage the Op.
@@ -94,7 +112,12 @@ public class Op implements Serializable {
 		/**
 		 * The op has succeeded.
 		 */
-		COMPLETED
+		COMPLETED,
+		
+		/**
+		 * The op has been canceled.
+		 */
+		CANCELED
 	}
 	
 	/**
@@ -134,45 +157,71 @@ public class Op implements Serializable {
 	/**
 	 * @param start
 	 */
-	public void onStart(IOpStart start) {
+	public synchronized Op onStart(IOpStart start) {
 		this.start=start;
+		return this;
 	}
 	
 	/**
 	 * @param running
 	 */
-	public void onRunning(IOpRunning running) {
+	public synchronized Op onRunning(IOpRunning running) {
 		this.running=running;
 		if(state==State.RUNNING) {
 			running.running(this);
 		}
+		return this;
 	}
 	
 	/**
 	 * @param success
 	 */
-	public void onSuccess(IOpSuccess success) {
+	public synchronized Op onSuccess(IOpSuccess success) {
 		this.success=success;
 		if(state==State.COMPLETED) {
 			success.success(this);
 		}
+		return this;
 	}
 	
 	/**
 	 * @param failure
 	 */
-	public void onFailure(IOpFailure failure) {
+	public synchronized Op onFailure(IOpFailure failure) {
 		this.failure=failure;
 		if(state==State.FAILED) {
 			failure.fail(this,error);
 		}
+		return this;
+	}
+	
+	public synchronized Op onTimeout(Timer timer,long duration,TimeUnit unit,IOpTimeout timeout) {
+		if(this.state==State.FAILED || this.state==State.COMPLETED) return this;
+		this.timeout=timeout;
+		final Op me=this;
+		timerTask = new TimerTask() {
+			@Override
+			public void run() {
+				me.timeout();
+			}
+		};
+		timer.schedule(timerTask, unit.toMillis(duration));
+		return this;
+	}
+	
+	public synchronized Op onCancel(IOpCancel cancel) {
+		this.cancel=cancel;
+		if(state==State.CANCELED) {
+			cancel.cancel(this);
+		}
+		return this;
 	}
 	
 	/**
 	 * @param desc
 	 * @param opCounter
 	 */
-	public void init(NodeDescriptor desc,long opCounter) {
+	public synchronized void init(NodeDescriptor desc,long opCounter) {
 		this.sourceDesc=desc;
 		this.id=opCounter;
 	}
@@ -180,28 +229,28 @@ public class Op implements Serializable {
 	/**
 	 * @return
 	 */
-	public Long getId() {
+	public synchronized Long getId() {
 		return this.id;
 	}
 	
 	/**
 	 * @return
 	 */
-	public NodeDescriptor getSourceDesc() {
+	public synchronized NodeDescriptor getSourceDesc() {
 		return this.sourceDesc;
 	}
 	
 	/**
 	 * @return
 	 */
-	public State getState() {
+	public synchronized State getState() {
 		return state;
 	}
 	
 	/**
 	 * 
 	 */
-	public void start() {
+	public synchronized void start() {
 		if(start!=null) start.start(this);
 		state=State.RUNNING;
 		if(running!=null) {
@@ -212,11 +261,12 @@ public class Op implements Serializable {
 	/**
 	 * 
 	 */
-	public void success() {
+	public synchronized void success() {
 		if(state==State.FAILED) {
-			log.error("operation has already failed");
+			log.warn("operation has already failed");
 			return;
 		}
+		if(timerTask!=null) timerTask.cancel();
 		state=State.COMPLETED;
 		if(success!=null) success.success(this);
 	}
@@ -224,13 +274,36 @@ public class Op implements Serializable {
 	/**
 	 * @param error
 	 */
-	public void fail(String error) {
+	public synchronized void fail(String error) {
 		if(state==State.COMPLETED) {
 			log.error("operation has already completed");
 			return;
 		}
+		if(timerTask!=null) timerTask.cancel();
 		state=State.FAILED;
 		this.error=error;
 		if(failure!=null) failure.fail(this,error);
+	}
+	
+	/**
+	 * Its up to the callee to decide if the op should
+	 * fail or not as a result of the timeout.
+	 * @param error
+	 */
+	public synchronized void timeout() {
+		if(timeout!=null) timeout.timeout(this);
+	}
+	
+	/**
+	 * 
+	 */
+	public synchronized void cancel() {
+		if(state==State.FAILED || state==State.COMPLETED) {
+			log.error("operation has already failed/completed");
+			return;
+		}
+		if(timerTask!=null) timerTask.cancel();
+		state=State.CANCELED;
+		if(cancel!=null) cancel.cancel(this);
 	}
 }

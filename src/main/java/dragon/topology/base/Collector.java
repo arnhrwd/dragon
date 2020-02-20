@@ -367,12 +367,12 @@ public class Collector {
 	 * @return
 	 */
 	public synchronized List<Integer> emit(String streamId,Values values) {
-		List<Integer> receivingTaskIds = new ArrayList<Integer>();
+		final List<Integer> receivingTaskIds = new ArrayList<Integer>();
 		if(component.isClosed()) {
-			log.error("spontaneous tuple emission after close, topology may not terminate properly ["+component.getComponentId()+":"+component.getTaskId()+"]");
+			log.error("spontaneous tuple emission after close, topology may not terminate properly");
 			return receivingTaskIds;
 		}
-		Fields fields = component.getOutputFieldsDeclarer().getFields(streamId);
+		final Fields fields = component.getOutputFieldsDeclarer().getFields(streamId);
 		if(fields==null) {
 			throw new DragonEmitRuntimeException("no fields have been declared for ["+
 					component.getComponentId()+"] on stream ["+streamId+
@@ -383,7 +383,7 @@ public class Collector {
 					"] does not match the number of fields ["+
 					fields.getFieldNamesAsString()+"]");
 		}
-		Tuple tuple = new Tuple();
+		final Tuple tuple = new Tuple();
 		tuple.setFields(fields.copy());
 		tuple.setValues(values);
 		tuple.setSourceComponent(component.getComponentId());

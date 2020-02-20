@@ -5,9 +5,9 @@ import org.apache.logging.log4j.Logger;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.stoptopo.StopTopoErrorNMsg;
-import dragon.network.messages.node.stoptopo.StopTopoNMsg;
-import dragon.network.messages.node.stoptopo.TopoStoppedNMsg;
+import dragon.network.messages.node.stoptopo.TermTopoErrorNMsg;
+import dragon.network.messages.node.stoptopo.TermTopoNMsg;
+import dragon.network.messages.node.stoptopo.TopoTermdNMsg;
 
 
 /**
@@ -43,7 +43,7 @@ public class TermTopoGroupOp extends GroupOp {
 	 */
 	@Override
 	protected NodeMessage initiateNodeMessage(NodeDescriptor desc) {
-		return new StopTopoNMsg(topologyId);
+		return new TermTopoNMsg(topologyId);
 	}
 	
 	/* (non-Javadoc)
@@ -51,7 +51,7 @@ public class TermTopoGroupOp extends GroupOp {
 	 */
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new TopoStoppedNMsg(topologyId);
+		return new TopoTermdNMsg(topologyId);
 	}
 	
 	/* (non-Javadoc)
@@ -59,7 +59,7 @@ public class TermTopoGroupOp extends GroupOp {
 	 */
 	@Override
 	protected NodeMessage errorNodeMessage(String error) {
-		return new StopTopoErrorNMsg(topologyId,error);
+		return new TermTopoErrorNMsg(topologyId,error);
 	}
 
 }

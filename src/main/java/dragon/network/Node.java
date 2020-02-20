@@ -13,7 +13,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.locks.Condition;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.logging.log4j.LogManager;
@@ -26,6 +27,7 @@ import dragon.DragonRequiresClonableException;
 import dragon.LocalCluster;
 import dragon.metrics.ComponentMetricMap;
 import dragon.metrics.Metrics;
+import dragon.metrics.Sample;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
@@ -69,7 +71,6 @@ public class Node {
 	/**
 	 * The service processor thread.
 	 */
-	@SuppressWarnings("unused")
 	private final ServiceMsgProcessor serviceThread;
 	
 	/**
@@ -162,6 +163,11 @@ public class Node {
 
 	
 	/**
+	 * General timer
+	 */
+	private final Timer timer;
+	
+	/**
 	 * Initialize the node, will initiate a join request if possible to
 	 * join to existing daemons, unless it is the first listed host in the
 	 * host list, in which case it will just wait for others to join to it.
@@ -175,6 +181,7 @@ public class Node {
 		writePid();
 		localClusters = new HashMap<>();
 		childProcesses=new HashMap<>();
+		timer=new Timer("timer");
 		
 		
 		processManager = new ProcessManager(conf);
@@ -268,6 +275,9 @@ public class Node {
 				sendJoinRequest(hosts);
 			}).onStart((op)->{
 				setNodeState(NodeState.JOIN_REQUESTED);
+				log.debug("waiting up to ["+getConf().getDragonCommsRetryMs()/1000+"] seconds to join with "+desc.toString());
+			}).onTimeout(getTimer(),getConf().getDragonServiceTimeoutMs(),TimeUnit.MILLISECONDS,(op)->{
+				op.fail("timed out joining node");
 			});
 		}
 	}
@@ -494,14 +504,21 @@ public class Node {
 	 * Remove the name topology from the collection of local clusters. The topology
 	 * must be completely terminated, i.e. over all daemons, before removing it. A
 	 * garbage collection is called after removal. Router queues for the topology
-	 * are also removed.
+	 * are also removed. If the topology is misbehaving, then it may be necessary to call
+	 * this function even though the topology has not terminated, in which case
+	 * try setting purge to true, which will at least interrupt all of the threads.
 	 * 
 	 * @param topologyId the name of the topology to remove
+	 * @param purge is true if remove should try to forcibly remove the topology
 	 * @throws DragonTopologyException
 	 */
-	public synchronized void removeTopo(String topologyId) throws DragonTopologyException {
+	public synchronized void removeTopo(String topologyId,boolean purge) throws DragonTopologyException {
 		if (!localClusters.containsKey(topologyId))
 			throw new DragonTopologyException("topology does not exist: " + topologyId);
+		if(purge) {
+			log.warn("purging topology ["+topologyId+"]");
+			localClusters.get(topologyId).interruptAll();
+		}
 		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
 		System.gc();
@@ -547,6 +564,7 @@ public class Node {
 	public synchronized void listTopologies(ListToposGroupOp ltgo) {
 		HashMap<String, String> state = new HashMap<String, String>();
 		HashMap<String, List<String>> comps = new HashMap<>();
+		HashMap<String, Sample> metrics = new HashMap<>();
 		HashMap<String, HashMap<String, ArrayList<ComponentError>>> errors = new HashMap<>();
 		for (String topologyId : localClusters.keySet()) {
 			state.put(topologyId, localClusters.get(topologyId).getState().name());
@@ -554,11 +572,13 @@ public class Node {
 			for(String spoutid : localClusters.get(topologyId).getSpouts().keySet()) {
 				for(Integer taskId : localClusters.get(topologyId).getSpouts().get(spoutid).keySet()) {
 					comps.get(topologyId).add(spoutid+":"+taskId);
+					metrics.put(spoutid+":"+taskId, new Sample(localClusters.get(topologyId).getSpouts().get(spoutid).get(taskId)));
 				}
 			}
 			for(String boltid : localClusters.get(topologyId).getBolts().keySet()) {
 				for(Integer taskId : localClusters.get(topologyId).getBolts().get(boltid).keySet()) {
 					comps.get(topologyId).add(boltid+":"+taskId);
+					metrics.put(boltid+":"+taskId, new Sample(localClusters.get(topologyId).getBolts().get(boltid).get(taskId)));
 				}
 			}
 			errors.put(topologyId, new HashMap<String, ArrayList<ComponentError>>());
@@ -710,6 +730,13 @@ public class Node {
 		serviceThread.interrupt();
 		nodeThread.interrupt();
 		metricsThread.interrupt();
+		timer.cancel();
 	}
-
+	
+	/**
+	 * @return timer
+	 */
+	public synchronized Timer getTimer() {
+		return timer;
+	}
 }

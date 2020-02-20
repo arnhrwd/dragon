@@ -30,54 +30,68 @@ public class Spout extends Component {
 	public final void run() {
 		getOutputCollector().resetEmit();
 		if(closed) {
-			log.warn("spout is already closed");
+			log.warn("already closed");
 			return;
 		}
 		if(closing) {
 			try {
 				close();
 			} catch (Exception e) {
-				log.warn("exception thrown by spout when closing: "+e.getMessage());
+				e.printStackTrace();
+				log.error("exception thrown when closing: "+e.getMessage());
 			}
-			log.debug(getComponentId()+":"+getTaskId()+" closed");
+			log.debug("closed");
 			closed=true;
 			return;
 		}
 		try {
 			nextTuple();
-			
-			long now = Instant.now().toEpochMilli();
-			if(now >= getOutputCollector().getNextExpire()) {
-				getOutputCollector().expireTupleBundles();
-			} else if(!getOutputCollector().didEmit()) {
-				try {
-					Thread.sleep(getOutputCollector().getNextExpire()-now);
-				} catch (InterruptedException e) {
-					log.info("interrupted");
-					return;
-				}
-			}
-			
-			
 		} catch (DragonEmitRuntimeException e) {
-			log.warn("spout ["+getComponentId()+"]: "+e.getMessage());
-			if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
-		} catch (Exception e) {
+			/*
+			 * Such exceptions generally catch user code that is not behaving according
+			 * to the dragon requirements.
+			 */
 			e.printStackTrace();
-			log.warn("spout ["+getComponentId()+"]: "+e.getMessage());
-			if(getLocalCluster().getState()==LocalCluster.State.RUNNING) getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
+			log.error(e.getMessage());
+			if(getLocalCluster().getState()==LocalCluster.State.RUNNING) {
+				/*
+				 * If we are in the running state then we might signal to halt the 
+				 * topology.
+				 */
+				getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
+			}
+		} catch (Exception e) {
+			/*
+			 * Other exceptions are generally just bad user code.
+			 */
+			e.printStackTrace();
+			log.error(e.getMessage());
+			if(getLocalCluster().getState()==LocalCluster.State.RUNNING) {
+				/*
+				 * If we are in the running state then we might signal to halt the 
+				 * topology.
+				 */
+				getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
+			}
 		} 
-//		if(getOutputCollector().didEmit()) {
-//			getLocalCluster().componentPending(this);
-//		} else {
-//			try {
-//				Thread.sleep(1);
-//			} catch (InterruptedException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//			getLocalCluster().componentPending(this);
-//		}
+		/*
+		 * check tuple bundles for expiration
+		 */
+		long now = Instant.now().toEpochMilli();
+		if(now >= getOutputCollector().getNextExpire()) {
+			getOutputCollector().expireTupleBundles();
+		} else if(!getOutputCollector().didEmit()) {
+			/*
+			 * user didn't emit anything so sleep until the next
+			 * expiration time
+			 */
+			try {
+				Thread.sleep(getOutputCollector().getNextExpire()-now);
+			} catch (InterruptedException e) {
+				log.info("interrupted");
+				return;
+			}
+		}
 	}
 
 	/**

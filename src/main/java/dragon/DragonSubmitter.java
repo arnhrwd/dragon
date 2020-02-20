@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.parser.ParseException;
 
+import dragon.metrics.Sample;
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
 import dragon.network.NodeStatus;
@@ -42,6 +43,7 @@ import dragon.network.messages.service.termtopo.TermTopoErrorSMsg;
 import dragon.network.messages.service.termtopo.TermTopoSMsg;
 import dragon.network.messages.service.uploadjar.UploadJarFailedSMsg;
 import dragon.network.messages.service.uploadjar.UploadJarSMsg;
+import dragon.network.messages.service.progress.ProgressSMsg;
 import dragon.topology.DragonTopology;
 import dragon.topology.IEmbeddingAlgo;
 import dragon.utils.ReflectionUtils;
@@ -118,6 +120,28 @@ public class DragonSubmitter {
 	}
 	
 	/**
+	 * Receive service message responses and print progress messages
+	 * if they arrive.
+	 * @return the first message that is not a progress message
+	 */
+	private static ServiceMessage skipProgress() {
+		ServiceMessage message=null;
+		while(message==null || message.getType()==ServiceMessage.ServiceMessageType.PROGRESS) {
+			try {
+				message = comms.receiveServiceMsg();
+			} catch (InterruptedException e) {
+				System.out.println("interrupted waiting for context");
+				comms.close();
+				System.exit(-1);
+			}
+			if(message.getType()==ServiceMessage.ServiceMessageType.PROGRESS) {
+				System.out.println(((ProgressSMsg)message).msg);
+			}
+		}
+		return message;
+	}
+	
+	/**
 	 * Submit a topology to a given Dragon daemon.
 	 * @param string the user defined name of the topology
 	 * @param conf parameters that override the daemon specific settings for the topology
@@ -133,32 +157,11 @@ public class DragonSubmitter {
 			System.out.println("could not send get node context message");
 			System.exit(-1);
 		}
-		ServiceMessage message=null;
-		try {
-			message = comms.receiveServiceMsg();
-		} catch (InterruptedException e) {
-			System.out.println("interrupted waiting for context");
-			comms.close();
-			System.exit(-1);
-		}
-		NodeContext context=null;
-		switch(message.getType()) {
-		case NODE_CONTEXT:
-			NodeContextSMsg nc = (NodeContextSMsg) message;
-			context=nc.context;
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		
+		ServiceMessage message=skipProgress();
+		NodeContext context = ((NodeContextSMsg)message).context;
 		log.debug("received context  ["+context+"]");
-
 		IEmbeddingAlgo embedding = ReflectionUtils.newInstance(conf.getDragonEmbeddingAlgorithm());
 		topology.embedTopology(embedding, context, conf);
-		
-		
 		System.out.println("uploading jar file to ["+node+"]");
 		try {
 			comms.sendServiceMsg(new UploadJarSMsg(string,topologyJar));
@@ -166,13 +169,7 @@ public class DragonSubmitter {
 			System.out.println("could not send upload jar message");
 			System.exit(-1);
 		}
-		try {
-			message = comms.receiveServiceMsg();
-		} catch (InterruptedException e) {
-			System.out.println("interrupted waiting for upload jar confirmation");
-			comms.close();
-			System.exit(-1);
-		}
+		message = skipProgress();
 		UploadJarFailedSMsg te;
 		switch(message.getType()) {
 		case UPLOAD_JAR_FAILED:
@@ -193,7 +190,6 @@ public class DragonSubmitter {
 			comms.close();
 			System.exit(-1);
 		}
-		
 		System.out.println("running topology on ["+node+"]");
 		try {
 			comms.sendServiceMsg(new RunTopoSMsg(string,conf,topology));
@@ -201,13 +197,7 @@ public class DragonSubmitter {
 			System.out.println("could not send run topoology message");
 			System.exit(-1);
 		}
-		try {
-			message = comms.receiveServiceMsg();
-		} catch (InterruptedException e) {
-			log.info("interrupted waiting for run confirmation");
-			comms.close();
-			System.exit(-1);
-		}
+		message = skipProgress();
 		RunTopoErrorSMsg rtem;
 		switch(message.getType()){
 		case RUN_TOPOLOGY_ERROR:
@@ -241,7 +231,7 @@ public class DragonSubmitter {
 	public static void getMetrics(Config conf,String topologyId) throws InterruptedException, DragonCommsException{
 		initComms(conf);
 		comms.sendServiceMsg(new GetMetricsSMsg(topologyId));
-		ServiceMessage message = comms.receiveServiceMsg();
+		ServiceMessage message = skipProgress();
 		switch(message.getType()){
 		case METRICS:
 			MetricsSMsg m = (MetricsSMsg) message;
@@ -271,8 +261,8 @@ public class DragonSubmitter {
 	public static void terminateTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
 		System.out.println("terminating topology ["+topologyId+"]");
-		comms.sendServiceMsg(new TermTopoSMsg(topologyId));
-		ServiceMessage message = comms.receiveServiceMsg();
+		comms.sendServiceMsg(new TermTopoSMsg(topologyId,false));
+		ServiceMessage message = skipProgress();
 		TermTopoErrorSMsg tte;
 		switch(message.getType()) {
 		case TERMINATE_TOPOLOGY_ERROR:
@@ -300,7 +290,7 @@ public class DragonSubmitter {
 	public static void resumeTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
 		comms.sendServiceMsg(new ResumeTopoSMsg(topologyId));
-		ServiceMessage message = comms.receiveServiceMsg();
+		ServiceMessage message = skipProgress();
 		ResumeTopoErrorSMsg tte;
 		switch(message.getType()) {
 		case RESUME_TOPOLOGY_ERROR:
@@ -328,7 +318,7 @@ public class DragonSubmitter {
 	public static void haltTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
 		initComms(conf);
 		comms.sendServiceMsg(new HaltTopoSMsg(topologyId));
-		ServiceMessage message = comms.receiveServiceMsg();
+		ServiceMessage message = skipProgress();
 		HaltTopoErrorSMsg tte;
 		switch(message.getType()) {
 		case HALT_TOPOLOGY_ERROR:
@@ -355,7 +345,7 @@ public class DragonSubmitter {
 	public static void listTopologies(Config conf) throws DragonCommsException, InterruptedException {
 		initComms(conf);
 		comms.sendServiceMsg(new ListToposSMsg());
-		TopoListSMsg message = (TopoListSMsg) comms.receiveServiceMsg();
+		TopoListSMsg message = (TopoListSMsg) skipProgress();
 		comms.sendServiceMsg(new ServiceDoneSMsg());
 		comms.close();
 		HashSet<String> topologies = new HashSet<String>();
@@ -376,7 +366,8 @@ public class DragonSubmitter {
 				// list components
 				if(message.descComponents.get(descid).containsKey(topologyId)) {
 					for(String cid : message.descComponents.get(descid).get(topologyId)) {
-						TreeNode component = new TreeNode("["+cid+"]");
+						Sample metrics = message.descMetrics.get(topologyId).get(cid);
+						TreeNode component = new TreeNode("["+cid+"] "+"emt:"+metrics.emitted+",exe:"+metrics.processed+",trf:"+metrics.transferred);
 						machine.addChild(component);
 						// list errors
 						if(message.descErrors.get(descid).containsKey(topologyId)) {
@@ -402,7 +393,7 @@ public class DragonSubmitter {
 	public static void getStatus(Config conf) throws DragonCommsException, InterruptedException {
 		initComms(conf);
 		comms.sendServiceMsg(new GetStatusSMsg());
-		StatusSMsg message = (StatusSMsg) comms.receiveServiceMsg();
+		StatusSMsg message = (StatusSMsg) skipProgress();
 		comms.sendServiceMsg(new ServiceDoneSMsg());
 		comms.close();
 		ArrayList<NodeStatus> dragonStatus = message.dragonStatus;
@@ -462,7 +453,7 @@ public class DragonSubmitter {
 			throw new ParseException("strategy must be: each|uniform|balanced");
 		}
 		comms.sendServiceMsg(new AllocPartSMsg(partitionId,number,strat));
-		ServiceMessage message = comms.receiveServiceMsg();
+		ServiceMessage message = skipProgress();
 		AllocPartErrorSMsg apem;
 		switch(message.getType()) {
 		case ALLOCATE_PARTITION_ERROR:
@@ -505,7 +496,7 @@ public class DragonSubmitter {
 			throw new ParseException("strategy must be: each|uniform|balanced");
 		}
 		comms.sendServiceMsg(new DeallocPartSMsg(partitionId,number,strat));
-		ServiceMessage message = comms.receiveServiceMsg();
+		ServiceMessage message = skipProgress();
 		DeallocPartErrorSMsg apem;
 		switch(message.getType()) {
 		case DEALLOCATE_PARTITION_ERROR:

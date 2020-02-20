@@ -8,7 +8,7 @@ import dragon.network.messages.node.NodeMessage;
  * @author aaron
  *
  */
-public class StopTopoErrorNMsg extends NodeErrorMessage {
+public class TermTopoErrorNMsg extends NodeErrorMessage {
 	private static final long serialVersionUID = -6062382885436856253L;
 	
 	/**
@@ -20,8 +20,8 @@ public class StopTopoErrorNMsg extends NodeErrorMessage {
 	 * @param topologyId
 	 * @param error
 	 */
-	public StopTopoErrorNMsg(String topologyId,String error) {
-		super(NodeMessage.NodeMessageType.STOP_TOPOLOGY_ERROR,error);
+	public TermTopoErrorNMsg(String topologyId,String error) {
+		super(NodeMessage.NodeMessageType.TERMINATE_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
 	}
 }
