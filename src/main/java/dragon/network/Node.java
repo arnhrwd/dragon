@@ -23,6 +23,7 @@ import org.apache.logging.log4j.Logger;
 import dragon.Agent;
 import dragon.ComponentError;
 import dragon.Config;
+import dragon.DragonInvalidStateException;
 import dragon.DragonRequiresClonableException;
 import dragon.LocalCluster;
 import dragon.metrics.ComponentMetricMap;
@@ -32,6 +33,8 @@ import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.context.ContextUpdateNMsg;
+import dragon.network.messages.node.fault.NodeFaultNMsg;
+import dragon.network.messages.node.fault.TopoFaultNMsg;
 import dragon.network.messages.node.join.AcceptingJoinNMsg;
 import dragon.network.messages.node.join.JoinCompleteNMsg;
 import dragon.network.operations.GroupOp;
@@ -254,7 +257,7 @@ public class Node {
 					comms.sendNodeMsg(aj.getSender(), new JoinCompleteNMsg());
 				} catch (DragonCommsException e) {
 					log.error("could not complete join with ["+aj.getSender());
-					// TODO: possibly signal that the node has failed
+					nodeFault(aj.getSender());
 				}
 				nodeThread.contextPutAll(aj.context);
 				for(NodeDescriptor descriptor : nodeThread.getContext().values()) {
@@ -263,7 +266,7 @@ public class Node {
 							comms.sendNodeMsg(descriptor, new ContextUpdateNMsg(nodeThread.getContext()));
 						} catch (DragonCommsException e) {
 							log.error("could not send context update to ["+descriptor+"]");
-							// TODO: possibly signal that the node has failed
+							nodeFault(descriptor);
 						}
 					}
 				}
@@ -453,8 +456,9 @@ public class Node {
 	 * 
 	 * @param topologyId the name of the topology to start
 	 * @throws DragonTopologyException if the topology does not exist
+	 * @throws DragonInvalidStateException if the topology can not be started
 	 */
-	public synchronized void startTopology(String topologyId) throws DragonTopologyException {
+	public synchronized void startTopology(String topologyId) throws DragonTopologyException, DragonInvalidStateException {
 		if (!localClusters.containsKey(topologyId))
 			throw new DragonTopologyException("topology does not exist: " + topologyId);
 		localClusters.get(topologyId).openAll();
@@ -468,8 +472,9 @@ public class Node {
 	 * @param go         the group operation to respond to when the topology
 	 *                   finishes terminating
 	 * @throws DragonTopologyException if the topology does not exist
+	 * @throws DragonInvalidStateException if the topology can not enter the terminating state
 	 */
-	public synchronized void terminateTopology(String topologyId, GroupOp go) throws DragonTopologyException {
+	public synchronized void terminateTopology(String topologyId, GroupOp go) throws DragonTopologyException, DragonInvalidStateException {
 		if (!localClusters.containsKey(topologyId))
 			throw new DragonTopologyException("topology does not exist: " + topologyId);
 		LocalCluster localCluster = getLocalClusters().get(topologyId);
@@ -510,11 +515,11 @@ public class Node {
 	 * 
 	 * @param topologyId the name of the topology to remove
 	 * @param purge is true if remove should try to forcibly remove the topology
-	 * @throws DragonTopologyException
+	 * @throws DragonTopologyException if the topology does not exist
 	 */
 	public synchronized void removeTopo(String topologyId,boolean purge) throws DragonTopologyException {
 		if (!localClusters.containsKey(topologyId))
-			throw new DragonTopologyException("topology does not exist: " + topologyId);
+			throw new DragonTopologyException("topology does not exist [" + topologyId+"]");
 		if(purge) {
 			log.warn("purging topology ["+topologyId+"]");
 			localClusters.get(topologyId).interruptAll();
@@ -525,7 +530,7 @@ public class Node {
 	}
 
 	/**
-	 * Autonomously called by a local cluster in the case of topology failure, that
+	 * Autonomously called by a local cluster in the case of user code errors, that
 	 * signals other daemons to halt the topology.
 	 * 
 	 * @param topologyId the name of the topology that has failed
@@ -534,11 +539,15 @@ public class Node {
 		operationsThread.newHaltTopoGroupOp(topologyId, (op) -> {
 			log.warn("topology was halted due to too many errors");
 		}, (op, error) -> {
-			log.fatal(error);
+			try {
+				topologyFault(topologyId);
+			} catch (DragonTopologyException e) {
+				log.error(e.getMessage());
+			}
 		}).onRunning((op) -> {
 			try {
 				haltTopology(topologyId);
-			} catch (DragonTopologyException e) {
+			} catch (DragonTopologyException | DragonInvalidStateException e) {
 				op.fail(e.getMessage());
 			}
 		});
@@ -549,8 +558,9 @@ public class Node {
 	 * 
 	 * @param topologyId the name of the topology to halt
 	 * @throws DragonTopologyException if the topology does not exist
+	 * @throws DragonInvalidStateException if the topology can not be halted 
 	 */
-	public synchronized void haltTopology(String topologyId) throws DragonTopologyException {
+	public synchronized void haltTopology(String topologyId) throws DragonTopologyException, DragonInvalidStateException {
 		if (!localClusters.containsKey(topologyId))
 			throw new DragonTopologyException("topology does not exist: " + topologyId);
 		localClusters.get(topologyId).haltTopology();
@@ -602,8 +612,9 @@ public class Node {
 	 * 
 	 * @param topologyId the name of the topology to resume
 	 * @throws DragonTopologyException if the topology does not exist
+	 * @throws DragonInvalidStateException if the topology can not change to halted state
 	 */
-	public synchronized void resumeTopology(String topologyId) throws DragonTopologyException {
+	public synchronized void resumeTopology(String topologyId) throws DragonTopologyException, DragonInvalidStateException {
 		if (!localClusters.containsKey(topologyId))
 			throw new DragonTopologyException("topology does not exist: " + topologyId);
 		localClusters.get(topologyId).resumeTopology();
@@ -738,5 +749,104 @@ public class Node {
 	 */
 	public synchronized Timer getTimer() {
 		return timer;
+	}
+	
+	/**
+	 * Called when a node is locally detected to no longer be 
+	 * reachable due to comms timeout.
+	 */
+	public synchronized void nodeFault(NodeDescriptor desc) {
+		log.error("["+desc+"] is not reachable");
+		removeNode(desc);
+		HashSet<NodeDescriptor> more = new HashSet<>();
+		for(NodeDescriptor desc2 : nodeThread.getContext().values()) {
+			if(!desc2.equals(comms.getMyNodeDesc())) {
+				try {
+					comms.sendNodeMsg(desc2, new NodeFaultNMsg(desc));
+				} catch (DragonCommsException e) {
+					more.add(desc2);
+				}
+			}
+		}
+		// signal any further faults
+		for(NodeDescriptor desc2 : more) {
+			nodeFault(desc2);
+		}
+	}
+	
+	/**
+	 * Called when receiving a message that a node is dead.
+	 * @param desc
+	 */
+	public synchronized void removeNode(NodeDescriptor desc) {
+		log.debug("removing +["+desc+"] from the node context");
+		nodeThread.getContext().remove(desc.toString());
+		// trigger topology faults as required
+		for(String topologyId : localClusters.keySet()) {
+			if(localClusters.get(topologyId).getTopology().getReverseEmbedding().containsKey(desc)){
+				try {
+					topologyFault(topologyId);
+				} catch (DragonTopologyException e) {
+					log.error(e.getMessage());
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Called when a topology is locally detected to need to go into
+	 * the fault state.
+	 * @throws DragonTopologyException 
+	 */
+	public synchronized void topologyFault(String topologyId) throws DragonTopologyException {
+		if(!localClusters.containsKey(topologyId)) {
+			throw new DragonTopologyException("topology does not exist ["+topologyId+"]");
+		}
+		log.error("topology ["+topologyId+"] has faulted");
+		for (NodeDescriptor desc : localClusters.get(topologyId).getTopology().getReverseEmbedding().keySet()) {
+			if(nodeThread.getContext().containsKey(desc.toString()) && !desc.equals(comms.getMyNodeDesc())) {
+				try {
+					comms.sendNodeMsg(desc, new TopoFaultNMsg(topologyId));
+				} catch (DragonCommsException e) {
+					nodeFault(desc);
+				}
+			} else {
+				localClusters.get(topologyId).setFault();
+			}
+		}
+	}
+	
+	/**
+	 * Called when receiving a message that a topology has faulted.
+	 * @param topologyId
+	 * @throws DragonTopologyException
+	 */
+	public synchronized void setTopologyFault(String topologyId) throws DragonTopologyException {
+		if(!localClusters.containsKey(topologyId)) {
+			throw new DragonTopologyException("topology does not exist ["+topologyId+"]");
+		}
+		localClusters.get(topologyId).setFault();
+	}
+
+	/**
+	 * Called when the topology is locally detected to have faulted 
+	 * and has not yet been instantiated.
+	 * @param topologyId
+	 * @param dragonTopology
+	 */
+	public void topologyFault(String topologyId,DragonTopology dragonTopology) {
+		log.error("topology ["+topologyId+"] has faulted");
+		for (NodeDescriptor desc : dragonTopology.getReverseEmbedding().keySet()) {
+			if(nodeThread.getContext().containsKey(desc.toString()) && !desc.equals(comms.getMyNodeDesc())) {
+				try {
+					comms.sendNodeMsg(desc, new TopoFaultNMsg(topologyId));
+				} catch (DragonCommsException e) {
+					nodeFault(desc);
+				}
+			} else {
+				localClusters.get(topologyId).setFault();
+			}
+		}
+		
 	}
 }

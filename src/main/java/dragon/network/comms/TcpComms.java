@@ -433,7 +433,7 @@ public class TcpComms implements IComms {
 			}
 		}
 		log.fatal("data can not be transmitted");
-		throw new DragonCommsException("node data can not be transmitted");
+		throw new DragonCommsException("node data can not be transmitted",desc);
 	}
 
 	/**
@@ -479,7 +479,7 @@ public class TcpComms implements IComms {
 			}
 		}
 		log.fatal("data can not be transmitted");
-		throw new DragonCommsException("task data can not be transmitted");
+		throw new DragonCommsException("task data can not be transmitted",desc);
 	}
 
 	/**

@@ -22,7 +22,7 @@ public class AllocPartErrorSMsg extends ServiceErrorMessage {
 	
 	/**
 	 * @param partitionId
-	 * @param daemons
+	 * @param number
 	 * @param error
 	 */
 	public AllocPartErrorSMsg(String partitionId,Integer number,String error) {

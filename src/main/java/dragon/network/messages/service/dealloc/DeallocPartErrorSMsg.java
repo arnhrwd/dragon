@@ -23,7 +23,7 @@ public class DeallocPartErrorSMsg extends ServiceErrorMessage {
 	
 	/**
 	 * @param partitionId
-	 * @param daemons
+	 * @param number
 	 * @param error
 	 */
 	public DeallocPartErrorSMsg(String partitionId,Integer number,String error) {

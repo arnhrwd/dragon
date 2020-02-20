@@ -81,7 +81,7 @@ public class Router {
 	private final LinkedBlockingQueue<NetworkTaskBuffer> outputsPending;
 
 	/**
-	 * @param node
+	 * @param conf
 	 * @param comms
 	 * @param localClusters
 	 */

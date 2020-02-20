@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import dragon.network.Node;
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.service.runtopo.RunTopoSMsg;
 import dragon.network.messages.service.termtopo.TermTopoSMsg;
 import dragon.topology.DragonTopology;
@@ -337,7 +338,11 @@ public class Ops extends Thread {
 					GroupOp go = (GroupOp) op;
 					try {
 						node.getOperationsLock().lockInterruptibly();
-						go.initiate(node.getComms());
+						try {
+							go.initiate(node.getComms());
+						} catch (DragonCommsException e) {
+							node.nodeFault(e.desc);
+						}
 					} catch(InterruptedException e) {
 						log.error("interrupted while waiting for node operations lock");
 						break;

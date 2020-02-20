@@ -57,7 +57,7 @@ public class DeallocPartSMsg extends ServiceMessage {
 	 * 
 	 * @param partitionId
 	 * @param daemons
-	 * @param strat
+	 * @param strategy
 	 */
 	public DeallocPartSMsg(String partitionId,Integer daemons,Strategy strategy) {
 		super(ServiceMessage.ServiceMessageType.DEALLOCATE_PARTITION);

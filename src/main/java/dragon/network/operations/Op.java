@@ -288,7 +288,6 @@ public class Op implements Serializable {
 	/**
 	 * Its up to the callee to decide if the op should
 	 * fail or not as a result of the timeout.
-	 * @param error
 	 */
 	public synchronized void timeout() {
 		if(timeout!=null) timeout.timeout(this);

@@ -3,6 +3,7 @@ package dragon.network;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import dragon.DragonInvalidStateException;
 import dragon.DragonRequiresClonableException;
 import dragon.network.Node.NodeState;
 import dragon.network.comms.DragonCommsException;
@@ -15,6 +16,8 @@ import dragon.network.messages.node.context.ContextUpdateNMsg;
 import dragon.network.messages.node.deallocpart.DeallocPartErrorNMsg;
 import dragon.network.messages.node.deallocpart.DeallocPartNMsg;
 import dragon.network.messages.node.deallocpart.PartDeallocedNMsg;
+import dragon.network.messages.node.fault.NodeFaultNMsg;
+import dragon.network.messages.node.fault.TopoFaultNMsg;
 import dragon.network.messages.node.getstatus.GetStatusErrorNMsg;
 import dragon.network.messages.node.getstatus.GetStatusNMsg;
 import dragon.network.messages.node.getstatus.StatusNMsg;
@@ -23,6 +26,9 @@ import dragon.network.messages.node.gettopoinfo.TopoInfoNMsg;
 import dragon.network.messages.node.halttopo.HaltTopoErrorNMsg;
 import dragon.network.messages.node.halttopo.HaltTopoNMsg;
 import dragon.network.messages.node.halttopo.TopoHaltedNMsg;
+import dragon.network.messages.node.join.AcceptingJoinNMsg;
+import dragon.network.messages.node.join.JoinCompleteNMsg;
+import dragon.network.messages.node.join.JoinRequestNMsg;
 import dragon.network.messages.node.preparejar.JarReadyNMsg;
 import dragon.network.messages.node.preparejar.PrepareJarErrorNMsg;
 import dragon.network.messages.node.preparejar.PrepareJarNMsg;
@@ -39,6 +45,7 @@ import dragon.network.messages.node.starttopo.TopoStartedNMsg;
 import dragon.network.messages.node.stoptopo.TermTopoErrorNMsg;
 import dragon.network.messages.node.stoptopo.TermTopoNMsg;
 import dragon.network.messages.node.stoptopo.TopoTermdNMsg;
+import dragon.network.messages.node.term.TermNodeNMsg;
 import dragon.network.operations.AllocPartGroupOp;
 import dragon.network.operations.DeallocPartGroupOp;
 import dragon.network.operations.GetStatusGroupOp;
@@ -129,7 +136,7 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processAcceptingJoin(NodeMessage msg) {
+	private synchronized void processAcceptingJoin(AcceptingJoinNMsg msg) {
 		if(node.getNodeState()!=NodeState.JOIN_REQUESTED) {
 			log.error("unexpected message: "+NodeMessage.NodeMessageType.ACCEPTING_JOIN.name());
 		} else {
@@ -140,7 +147,7 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processJoinComplete(NodeMessage msg) {
+	private synchronized void processJoinComplete(JoinCompleteNMsg msg) {
 		if(node.getNodeState()!=NodeState.ACCEPTING_JOIN) {
 			log.error("unexpected message: "+NodeMessage.NodeMessageType.JOIN_COMPLETE.name());
 		} else {
@@ -155,7 +162,7 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processJoinRequest(NodeMessage msg) {
+	private synchronized void processJoinRequest(JoinRequestNMsg msg) {
 		node.setNodeState(NodeState.ACCEPTING_JOIN);
 		context.put(msg.getSender());
 		JoinGroupOp jgo = (JoinGroupOp) msg.getGroupOp();
@@ -166,17 +173,15 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processContextUpdate(NodeMessage msg) {
-		ContextUpdateNMsg cu = (ContextUpdateNMsg) msg;
+	private synchronized void processContextUpdate(ContextUpdateNMsg cu) {
 		boolean hit=false;
 		for(String key : context.keySet()) {
 			if(!cu.context.containsKey(key)) {
 				context.putAll(cu.context);
 				try {
-					node.getComms().sendNodeMsg(msg.getSender(), new ContextUpdateNMsg(context));
+					node.getComms().sendNodeMsg(cu.getSender(), new ContextUpdateNMsg(context));
 				} catch (DragonCommsException e) {
-					log.error("could not send context update to ["+msg.getSender()+"]");
-					// TODO: possibly signal that the node has failed
+					node.nodeFault(cu.getSender());
 				}
 				hit=true;
 				break;
@@ -188,8 +193,7 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processPrepareJar(NodeMessage msg) {
-		PrepareJarNMsg pjf = (PrepareJarNMsg) msg;
+	private synchronized void processPrepareJar(PrepareJarNMsg pjf) {
 		if(!node.storeJarFile(pjf.topologyId,pjf.topologyJar)) {
 			sendError(pjf,"could not store the topology jar");
 			return;
@@ -203,24 +207,21 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processPrepareJarError(NodeMessage msg) {
-		PrepareJarErrorNMsg pjem = (PrepareJarErrorNMsg) msg;
+	private synchronized void processPrepareJarError(PrepareJarErrorNMsg pjem) {
 		receiveError(pjem);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processJarReady(NodeMessage msg) {
-		JarReadyNMsg jrm = (JarReadyNMsg) msg;
+	private synchronized void processJarReady(JarReadyNMsg jrm) {
 		receiveSuccess(jrm);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processPrepareTopology(NodeMessage msg) {
-		PrepareTopoNMsg pt = (PrepareTopoNMsg) msg;
+	private synchronized void processPrepareTopology(PrepareTopoNMsg pt) {
 		try {
 			try {
 				node.prepareTopology(pt.topoloyId, pt.conf, pt.topology, false);
@@ -236,20 +237,18 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processTopologyReady(NodeMessage msg) {
-		TopoReadyNMsg tr = (TopoReadyNMsg) msg;
+	private synchronized void processTopologyReady(TopoReadyNMsg tr) {
 		receiveSuccess(tr);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processStartTopology(NodeMessage msg) {
-		StartTopoNMsg st = (StartTopoNMsg) msg;
+	private synchronized void processStartTopology(StartTopoNMsg st) {
 		try {
 			node.startTopology(st.topologyId);
 			sendSuccess(st);
-		} catch (DragonTopologyException e) {
+		} catch (DragonTopologyException | DragonInvalidStateException e) {
 			sendError(st,e.getMessage());
 		}
 		
@@ -258,21 +257,19 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processTopologyStarted(NodeMessage msg) {
-		TopoStartedNMsg tsm = (TopoStartedNMsg) msg;
+	private synchronized void processTopologyStarted(TopoStartedNMsg tsm) {
 		receiveSuccess(tsm);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processStopTopology(NodeMessage msg) {
-		TermTopoNMsg stm = (TermTopoNMsg) msg;
+	private synchronized void processStopTopology(TermTopoNMsg stm) {
 		try {
 			// starts a thread to stop the topology
 			log.debug("asking node to stop the topology ["+stm.topologyId+"]");
 			node.terminateTopology(stm.topologyId,stm.getGroupOp());
-		} catch (DragonTopologyException e) {
+		} catch (DragonTopologyException | DragonInvalidStateException e) {
 			sendError(stm,e.getMessage());
 		} 
 	}
@@ -280,24 +277,21 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processTopologyStopped(NodeMessage msg) {
-		TopoTermdNMsg tsm = (TopoTermdNMsg) msg;
+	private synchronized void processTopologyStopped(TopoTermdNMsg tsm) {
 		receiveSuccess(tsm);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processStopTopologyError(NodeMessage msg) {
-		TermTopoErrorNMsg stem = (TermTopoErrorNMsg) msg;
+	private synchronized void processStopTopologyError(TermTopoErrorNMsg stem) {
 		receiveError(stem);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processRemoveTopology(NodeMessage msg) {
-		RemoveTopoNMsg trm = (RemoveTopoNMsg) msg;
+	private synchronized void processRemoveTopology(RemoveTopoNMsg trm) {
 		try {
 			node.removeTopo(trm.topologyId,trm.purge);
 			sendSuccess(trm);
@@ -309,28 +303,25 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processTopologyRemoved(NodeMessage msg) {
-		TopoRemovedNMsg rtm = (TopoRemovedNMsg) msg;
+	private synchronized void processTopologyRemoved(TopoRemovedNMsg rtm) {
 		receiveSuccess(rtm);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processRemoveTopologyError(NodeMessage msg) {
-		RemoveTopoErrorNMsg trm = (RemoveTopoErrorNMsg) msg;
+	private synchronized void processRemoveTopologyError(RemoveTopoErrorNMsg trm) {
 		receiveError(trm);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processHaltTopology(NodeMessage msg) {
-		HaltTopoNMsg htm = (HaltTopoNMsg) msg;
+	private synchronized void processHaltTopology(HaltTopoNMsg htm) {
 		try {
 			node.haltTopology(htm.topologyId);
 			sendSuccess(htm);
-		} catch (DragonTopologyException e) {
+		} catch (DragonTopologyException | DragonInvalidStateException e) {
 			sendError(htm,e.getMessage());
 		}
 	}
@@ -338,28 +329,25 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processTopologyHalted(NodeMessage msg) {
-		TopoHaltedNMsg thm = (TopoHaltedNMsg) msg;
+	private synchronized void processTopologyHalted(TopoHaltedNMsg thm) {
 		receiveSuccess(thm);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processHaltTopologyError(NodeMessage msg) {
-		HaltTopoErrorNMsg htem = (HaltTopoErrorNMsg) msg;
+	private synchronized void processHaltTopologyError(HaltTopoErrorNMsg htem) {
 		receiveError(htem);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processResumeTopology(NodeMessage msg) {
-		ResumeTopoNMsg htm = (ResumeTopoNMsg) msg;
+	private synchronized void processResumeTopology(ResumeTopoNMsg htm) {
 		try {
 			node.resumeTopology(htm.topologyId);
 			sendSuccess(htm);
-		} catch (DragonTopologyException e) {
+		} catch (DragonTopologyException | DragonInvalidStateException e) {
 			sendError(htm,e.getMessage());
 		}
 	}
@@ -367,24 +355,21 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processTopologyResumed(NodeMessage msg) {
-		TopoResumedNMsg thm = (TopoResumedNMsg) msg;
+	private synchronized void processTopologyResumed(TopoResumedNMsg thm) {
 		receiveSuccess(thm);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processResumeTopologyError(NodeMessage msg) {
-		ResumeTopoErrorNMsg htem = (ResumeTopoErrorNMsg) msg;
+	private synchronized void processResumeTopologyError(ResumeTopoErrorNMsg htem) {
 		receiveError(htem);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processGetTopologyInformation(NodeMessage msg) {
-		GetTopoInfoNMsg gtim = (GetTopoInfoNMsg) msg;
+	private synchronized void processGetTopologyInformation(GetTopoInfoNMsg gtim) {
 		ListToposGroupOp ltgo = (ListToposGroupOp)gtim.getGroupOp();
 		node.listTopologies(ltgo); 
 		ltgo.sendSuccess(node.getComms());
@@ -393,8 +378,7 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processTopologyInformation(NodeMessage msg) {
-		TopoInfoNMsg tim = (TopoInfoNMsg) msg;
+	private synchronized void processTopologyInformation(TopoInfoNMsg tim) {
 		((ListToposGroupOp)(node.getOpsProcessor()
 				.getGroupOp(tim.getGroupOp().getId())))
 				.aggregate(tim.getSender(),tim.state,tim.errors,tim.components,tim.metrics);
@@ -404,8 +388,7 @@ public class NodeMsgProcessor extends Thread {
 	/**
 	 * @param msg
 	 */
-	private synchronized void processAllocatePartition(NodeMessage msg) {
-		AllocPartNMsg apm = (AllocPartNMsg) msg;
+	private synchronized void processAllocatePartition(AllocPartNMsg apm) {
 		AllocPartGroupOp apgo = (AllocPartGroupOp) apm.getGroupOp();
 		int a=node.allocatePartition(apm.partitionId, apm.number);
 		apgo.partitionId=apm.partitionId;
@@ -413,7 +396,7 @@ public class NodeMsgProcessor extends Thread {
 		if(a==apm.number) {
 			apgo.sendSuccess(node.getComms());
 		} else {
-			apgo.sendError(node.getComms(), "failed to allocate partitions on ["+msg.getSender()+"]");
+			apgo.sendError(node.getComms(), "failed to allocate partitions on ["+apm.getSender()+"]");
 		}
 	}
 	
@@ -421,8 +404,7 @@ public class NodeMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private synchronized void processPartitionAllocated(NodeMessage msg) {
-		PartAllocedNMsg pam = (PartAllocedNMsg) msg;
+	private synchronized void processPartitionAllocated(PartAllocedNMsg pam) {
 		receiveSuccess(pam);
 	}
 	
@@ -430,8 +412,7 @@ public class NodeMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private synchronized void processAllocatePartitionError(NodeMessage msg) {
-		AllocPartErrorNMsg apem = (AllocPartErrorNMsg) msg;
+	private synchronized void processAllocatePartitionError(AllocPartErrorNMsg apem) {
 		receiveError(apem);
 	}
 	
@@ -439,8 +420,7 @@ public class NodeMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private synchronized void processGetStatus(NodeMessage msg) {
-		GetStatusNMsg gsnm = (GetStatusNMsg) msg;
+	private synchronized void processGetStatus(GetStatusNMsg gsnm) {
 		GetStatusGroupOp gsgo = (GetStatusGroupOp) gsnm.getGroupOp();
 		NodeStatus nodeStatus = node.getStatus();
 		nodeStatus.context = context;
@@ -452,8 +432,7 @@ public class NodeMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private synchronized void processGetStatusError(NodeMessage msg) {
-		GetStatusErrorNMsg gsnm = (GetStatusErrorNMsg) msg;
+	private synchronized void processGetStatusError(GetStatusErrorNMsg gsnm) {
 		receiveError(gsnm);
 	}
 	
@@ -461,19 +440,17 @@ public class NodeMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private synchronized void processStatus(NodeMessage msg) {
-		StatusNMsg gsnm = (StatusNMsg) msg;
+	private synchronized void processStatus(StatusNMsg gsnm) {
 		((GetStatusGroupOp)(node.getOpsProcessor()
 				.getGroupOp(gsnm.getGroupOp().getId())))
 				.aggregate(gsnm.nodeStatus);
-		receiveSuccess(msg);
+		receiveSuccess(gsnm);
 	}
 	
 	/**
 	 * @param msg
 	 */
-	private synchronized void processDeallocatePartition(NodeMessage msg) {
-		DeallocPartNMsg apm = (DeallocPartNMsg) msg;
+	private synchronized void processDeallocatePartition(DeallocPartNMsg apm) {
 		DeallocPartGroupOp apgo = (DeallocPartGroupOp) apm.getGroupOp();
 		int a=node.deallocatePartition(apm.partitionId, apm.number);
 		apgo.partitionId=apm.partitionId;
@@ -481,7 +458,7 @@ public class NodeMsgProcessor extends Thread {
 		if(a==apm.number) {
 			apgo.sendSuccess(node.getComms());
 		} else {
-			apgo.sendError(node.getComms(), "failed to deallocate partitions on ["+msg.getSender()+"]");
+			apgo.sendError(node.getComms(), "failed to deallocate partitions on ["+apm.getSender()+"]");
 		}
 	}
 	
@@ -489,8 +466,7 @@ public class NodeMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private synchronized void processPartitionDeallocated(NodeMessage msg) {
-		PartDeallocedNMsg pam = (PartDeallocedNMsg) msg;
+	private synchronized void processPartitionDeallocated(PartDeallocedNMsg pam) {
 		receiveSuccess(pam);
 	}
 	
@@ -498,8 +474,7 @@ public class NodeMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private synchronized void processDeallocatePartitionError(NodeMessage msg) {
-		DeallocPartErrorNMsg apem = (DeallocPartErrorNMsg) msg;
+	private synchronized void processDeallocatePartitionError(DeallocPartErrorNMsg apem) {
 		receiveError(apem);
 	}
 	
@@ -507,8 +482,28 @@ public class NodeMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private synchronized void processTerminateNode(NodeMessage msg) {
+	private synchronized void processTerminateNode(TermNodeNMsg msg) {
 		node.terminate();
+	}
+	
+	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processNodeFault(NodeFaultNMsg msg) {
+		node.removeNode(msg.desc);
+	}
+	
+	/**
+	 * 
+	 * @param msg
+	 */
+	private synchronized void processTopologyFault(TopoFaultNMsg msg) {
+		try {
+			node.setTopologyFault(msg.topologyId);
+		} catch (DragonTopologyException e) {
+			log.error(e.getMessage());
+		}
 	}
 	
 	
@@ -518,103 +513,109 @@ public class NodeMsgProcessor extends Thread {
 	private void processOperationalMsgs(NodeMessage msg) {
 		switch(msg.getType()) {
 		case JOIN_REQUEST:
-			processJoinRequest(msg);
+			processJoinRequest((JoinRequestNMsg)msg);
 			break;
 		case CONTEXT_UPDATE:
-			processContextUpdate(msg);
+			processContextUpdate((ContextUpdateNMsg) msg);
 			break;
 		case PREPARE_JAR:
-			processPrepareJar(msg);
+			processPrepareJar((PrepareJarNMsg) msg);
 			break;
 		case PREPARE_JAR_ERROR:
-			processPrepareJarError(msg);
+			processPrepareJarError((PrepareJarErrorNMsg) msg);
 			break;
 		case JAR_READY:
-			processJarReady(msg);
+			processJarReady((JarReadyNMsg) msg);
 			break;
 		case PREPARE_TOPOLOGY:
-			processPrepareTopology(msg);
+			processPrepareTopology((PrepareTopoNMsg) msg);
 			break;
 		case TOPOLOGY_READY:
-			processTopologyReady(msg);
+			processTopologyReady((TopoReadyNMsg) msg);
 			break;
 		case START_TOPOLOGY:
-			processStartTopology(msg);
+			processStartTopology((StartTopoNMsg) msg);
 			break;
 		case TOPOLOGY_STARTED:
-			processTopologyStarted(msg);
+			processTopologyStarted((TopoStartedNMsg) msg);
 			break;
 		case TERMINATE_TOPOLOGY:
-			processStopTopology(msg);
+			processStopTopology((TermTopoNMsg) msg);
 			break;
 		case TOPOLOGY_TERMINATED:
-			processTopologyStopped(msg);
+			processTopologyStopped((TopoTermdNMsg) msg);
 			break;
 		case TERMINATE_TOPOLOGY_ERROR:
-			processStopTopologyError(msg);
+			processStopTopologyError((TermTopoErrorNMsg) msg);
 			break;
 		case REMOVE_TOPOLOGY:
-			processRemoveTopology(msg);
+			processRemoveTopology((RemoveTopoNMsg) msg);
 			break;
 		case TOPOLOGY_REMOVED:
-			processTopologyRemoved(msg);
+			processTopologyRemoved((TopoRemovedNMsg) msg);
 			break;
 		case REMOVE_TOPOLOGY_ERROR:
-			processRemoveTopologyError(msg);
+			processRemoveTopologyError((RemoveTopoErrorNMsg) msg);
 			break;
 		case HALT_TOPOLOGY:
-			processHaltTopology(msg);
+			processHaltTopology((HaltTopoNMsg) msg);
 			break;
 		case TOPOLOGY_HALTED:
-			processTopologyHalted(msg);
+			processTopologyHalted((TopoHaltedNMsg) msg);
 			break;
 		case HALT_TOPOLOGY_ERROR:
-			processHaltTopologyError(msg);
+			processHaltTopologyError((HaltTopoErrorNMsg) msg);
 			break;
 		case RESUME_TOPOLOGY:
-			processResumeTopology(msg);
+			processResumeTopology((ResumeTopoNMsg) msg);
 			break;
 		case TOPOLOGY_RESUMED:
-			processTopologyResumed(msg);
+			processTopologyResumed((TopoResumedNMsg) msg);
 			break;
 		case RESUME_TOPOLOGY_ERROR:
-			processResumeTopologyError(msg);
+			processResumeTopologyError((ResumeTopoErrorNMsg) msg);
 			break;
 		case GET_TOPOLOGY_INFORMATION:
-			processGetTopologyInformation(msg);
+			processGetTopologyInformation((GetTopoInfoNMsg) msg);
 			break;
 		case TOPOLOGY_INFORMATION:
-			processTopologyInformation(msg);
+			processTopologyInformation((TopoInfoNMsg) msg);
 			break;
 		case ALLOCATE_PARTITION:
-			processAllocatePartition(msg);
+			processAllocatePartition((AllocPartNMsg) msg);
 			break;
 		case ALLOCATE_PARTITION_ERROR:
-			processAllocatePartitionError(msg);
+			processAllocatePartitionError((AllocPartErrorNMsg) msg);
 			break;
 		case PARTITION_ALLOCATED:
-			processPartitionAllocated(msg);
+			processPartitionAllocated((PartAllocedNMsg) msg);
 			break;
 		case GET_STATUS:
-			processGetStatus(msg);
+			processGetStatus((GetStatusNMsg) msg);
 			break;
 		case GET_STATUS_ERROR:
-			processGetStatusError(msg);
+			processGetStatusError((GetStatusErrorNMsg) msg);
 			break;
 		case STATUS:
-			processStatus(msg);
+			processStatus((StatusNMsg) msg);
 			break;
 		case DEALLOCATE_PARTITION:
-			processDeallocatePartition(msg);
+			processDeallocatePartition((DeallocPartNMsg) msg);
 			break;
 		case DEALLOCATE_PARTITION_ERROR:
-			processDeallocatePartitionError(msg);
+			processDeallocatePartitionError((DeallocPartErrorNMsg) msg);
 			break;
 		case PARTITION_DEALLOCATED:
-			processPartitionDeallocated(msg);
+			processPartitionDeallocated((PartDeallocedNMsg) msg);
 			break;
 		case TERMINATE_NODE:
-			processTerminateNode(msg);
+			processTerminateNode((TermNodeNMsg) msg);
+			break;
+		case NODE_FAULT:
+			processNodeFault((NodeFaultNMsg) msg);
+			break;
+		case TOPOLOGY_FAULT:
+			processTopologyFault((TopoFaultNMsg)msg);
 			break;
 		default:
 			break;
@@ -638,10 +639,10 @@ public class NodeMsgProcessor extends Thread {
 			log.debug("received ["+msg.getType().name()+"] from ["+msg.getSender());
 			switch(msg.getType()) {
 			case ACCEPTING_JOIN:
-				processAcceptingJoin(msg);
+				processAcceptingJoin((AcceptingJoinNMsg) msg);
 				break;
 			case JOIN_COMPLETE:
-				processJoinComplete(msg);
+				processJoinComplete((JoinCompleteNMsg) msg);
 				break;
 			case CONTEXT_UPDATE:
 			case GET_TOPOLOGY_INFORMATION:
@@ -678,6 +679,8 @@ public class NodeMsgProcessor extends Thread {
 			case DEALLOCATE_PARTITION_ERROR:
 			case PARTITION_DEALLOCATED:
 			case TERMINATE_NODE:
+			case NODE_FAULT:
+			case TOPOLOGY_FAULT:
 				// do when appropriate
 				node.getOpsProcessor().newConditionOp((op)->{
 					return node.getNodeState()==NodeState.OPERATIONAL;

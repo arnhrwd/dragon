@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import dragon.Constants;
+import dragon.DragonInvalidStateException;
 import dragon.DragonRequiresClonableException;
 import dragon.metrics.ComponentMetricMap;
 import dragon.network.Node.NodeState;
@@ -31,6 +32,7 @@ import dragon.network.messages.service.getstatus.StatusSMsg;
 import dragon.network.messages.service.halttopo.HaltTopoErrorSMsg;
 import dragon.network.messages.service.halttopo.HaltTopoSMsg;
 import dragon.network.messages.service.halttopo.TopoHaltedSMsg;
+import dragon.network.messages.service.listtopo.ListToposSMsg;
 import dragon.network.messages.service.listtopo.TopoListSMsg;
 import dragon.network.messages.service.progress.ProgressSMsg;
 import dragon.network.messages.service.resumetopo.ResumeTopoErrorSMsg;
@@ -124,8 +126,7 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg contains the name of the topology and the JAR byte array
 	 */
-	private void processUploadJar(ServiceMessage msg) {
-		UploadJarSMsg jf = (UploadJarSMsg) msg;
+	private void processUploadJar(UploadJarSMsg jf) {
 		if (node.getLocalClusters().containsKey(jf.topologyId)) {
 			client(new UploadJarFailedSMsg(jf.topologyId, "topology exists"), jf);
 		} else {
@@ -149,8 +150,7 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg contains the name of the topology and the topology itself
 	 */
-	private void processRunTopology(ServiceMessage msg) {
-		RunTopoSMsg rtm = (RunTopoSMsg) msg;
+	private void processRunTopology(RunTopoSMsg rtm) {
 		if (node.getLocalClusters().containsKey(rtm.topologyId)) {
 			client(new RunTopoErrorSMsg(rtm.topologyId, "topology exists"),rtm);
 		} else {
@@ -166,10 +166,11 @@ public class ServiceMsgProcessor extends Thread {
 						client(new TopoRunningSMsg(rtm.topologyId),rtm);
 					}, (op3, error) -> {
 						client(new RunTopoErrorSMsg(rtm.topologyId, error),rtm);
+						node.topologyFault(rtm.topologyId,rtm.dragonTopology);
 					}).onRunning((op3) -> {
 						try {
 							node.startTopology(rtm.topologyId);
-						} catch (DragonTopologyException e) {
+						} catch (DragonTopologyException | DragonInvalidStateException e) {
 							((StartTopoGroupOp)op3).fail(e.getMessage());
 						}
 						((StartTopoGroupOp) op3).receiveSuccess(comms,comms.getMyNodeDesc());
@@ -210,14 +211,10 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private void processGetNodeContext(ServiceMessage msg) {
-		try {
-			NodeContext nc = new NodeContext();
-			nc.putAll(node.getNodeProcessor().getContext());
-			comms.sendServiceMsg(new NodeContextSMsg(nc), msg);
-		} catch (DragonCommsException e) {
-			log.fatal("can't communicate with client: " + e.getMessage());
-		}
+	private void processGetNodeContext(NodeContextSMsg msg) {
+		NodeContext nc = new NodeContext();
+		nc.putAll(node.getNodeProcessor().getContext());
+		client(new NodeContextSMsg(nc), msg);
 	}
 
 	/**
@@ -225,18 +222,17 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private void processGetMetrics(ServiceMessage msg) {
-		GetMetricsSMsg gm = (GetMetricsSMsg) msg;
+	private void processGetMetrics(GetMetricsSMsg gm) {
 		if ((Boolean) node.getConf().getDragonMetricsEnabled()) {
 			ComponentMetricMap cm = node.getMetrics(gm.topologyId);
 			if (cm != null) {
-				client(new MetricsSMsg(cm), msg);
+				client(new MetricsSMsg(cm), gm);
 			} else {
-				client(new GetMetricsErrorSMsg("unknown topology or there are no samples available yet"), msg);
+				client(new GetMetricsErrorSMsg("unknown topology or there are no samples available yet"), gm);
 			}
 		} else {
 			log.warn("metrics are not enabled");
-			client(new GetMetricsErrorSMsg("metrics are not enabled in dragon.yaml for this node"), msg);
+			client(new GetMetricsErrorSMsg("metrics are not enabled in dragon.yaml for this node"), gm);
 		}
 	}
 
@@ -246,10 +242,9 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg contains the name of the topology
 	 */
-	private void processTerminateTopology(ServiceMessage msg) {
-		TermTopoSMsg tt = (TermTopoSMsg) msg;
+	private void processTerminateTopology(TermTopoSMsg tt) {
 		if (!node.getLocalClusters().containsKey(tt.topologyId)) {
-			client(new TermTopoErrorSMsg(tt.topologyId, "topology does not exist"),msg);
+			client(new TermTopoErrorSMsg(tt.topologyId, "topology does not exist"),tt);
 		} else {
 			final DragonTopology topology = node.getLocalClusters().get(tt.topologyId).getTopology();
 			if(tt.purge) {
@@ -292,7 +287,7 @@ public class ServiceMsgProcessor extends Thread {
 					try {
 						// starts a thread to stop the topology
 						node.terminateTopology(tt.topologyId, (TermTopoGroupOp) op);
-					} catch (DragonTopologyException e) {
+					} catch (DragonTopologyException | DragonInvalidStateException e) {
 						((TermTopoGroupOp) op).fail(e.getMessage());
 					}
 					progress("stopping spouts and waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds for bolts to finish...", tt);
@@ -325,7 +320,7 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private void processListTopologies(ServiceMessage msg) {
+	private void processListTopologies(ListToposSMsg msg) {
 		Ops.inst().newListToposGroupOp((op) -> {
 			ListToposGroupOp ltgo = (ListToposGroupOp) op;
 			client(new TopoListSMsg(ltgo.descState, ltgo.descErrors, ltgo.descComponents, ltgo.descMetrics), msg);
@@ -347,21 +342,20 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg contains the name of the topology to halt.
 	 */
-	private void processHaltTopology(ServiceMessage msg) {
-		HaltTopoSMsg htm = (HaltTopoSMsg) msg;
+	private void processHaltTopology(HaltTopoSMsg htm) {
 		if (!node.getLocalClusters().containsKey(htm.topologyId)) {
-			client(new HaltTopoErrorSMsg(htm.topologyId, "topology does not exist"),msg);
+			client(new HaltTopoErrorSMsg(htm.topologyId, "topology does not exist"),htm);
 		} else {
 			Ops.inst().newHaltTopoGroupOp(htm.topologyId, (op) -> {
-				client(new TopoHaltedSMsg(htm.topologyId), msg);
+				client(new TopoHaltedSMsg(htm.topologyId), htm);
 			}, (op, error) -> {
-				client(new HaltTopoErrorSMsg(htm.topologyId, error), msg);
+				client(new HaltTopoErrorSMsg(htm.topologyId, error), htm);
 			}).onRunning((op) -> {
 				try {
 					node.haltTopology(htm.topologyId);
 					((HaltTopoGroupOp) op).receiveSuccess(comms, comms.getMyNodeDesc());
-					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
-				} catch (DragonTopologyException e) {
+					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",htm);
+				} catch (DragonTopologyException | DragonInvalidStateException e) {
 					((HaltTopoGroupOp) op).receiveError(comms, comms.getMyNodeDesc(),e.getMessage());
 				}
 			}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
@@ -375,21 +369,20 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg contains the name of the topology to resume.
 	 */
-	private void processResumeTopology(ServiceMessage msg) {
-		ResumeTopoSMsg htm = (ResumeTopoSMsg) msg;
+	private void processResumeTopology(ResumeTopoSMsg htm) {
 		if (!node.getLocalClusters().containsKey(htm.topologyId)) {
-			client(new ResumeTopoErrorSMsg(htm.topologyId, "topology does not exist"),msg);
+			client(new ResumeTopoErrorSMsg(htm.topologyId, "topology does not exist"),htm);
 		} else {
 			Ops.inst().newResumeTopoGroupOp(htm.topologyId, (op) -> {
-				client(new TopoResumedMsg(htm.topologyId), msg);
+				client(new TopoResumedMsg(htm.topologyId), htm);
 			}, (op, error) -> {
-				client(new ResumeTopoErrorSMsg(htm.topologyId, error), msg);
+				client(new ResumeTopoErrorSMsg(htm.topologyId, error), htm);
 			}).onRunning((op) -> {
 				try {
 					node.resumeTopology(htm.topologyId);
 					((ResumeTopoGroupOp) op).receiveSuccess(comms, comms.getMyNodeDesc());
-					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
-				} catch (DragonTopologyException e) {
+					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",htm);
+				} catch (DragonTopologyException | DragonInvalidStateException e) {
 					((ResumeTopoGroupOp) op).receiveError(comms, comms.getMyNodeDesc(),e.getMessage());
 				}
 				
@@ -405,8 +398,7 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg contains the partition name, number of daemons and strategy to use.
 	 */
-	private void processAllocatePartition(ServiceMessage msg) {
-		final AllocPartSMsg apsm = (AllocPartSMsg) msg;
+	private void processAllocatePartition(AllocPartSMsg apsm) {
 		final String partitionId = apsm.partitionId;
 		int number = apsm.number;
 		final NodeContext context = node.getNodeProcessor().getContext();
@@ -446,11 +438,7 @@ public class ServiceMsgProcessor extends Thread {
 		}
 		
 		if(partitionId.equals(Constants.DRAGON_PRIMARY_PARTITION)) {
-			try {
-				comms.sendServiceMsg(new AllocPartErrorSMsg(partitionId,0,"can not add to the primary partition"),msg);
-			} catch (DragonCommsException e) {
-				log.fatal("can't communicate with client: " + e.getMessage());
-			}
+			client(new AllocPartErrorSMsg(partitionId,0,"can not add to the primary partition"),apsm);
 			return;
 		}
 		
@@ -500,13 +488,13 @@ public class ServiceMsgProcessor extends Thread {
 			}
 			break;
 		default:
-			client(new AllocPartErrorSMsg(partitionId,0,"invalid strategy ["+apsm.strategy+"]"),msg);
+			client(new AllocPartErrorSMsg(partitionId,0,"invalid strategy ["+apsm.strategy+"]"),apsm);
 			return;
 		}
 		Ops.inst().newAllocPartGroupOp(partitionId,allocation, (op)->{
-			client(new PartAllocedSMsg(partitionId,0), msg);
+			client(new PartAllocedSMsg(partitionId,0), apsm);
 		}, (op,error)->{
-			client(new AllocPartErrorSMsg(partitionId,0,error),msg);
+			client(new AllocPartErrorSMsg(partitionId,0,error),apsm);
 		}).onRunning((op)->{
 			if(allocation.containsKey(node.getComms().getMyNodeDesc())) {
 				int a = node.allocatePartition(partitionId, allocation.get(node.getComms().getMyNodeDesc()));
@@ -515,7 +503,7 @@ public class ServiceMsgProcessor extends Thread {
 					apgo.receiveError(comms, comms.getMyNodeDesc(), "failed to allocate partitions on ["+node.getComms().getMyNodeDesc()+"]");
 				} else {
 					apgo.receiveSuccess(comms,comms.getMyNodeDesc());
-					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",apsm);
 				}
 			}
 			
@@ -524,8 +512,7 @@ public class ServiceMsgProcessor extends Thread {
 		});
 	}
 	
-	private void processDeallocatePartition(ServiceMessage msg) {
-		final DeallocPartSMsg apsm = (DeallocPartSMsg) msg;
+	private void processDeallocatePartition(DeallocPartSMsg apsm) {
 		final String partitionId = apsm.partitionId;
 		int daemons = apsm.daemons;
 		final NodeContext context = node.getNodeProcessor().getContext();
@@ -540,7 +527,7 @@ public class ServiceMsgProcessor extends Thread {
 		
 		if(partitionId.equals(Constants.DRAGON_PRIMARY_PARTITION)) {
 			try {
-				comms.sendServiceMsg(new DeallocPartErrorSMsg(partitionId,0,"can not delete the primary partition"),msg);
+				comms.sendServiceMsg(new DeallocPartErrorSMsg(partitionId,0,"can not delete the primary partition"),apsm);
 			} catch (DragonCommsException e) {
 				log.fatal("can't communicate with client: " + e.getMessage());
 			}
@@ -584,11 +571,11 @@ public class ServiceMsgProcessor extends Thread {
 		}
 		
 		if(!partitionCount.containsKey(partitionId)) {
-			client(new DeallocPartErrorSMsg(partitionId,0,"partition does not exist ["+partitionId+"]"),msg);
+			client(new DeallocPartErrorSMsg(partitionId,0,"partition does not exist ["+partitionId+"]"),apsm);
 			return;
 		}
 		if(partitionCount.get(partitionId)<daemons) {
-			client(new DeallocPartErrorSMsg(partitionId,0,"only ["+partitionCount.get(partitionId)+"] partition instances exist"),msg);
+			client(new DeallocPartErrorSMsg(partitionId,0,"only ["+partitionCount.get(partitionId)+"] partition instances exist"),apsm);
 			return;
 		}
 		switch(apsm.strategy) {
@@ -632,13 +619,13 @@ public class ServiceMsgProcessor extends Thread {
 			}
 			break;
 		default:
-			client(new DeallocPartErrorSMsg(partitionId,0,"invalid strategy ["+apsm.strategy+"]"),msg);
+			client(new DeallocPartErrorSMsg(partitionId,0,"invalid strategy ["+apsm.strategy+"]"),apsm);
 			return;
 		}
 		Ops.inst().newDeallocPartGroupOp(partitionId,deletions, (op)->{
-			client(new PartDeallocedSMsg(partitionId,0), msg);
+			client(new PartDeallocedSMsg(partitionId,0), apsm);
 		}, (op,error)->{
-			client(new DeallocPartErrorSMsg(partitionId,0,error),msg);
+			client(new DeallocPartErrorSMsg(partitionId,0,error),apsm);
 		}).onRunning((op)->{
 			if(deletions.containsKey(node.getComms().getMyNodeDesc())) {
 				int a = node.deallocatePartition(partitionId, deletions.get(node.getComms().getMyNodeDesc()));
@@ -647,7 +634,7 @@ public class ServiceMsgProcessor extends Thread {
 					apgo.receiveError(comms, comms.getMyNodeDesc(), "failed to delete partition on ["+node.getComms().getMyNodeDesc()+"]");
 				} else {
 					apgo.receiveSuccess(comms,comms.getMyNodeDesc());
-					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",apsm);
 				}
 			}
 			
@@ -701,34 +688,34 @@ public class ServiceMsgProcessor extends Thread {
 					node.getOperationsLock().lockInterruptibly();
 					switch (msg.getType()) {
 					case UPLOAD_JAR:
-						processUploadJar(msg);
+						processUploadJar((UploadJarSMsg) msg);
 						break;
 					case RUN_TOPOLOGY:
-						processRunTopology(msg);
+						processRunTopology((RunTopoSMsg) msg);
 						break;
 					case GET_NODE_CONTEXT:
-						processGetNodeContext(msg);
+						processGetNodeContext((NodeContextSMsg) msg);
 						break;
 					case GET_METRICS:
-						processGetMetrics(msg);
+						processGetMetrics((GetMetricsSMsg) msg);
 						break;
 					case TERMINATE_TOPOLOGY:
-						processTerminateTopology(msg);
+						processTerminateTopology((TermTopoSMsg) msg);
 						break;
 					case LIST_TOPOLOGIES:
-						processListTopologies(msg);
+						processListTopologies((ListToposSMsg) msg);
 						break;
 					case HALT_TOPOLOGY:
-						processHaltTopology(msg);
+						processHaltTopology((HaltTopoSMsg) msg);
 						break;
 					case RESUME_TOPOLOGY:
-						processResumeTopology(msg);
+						processResumeTopology((ResumeTopoSMsg) msg);
 						break;
 					case ALLOCATE_PARTITION:
-						processAllocatePartition(msg);
+						processAllocatePartition((AllocPartSMsg) msg);
 						break;
 					case DEALLOCATE_PARTITION:
-						processDeallocatePartition(msg);
+						processDeallocatePartition((DeallocPartSMsg) msg);
 						break;
 					case GET_STATUS:
 						processGetStatus(msg);

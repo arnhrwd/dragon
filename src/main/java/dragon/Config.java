@@ -237,7 +237,7 @@ public class Config extends HashMap<String, Object> {
 	
 	/**
 	 * 
-	 * @return log directory, if not given will be DRAGON_HOME/log
+	 * log directory, if not given will be DRAGON_HOME/log
 	 */
 	public static final String DRAGON_LOG_DIR="dragon.log.dir";
 	

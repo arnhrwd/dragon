@@ -40,6 +40,32 @@ import dragon.utils.NetworkTaskBuffer;
  * LocalCluster manages the bolts and spouts for a given topology that are
  * within this daemon.
  * 
+ * The life cycle of a topology goes through several states:
+ * <ul>
+ * <li>ALLOCATED The topology exists in memory but is not ready to be run.</li>
+ * <li>SUBMITTED The topology is ready to be run, open/prepare methods 
+ * have not yet been called.</li>
+ * <li>RUNNING The topology is currently running.</li>
+ * <li>HALTED All threads for the topology have been suspended.</li>
+ * <li>TERMINATING No new data is being emitted from spouts. When all bolts have no 
+ * more work to do, the topology is removed from memory.</li>
+ * <li>FAULT The topology is at fault. All threads are interrupted.</li>
+ * </ul>
+ * 
+ * The states may transition in the following ways:
+ * <ul>
+ * <li>ALLOCATED => SUBMITTED An allocated topology can only move to the submitted or fault state.</li>
+ * <li>SUBMITTED => RUNNING A submitted topology can only move to the running or fault state. 
+ * The open/prepare methods are called during this transition.</li>
+ * <li>RUNNING => TERMINATING A running topology may be terminated by the user.</li>
+ * <li>RUNNING => HALTED A running topology may be terminated by the user. 
+ * The topology may also be halted automatically if it throws too many exceptions.</li> 
+ * <li>HALTED => RUNNING The user may resume the topology.</li>
+ * <li>HALTED => TERMINATING The user may terminate a halted topology.</li>
+ * <li>ALLOCATED,SUBMITTED,RUNNING,TERMINATING,HALTED => FAULT A fault has occurred that requires the 
+ * topology to be purged and restarted. All threads have been interrupted.</li>
+ * </ul>
+ * 
  * @author aaron
  *
  */
@@ -150,7 +176,12 @@ public class LocalCluster {
 		/**
 		 * The local cluster's threads have been suspended and it can be resumed.
 		 */
-		HALTED
+		HALTED,
+		
+		/**
+		 * A fault has occurred and the topology will need to be restart.
+		 */
+		FAULT
 	}
 	
 	/**
@@ -706,17 +737,9 @@ public class LocalCluster {
 		
 		state=State.SUBMITTED;
 		if(start) {
-			scheduleSpouts();	
+			runComponentThreads();
 			state=State.RUNNING;
 		}
-	}
-	
-	/**
-	 * Scheduling the spouts will allow data to start streaming.
-	 */
-	private void scheduleSpouts() {
-		runComponentThreads();
-		state=State.RUNNING;
 	}
 	
 	/**
@@ -742,8 +765,10 @@ public class LocalCluster {
 	/**
 	 * Start a topology by opening all its components and scheduling the spouts.
 	 * @throws DragonTopologyException 
+	 * @throws DragonInvalidStateException 
 	 */
-	public void openAll() throws DragonTopologyException {
+	public void openAll() throws DragonTopologyException, DragonInvalidStateException {
+		if(state!=State.SUBMITTED) throw new DragonInvalidStateException("state must be "+State.SUBMITTED.name());
 		log.info("opening bolts");
 		for(BoltPrepare boltPrepare : boltPrepareList) {
 			//log.debug("calling prepare on bolt "+boltPrepare+" with collector "+boltPrepare.collector);
@@ -763,8 +788,8 @@ public class LocalCluster {
 				throw new DragonTopologyException(ce.toString());
 			}
 		}
-		log.debug("scheduling spouts");
-		scheduleSpouts();
+		runComponentThreads();
+		state=State.RUNNING;
 	}
 
 	/**
@@ -1010,9 +1035,18 @@ public class LocalCluster {
 
 	/**
 	 * Terminate the topology on this local cluster.
+	 * @throws DragonInvalidStateException 
 	 */
-	public synchronized void setShouldTerminate() {
+	public synchronized void setShouldTerminate() throws DragonInvalidStateException {
+		/*
+		 * Cannot terminate if we are already terminating or if we
+		 * are in the fault state.
+		 */
 		if(state==State.TERMINATING) return;
+		if(state==State.FAULT 
+				|| state==State.ALLOCATED 
+				|| state==State.SUBMITTED) throw new DragonInvalidStateException("cannot change to terminate state");
+		log.info("terminating ["+getTopologyId()+"]");
 		if(state==State.HALTED) {
 			state=State.TERMINATING;
 			try {
@@ -1042,18 +1076,22 @@ public class LocalCluster {
 	
 	/**
 	 * Halt the topology on this local cluster.
+	 * @throws DragonInvalidStateException 
 	 */
-	public void haltTopology() {
-		log.info("halting topology");
+	public void haltTopology() throws DragonInvalidStateException {
+		if(state==State.HALTED) return;
+		if(state!=State.RUNNING) throw new DragonInvalidStateException("must be running to halt the topology");
+		log.info("halting ["+getTopologyId()+"]");
 		state=State.HALTED;
 	}
 	
 	/**
 	 * Resume the topology from a halted state on this local cluster.
+	 * @throws DragonInvalidStateException 
 	 */
-	public void resumeTopology() {
-		log.info("resuming topology");
+	public void resumeTopology() throws DragonInvalidStateException {
 		if(state==State.HALTED) {
+			log.info("resuming topology");
 			state=State.RUNNING;
 			try {
 				haltLock.lock();
@@ -1061,19 +1099,38 @@ public class LocalCluster {
 			} finally {
 				haltLock.unlock();
 			}
+		} else {
+			throw new DragonInvalidStateException("can only resume from halted state");
 		}
+	}
+	
+	/**
+	 * Set the topology into the FAULT state, which will require
+	 * the topology to be purged and restarted. Generally a fault
+	 * can happen at any time, e.g. if a node crashes that was running
+	 * part of the topology, then the entire topology is at fault.
+	 */
+	public void setFault() {
+		if(state==State.FAULT) return;
+		log.info("topology fault has occurred");
+		interruptAll();
+		state=State.FAULT;
+		
 	}
 	
 	/**
 	 * Interrupt all threads.
 	 */
 	public void interruptAll() {
+		if(state==State.FAULT) return;
 		log.debug("interrupting all threads");
-		for(int i=0;i<componentExecutorThreads.size();i++) {
-			componentExecutorThreads.get(i).interrupt();
-		}
-		for(int i=0;i<networkExecutorThreads.size();i++) {
-			networkExecutorThreads.get(i).interrupt();
+		if(state!=State.ALLOCATED && state!=State.SUBMITTED) {
+			for(int i=0;i<componentExecutorThreads.size();i++) {
+				componentExecutorThreads.get(i).interrupt();
+			}
+			for(int i=0;i<networkExecutorThreads.size();i++) {
+				networkExecutorThreads.get(i).interrupt();
+			}
 		}
 		tickThread.interrupt();
 		tickCounterThread.interrupt();

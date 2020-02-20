@@ -57,7 +57,7 @@ public class NetworkTask {
 	}
 	
 	/**
-	 * @param tuple
+	 * @param tuples
 	 * @param taskIds
 	 * @param componentId
 	 * @param topologyId
