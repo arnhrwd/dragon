@@ -515,4 +515,26 @@ public class DragonSubmitter {
 		comms.close();
 	}
 
+	public static void purgeTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException{
+		initComms(conf);
+		System.out.println("purging topology ["+topologyId+"]");
+		comms.sendServiceMsg(new TermTopoSMsg(topologyId,true));
+		ServiceMessage message = skipProgress();
+		TermTopoErrorSMsg tte;
+		switch(message.getType()) {
+		case TERMINATE_TOPOLOGY_ERROR:
+			tte = (TermTopoErrorSMsg) message;
+			System.out.println("purge topology error ["+topologyId+"] "+tte.error);
+		case TOPOLOGY_TERMINATED:
+			System.out.println("topology purged ["+topologyId+"]");
+			break;
+		default:
+			System.out.println("unexpected response: "+message.getType().name());
+			comms.close();
+			System.exit(-1);
+		}
+		comms.sendServiceMsg(new ServiceDoneSMsg());
+		comms.close();
+	}
+
 }

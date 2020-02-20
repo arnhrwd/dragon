@@ -678,8 +678,10 @@ public class Run {
 		options.addOption(confOption);
 		Option statusOption = new Option("st","status",false,"get status of the daemons");
 		options.addOption(statusOption);
+		Option purgeOption = new Option("P","purge",false,"purge a topology");
+		options.addOption(purgeOption);
 		Option execOption = new Option("e","exec",true,"[daemon|metrics|terminate|resume|halt|"
-		+"list|allocate|deallocate|deploy|setup|distro|unzip|config|online|offline|status]");
+		+"list|allocate|deallocate|deploy|setup|distro|unzip|config|online|offline|status|purge]");
 		options.addOption(execOption);		
 		
 		
@@ -738,6 +740,8 @@ public class Run {
 	            		exec="daemon";
 	            	} else if(cmd.hasOption("status")) {
 	            		exec="status";
+	            	} else if(cmd.hasOption("purge")) {
+	            		exec="purge";
 	            	}
 	            }
             }
@@ -902,6 +906,12 @@ public class Run {
     			checkOptionsTopologyCommand(cmd);
     			DragonSubmitter.terminateTopology(conf,cmd.getOptionValue("topology"));
     			break;
+            }
+            case "purge":{
+            	DragonSubmitter.node = conf.getLocalHost();
+            	checkOptionsTopologyCommand(cmd);
+            	DragonSubmitter.purgeTopology(conf,cmd.getOptionValue("topology"));
+            	break;
             }
             case "resume":{
             	DragonSubmitter.node = conf.getLocalHost();
