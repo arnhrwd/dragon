@@ -33,7 +33,7 @@ public class TopoInfoNMsg extends NodeMessage {
 	/**
 	 * 
 	 */
-	public final HashMap<String,Sample> metrics;
+	public final HashMap<String,HashMap<String,Sample>> metrics;
 	
 	/**
 	 * @param state
@@ -43,7 +43,7 @@ public class TopoInfoNMsg extends NodeMessage {
 	public TopoInfoNMsg(HashMap<String,String> state,
 			HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors,
 			HashMap<String,List<String>> components,
-			HashMap<String,Sample> metrics) {
+			HashMap<String,HashMap<String,Sample>> metrics) {
 		super(NodeMessage.NodeMessageType.TOPOLOGY_INFORMATION);
 		this.state=state;
 		this.errors=errors;

@@ -2,6 +2,7 @@ package dragon.network.operations;
 
 
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.removetopo.RemoveTopoErrorNMsg;
 import dragon.network.messages.node.removetopo.RemoveTopoNMsg;
@@ -30,8 +31,8 @@ public class RemoveTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public RemoveTopoGroupOp(String topologyId,boolean purge,IOpSuccess success,IOpFailure failure) {
-		super(success,failure);
+	public RemoveTopoGroupOp(IComms comms,String topologyId,boolean purge,IOpSuccess success,IOpFailure failure) {
+		super(comms,success,failure);
 		this.topologyId=topologyId;
 		this.purge=purge;
 	}

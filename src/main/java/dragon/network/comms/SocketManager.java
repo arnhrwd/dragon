@@ -3,6 +3,7 @@ package dragon.network.comms;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.StreamCorruptedException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -120,7 +121,7 @@ public class SocketManager {
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
-					}
+					} 
 				}
 			}
 		};

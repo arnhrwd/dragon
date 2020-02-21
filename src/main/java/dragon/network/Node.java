@@ -171,6 +171,15 @@ public class Node {
 	private final Timer timer;
 	
 	/**
+	 * Singleton reference
+	 */
+	private static Node me;
+	
+	public static Node inst() {
+		return me;
+	}
+	
+	/**
 	 * Initialize the node, will initiate a join request if possible to
 	 * join to existing daemons, unless it is the first listed host in the
 	 * host list, in which case it will just wait for others to join to it.
@@ -178,30 +187,77 @@ public class Node {
 	 * @throws IOException
 	 */
 	public Node(Config conf) throws IOException {
-		
+		me=this;
 		this.conf = conf;
 		this.parentDesc = conf.getDragonNetworkParentDescriptor();
 		writePid();
+		
+		/*
+		 * Allocate the local clusters map.
+		 */
 		localClusters = new HashMap<>();
+		
+		/*
+		 * Allocate the child processes map.
+		 */
+		
 		childProcesses=new HashMap<>();
+		
+		/*
+		 * Allocate the time used for time outs throughout
+		 * the system.
+		 */
 		timer=new Timer("timer");
 		
-		
+		/*
+		 * Start up a process manager.
+		 */
 		processManager = new ProcessManager(conf);
-		operationsThread = new Ops(this);
 		
+		/*
+		 * Start up the operations manager.
+		 */
+		operationsThread = new Ops();
+		
+		/*
+		 * This node is considering joining to other nodes.
+		 */
 		setNodeState(NodeState.JOINING);
+		
+		/*
+		 * Open the communications layer.
+		 */
 		comms = new TcpComms(conf);
 		comms.open();
+		
+		/*
+		 * Start up the router for topology data.
+		 */
 		router = new Router(conf,comms,localClusters);
-		serviceThread = new ServiceMsgProcessor(this);
-		nodeThread = new NodeMsgProcessor(this);
+		
+		/*
+		 * Start up the service message processor for client commands.
+		 */
+		serviceThread = new ServiceMsgProcessor();
+		
+		/*
+		 * Start up the node message processor for node messages.
+		 */
+		nodeThread = new NodeMsgProcessor();
+		
+		/*
+		 * If metrics is desired, startup a metrics monitor.
+		 */
 		if (conf.getDragonMetricsEnabled()) {
 			metricsThread = new Metrics(conf,localClusters,comms.getMyNodeDesc());
 		} else {
 			metricsThread=null;
 		}
 		
+		/*
+		 * Get a list of hosts from the configuration file to consider
+		 * joining to.
+		 */
 		final ArrayList<NodeDescriptor> hosts = conf.getHosts();
 		if(hosts.size()>0 && !hosts.get(0).equals(comms.getMyNodeDesc())) {
 			sendJoinRequest(hosts);
@@ -248,6 +304,7 @@ public class Node {
 			sendJoinRequest(hosts);
 			return;
 		} else {
+			setNodeState(NodeState.JOIN_REQUESTED);
 			Ops.inst().newJoinGroupOp(desc, (op)->{
 				log.info("joined to "+desc);
 				JoinGroupOp jgo = (JoinGroupOp) op;
@@ -277,7 +334,6 @@ public class Node {
 				log.warn("error while joining: "+error);
 				sendJoinRequest(hosts);
 			}).onStart((op)->{
-				setNodeState(NodeState.JOIN_REQUESTED);
 				log.debug("waiting up to ["+getConf().getDragonCommsRetryMs()/1000+"] seconds to join with "+desc.toString());
 			}).onTimeout(getTimer(),getConf().getDragonServiceTimeoutMs(),TimeUnit.MILLISECONDS,(op)->{
 				op.fail("timed out joining node");
@@ -502,7 +558,7 @@ public class Node {
 	 * @param ttgo the group operation to respond to
 	 */
 	public synchronized void localClusterTerminated(TermTopoGroupOp ttgo) {
-		ttgo.sendSuccess(comms);
+		ttgo.sendSuccess();
 	}
 
 	/**
@@ -574,21 +630,22 @@ public class Node {
 	public synchronized void listTopologies(ListToposGroupOp ltgo) {
 		HashMap<String, String> state = new HashMap<String, String>();
 		HashMap<String, List<String>> comps = new HashMap<>();
-		HashMap<String, Sample> metrics = new HashMap<>();
+		HashMap<String,HashMap<String, Sample>> metrics = new HashMap<>();
 		HashMap<String, HashMap<String, ArrayList<ComponentError>>> errors = new HashMap<>();
 		for (String topologyId : localClusters.keySet()) {
 			state.put(topologyId, localClusters.get(topologyId).getState().name());
 			comps.put(topologyId, new ArrayList<String>());
+			metrics.put(topologyId,new HashMap<String,Sample>());
 			for(String spoutid : localClusters.get(topologyId).getSpouts().keySet()) {
 				for(Integer taskId : localClusters.get(topologyId).getSpouts().get(spoutid).keySet()) {
 					comps.get(topologyId).add(spoutid+":"+taskId);
-					metrics.put(spoutid+":"+taskId, new Sample(localClusters.get(topologyId).getSpouts().get(spoutid).get(taskId)));
+					metrics.get(topologyId).put(spoutid+":"+taskId, new Sample(localClusters.get(topologyId).getSpouts().get(spoutid).get(taskId)));
 				}
 			}
 			for(String boltid : localClusters.get(topologyId).getBolts().keySet()) {
 				for(Integer taskId : localClusters.get(topologyId).getBolts().get(boltid).keySet()) {
 					comps.get(topologyId).add(boltid+":"+taskId);
-					metrics.put(boltid+":"+taskId, new Sample(localClusters.get(topologyId).getBolts().get(boltid).get(taskId)));
+					metrics.get(topologyId).put(boltid+":"+taskId, new Sample(localClusters.get(topologyId).getBolts().get(boltid).get(taskId)));
 				}
 			}
 			errors.put(topologyId, new HashMap<String, ArrayList<ComponentError>>());
@@ -601,6 +658,7 @@ public class Node {
 		/*
 		 * Store the data into the holding variables prior to sending the response.
 		 */
+		ltgo.metrics=metrics;
 		ltgo.components = comps;
 		ltgo.state = state;
 		ltgo.errors = errors;
@@ -783,7 +841,7 @@ public class Node {
 	 * @param desc
 	 */
 	public synchronized void removeNode(NodeDescriptor desc) {
-		log.debug("removing +["+desc+"] from the node context");
+		log.debug("removing ["+desc+"] from the node context");
 		nodeThread.getContext().remove(desc.toString());
 		// trigger topology faults as required
 		for(String topologyId : localClusters.keySet()) {

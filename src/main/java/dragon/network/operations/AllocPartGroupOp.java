@@ -3,6 +3,7 @@ package dragon.network.operations;
 import java.util.HashMap;
 
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.allocpart.AllocPartErrorNMsg;
 import dragon.network.messages.node.allocpart.AllocPartNMsg;
@@ -36,8 +37,8 @@ public class AllocPartGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public AllocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
-		super(success, failure);
+	public AllocPartGroupOp(IComms comms,String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
+		super(comms,success, failure);
 		this.partitionId=partitionId;
 		this.allocation=allocation;
 	}

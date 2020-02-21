@@ -367,10 +367,8 @@ public class DragonSubmitter {
 				if(message.descComponents.get(descid).containsKey(topologyId)) {
 					for(String cid : message.descComponents.get(descid).get(topologyId)) {
 						String name="["+cid+"]";
-						if(message.descMetrics.containsKey(topologyId)) {
-							Sample metrics = message.descMetrics.get(topologyId).get(cid);
-							name+=" emt:"+metrics.emitted+",exe:"+metrics.processed+",trf:"+metrics.transferred;
-						}
+						Sample metrics = message.descMetrics.get(descid).get(topologyId).get(cid);
+						name+=" emt:"+metrics.emitted+",exe:"+metrics.processed+",trf:"+metrics.transferred;
 						TreeNode component = new TreeNode(name);
 						machine.addChild(component);
 						// list errors

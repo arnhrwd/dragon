@@ -3,10 +3,12 @@ package dragon.network.operations;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import dragon.network.Node;
 import dragon.network.NodeDescriptor;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
@@ -41,13 +43,24 @@ public abstract class GroupOp extends Op implements Serializable {
 	protected transient final ArrayList<NodeMessage> received; // not necessary at the group members
 	
 	/**
+	 * Comms for this group op. Needs to be set at the receiver
+	 * to the receiver's comms.
+	 */
+	protected transient IComms comms;
+	
+	/**
 	 * @param success
 	 * @param failure
 	 */
-	public GroupOp(IOpSuccess success,IOpFailure failure) {
+	public GroupOp(IComms comms,IOpSuccess success,IOpFailure failure) {
 		super(success,failure);
 		group = new HashSet<NodeDescriptor>();
 		received=new ArrayList<NodeMessage>();
+		this.comms=comms;
+	}
+	
+	public void setComms(IComms comms) {
+		this.comms=comms;
 	}
 	
 	/**
@@ -80,27 +93,48 @@ public abstract class GroupOp extends Op implements Serializable {
 	}
 
 	/**
-	 * @param comms
-	 * @throws DragonCommsException 
+	 * @throws Exception 
+	 * 
 	 */
-	public void initiate(IComms comms) throws DragonCommsException {
-		for(NodeDescriptor desc : group) {
-			log.debug(desc);
-			log.debug(getSourceDesc());
-			if(!desc.equals(getSourceDesc())) {
-				try {
-					sendGroupNodeMessage(comms,desc, initiateNodeMessage(desc));
-				} catch (DragonCommsException e) {
-					fail("network errors prevented group operation");
-					throw(e);
-				}
-			}
+	@Override
+	public void start() {
+		ArrayList<NodeDescriptor> descs = new ArrayList<>();
+		descs.addAll(group);
+		sendStartMessages(descs);
+	}
+	
+	public void sendStartMessages(List<NodeDescriptor> descs) {
+		if(descs.size()==0) {
+			log.debug("calling super start");
+			super.start();
+		} else {
+			NodeDescriptor desc=descs.remove(0);
+			log.debug("considering "+desc);
 			/*
-			* else the thread that initiated the group op needs to make sure
+			* The thread that initiated the group op needs to make sure
 			* that it is resolved for the source desc.
 			*/
+			if(desc.equals(getSourceDesc())) {
+				sendStartMessages(descs);
+			} else {
+				// otherwise we send a message
+				Ops.inst().newOp((op)->{
+					try {
+						sendGroupNodeMessage(comms,desc, initiateNodeMessage(desc));
+					} catch (DragonCommsException e) {
+						op.fail("network errors prevented group operation");
+						Node.inst().nodeFault(desc);
+					}
+				}, (op)->{
+					log.debug("sent message to "+desc);
+					op.success();
+				}, (op)->{
+					sendStartMessages(descs);
+				}, (op,msg)->{
+					fail(msg);
+				});
+			}
 		}
-		super.start();
 	}
 	
 	/**
@@ -110,16 +144,17 @@ public abstract class GroupOp extends Op implements Serializable {
 	 * {@link #receiveSuccess(IComms, NodeDescriptor)}.
 	 * @param comms
 	 */
-	public void sendSuccess(IComms comms) {
+	public void sendSuccess() {
 		if(!getSourceDesc().equals(comms.getMyNodeDesc())) {
 			NodeMessage tsm = successNodeMessage();
 			try {
 				sendGroupNodeMessage(comms,getSourceDesc(), tsm);
 			} catch (DragonCommsException e) {
 				log.fatal("network errors prevented group operation");
+				Node.inst().nodeFault(getSourceDesc());
 			}
 		} else {
-			receiveSuccess(comms,comms.getMyNodeDesc());
+			receiveSuccess(comms.getMyNodeDesc());
 		}
 	}
 	
@@ -131,16 +166,16 @@ public abstract class GroupOp extends Op implements Serializable {
 	 * @param comms
 	 * @param error
 	 */
-	public void sendError(IComms comms,String error) {
+	public void sendError(String error) {
 		if(!getSourceDesc().equals(comms.getMyNodeDesc())) {
 			try {
 				comms.sendNodeMsg(getSourceDesc(),errorNodeMessage(error));
 			} catch (DragonCommsException e) {
 				log.fatal("network errors prevented group operation");
-				
+				Node.inst().nodeFault(getSourceDesc());
 			}
 		} else {
-			receiveError(comms,comms.getMyNodeDesc(),error);
+			receiveError(comms.getMyNodeDesc(),error);
 		}
 	}
 	
@@ -148,16 +183,16 @@ public abstract class GroupOp extends Op implements Serializable {
 	 * @param comms
 	 * @param msg
 	 */
-	public void receiveSuccess(IComms comms, NodeMessage msg) {
+	public void receiveSuccess(NodeMessage msg) {
 		received.add(0,msg);
-		receiveSuccess(comms,msg.getSender());
+		receiveSuccess(msg.getSender());
 	}
 	
 	/**
 	 * @param comms
 	 * @param desc
 	 */
-	public void receiveSuccess(IComms comms, NodeDescriptor desc) {
+	public void receiveSuccess(NodeDescriptor desc) {
 		if(remove(desc)) {
 			success();
 		}
@@ -168,9 +203,9 @@ public abstract class GroupOp extends Op implements Serializable {
 	 * @param msg
 	 * @param error
 	 */
-	public void receiveError(IComms comms, NodeMessage msg, String error) {
+	public void receiveError(NodeMessage msg, String error) {
 		received.add(0,msg);
-		receiveError(comms,msg.getSender(),error);
+		receiveError(msg.getSender(),error);
 	}
 	
 	/**
@@ -178,7 +213,7 @@ public abstract class GroupOp extends Op implements Serializable {
 	 * @param desc
 	 * @param error
 	 */
-	public void receiveError(IComms comms, NodeDescriptor desc,String error) {
+	public void receiveError(NodeDescriptor desc,String error) {
 		remove(desc);
 		fail(error);
 	}

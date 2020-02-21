@@ -2,6 +2,7 @@ package dragon.network.operations;
 
 
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.preparetopo.PrepareTopoErrorNMsg;
 import dragon.network.messages.node.preparetopo.PrepareTopoNMsg;
@@ -26,9 +27,9 @@ public class PrepareTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public PrepareTopoGroupOp(RunTopoSMsg orig,IOpSuccess success,
+	public PrepareTopoGroupOp(IComms comms,RunTopoSMsg orig,IOpSuccess success,
 			IOpFailure failure) {
-		super(success,failure);
+		super(comms,success,failure);
 		this.rtm=orig;
 	}
 

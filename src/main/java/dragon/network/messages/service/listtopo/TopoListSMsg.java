@@ -33,7 +33,7 @@ public class TopoListSMsg extends ServiceMessage {
 	/**
 	 * 
 	 */
-	public final HashMap<String,HashMap<String,Sample>> descMetrics;
+	public final HashMap<String,HashMap<String,HashMap<String,Sample>>> descMetrics;
 	
 	/**
 	 * @param descState
@@ -43,7 +43,7 @@ public class TopoListSMsg extends ServiceMessage {
 	public TopoListSMsg(HashMap<String, HashMap<String, String>> descState, 
 			HashMap<String, HashMap<String, HashMap<String, ArrayList<ComponentError>>>> descErrors,
 			HashMap<String,HashMap<String,List<String>>> descComponents,
-			HashMap<String,HashMap<String,Sample>> descMetrics) {
+			HashMap<String,HashMap<String,HashMap<String,Sample>>> descMetrics) {
 		super(ServiceMessage.ServiceMessageType.TOPOLOGY_LIST);		
 		this.descState=descState;
 		this.descErrors=descErrors;

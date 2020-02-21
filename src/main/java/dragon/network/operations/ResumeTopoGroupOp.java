@@ -1,6 +1,7 @@
 package dragon.network.operations;
 
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.resumetopo.ResumeTopoErrorNMsg;
 import dragon.network.messages.node.resumetopo.ResumeTopoNMsg;
@@ -23,8 +24,8 @@ public class ResumeTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public ResumeTopoGroupOp(String topologyId,IOpSuccess success,IOpFailure failure) {
-		super(success,failure);
+	public ResumeTopoGroupOp(IComms comms,String topologyId,IOpSuccess success,IOpFailure failure) {
+		super(comms,success,failure);
 		this.topologyId = topologyId;
 	}
 	

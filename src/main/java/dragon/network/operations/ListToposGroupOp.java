@@ -7,6 +7,7 @@ import java.util.List;
 import dragon.ComponentError;
 import dragon.metrics.Sample;
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.gettopoinfo.GetTopoInfoNMsg;
 import dragon.network.messages.node.gettopoinfo.TopoInfoNMsg;
@@ -40,7 +41,7 @@ public class ListToposGroupOp extends GroupOp {
 	/**
 	 * 
 	 */
-	public transient HashMap<String,Sample> metrics;
+	public transient HashMap<String,HashMap<String,Sample>> metrics;
 	
 	/*
 	 * Holding variables for collecting all of the responses.
@@ -64,14 +65,14 @@ public class ListToposGroupOp extends GroupOp {
 	/**
 	 * 
 	 */
-	public transient final HashMap<String,HashMap<String,Sample>> descMetrics;
+	public transient final HashMap<String,HashMap<String,HashMap<String,Sample>>> descMetrics;
 	
 	/**
 	 * @param success
 	 * @param failure
 	 */
-	public ListToposGroupOp(IOpSuccess success, IOpFailure failure) {
-		super(success,failure);
+	public ListToposGroupOp(IComms comms,IOpSuccess success, IOpFailure failure) {
+		super(comms,success,failure);
 		descState=new HashMap<>();
 		descErrors=new HashMap<>();
 		descComponents=new HashMap<>();
@@ -88,7 +89,7 @@ public class ListToposGroupOp extends GroupOp {
 			HashMap<String,String> state,
 			HashMap<String,HashMap<String,ArrayList<ComponentError>>> errors,
 			HashMap<String,List<String>> comps,
-			HashMap<String,Sample> metrics) {
+			HashMap<String,HashMap<String,Sample>> metrics) {
 			descState.put(desc.toString(),state);
 			descErrors.put(desc.toString(),errors);
 			descComponents.put(desc.toString(),comps);

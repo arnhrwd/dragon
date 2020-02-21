@@ -2,6 +2,7 @@ package dragon.network.operations;
 
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.join.AcceptingJoinNMsg;
 import dragon.network.messages.node.join.JoinRequestNMsg;
@@ -27,8 +28,8 @@ public class JoinGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public JoinGroupOp(IOpSuccess success, IOpFailure failure) {
-		super(success, failure);
+	public JoinGroupOp(IComms comms,IOpSuccess success, IOpFailure failure) {
+		super(comms,success, failure);
 	}
 	
 	/* (non-Javadoc)

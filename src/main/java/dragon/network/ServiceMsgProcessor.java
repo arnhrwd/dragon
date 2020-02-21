@@ -86,8 +86,8 @@ public class ServiceMsgProcessor extends Thread {
 	/**
 	 * @param node
 	 */
-	public ServiceMsgProcessor(Node node) {
-		this.node = node;
+	public ServiceMsgProcessor() {
+		this.node = Node.inst();
 		this.comms = node.getComms();
 		setName("service processor");
 		
@@ -174,7 +174,7 @@ public class ServiceMsgProcessor extends Thread {
 						} catch (DragonTopologyException | DragonInvalidStateException e) {
 							((StartTopoGroupOp)op3).fail(e.getMessage());
 						}
-						((StartTopoGroupOp) op3).receiveSuccess(comms,comms.getMyNodeDesc());
+						((StartTopoGroupOp) op3).receiveSuccess(comms.getMyNodeDesc());
 						progress("starting topology on each daemon",rtm);
 					}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(),
 							TimeUnit.MILLISECONDS, (op4)->{
@@ -185,9 +185,9 @@ public class ServiceMsgProcessor extends Thread {
 				}).onRunning((op2) -> {
 					try {
 						node.prepareTopology(rtm.topologyId, rtm.conf, topo, false);
-						((PrepareTopoGroupOp) op2).receiveSuccess(comms,comms.getMyNodeDesc());
+						((PrepareTopoGroupOp) op2).receiveSuccess(comms.getMyNodeDesc());
 					} catch (DragonRequiresClonableException | DragonTopologyException e) {
-						((PrepareTopoGroupOp) op2).receiveError(comms,comms.getMyNodeDesc(), 
+						((PrepareTopoGroupOp) op2).receiveError(comms.getMyNodeDesc(), 
 								e.getMessage());
 					}
 					progress("allocating topology on each daemon",rtm);
@@ -198,7 +198,7 @@ public class ServiceMsgProcessor extends Thread {
 			}, (op, error) -> {
 				client(new RunTopoErrorSMsg(rtm.topologyId, error),rtm);
 			}).onRunning((op) -> {
-				((RunTopoGroupOp) op).receiveSuccess(comms, comms.getMyNodeDesc());
+				((RunTopoGroupOp) op).receiveSuccess(comms.getMyNodeDesc());
 				progress("distributing topology jar file",rtm);
 			}).onTimeout(node.getTimer(),node.getConf().getDragonServiceTimeoutMs(),TimeUnit.MILLISECONDS,(op)->{
 				op.fail("timed out distributing the topology");
@@ -256,9 +256,9 @@ public class ServiceMsgProcessor extends Thread {
 				}).onRunning((op2) -> {
 					try {
 						node.removeTopo(tt.topologyId,tt.purge);
-						((RemoveTopoGroupOp) op2).receiveSuccess(comms, comms.getMyNodeDesc());
+						((RemoveTopoGroupOp) op2).receiveSuccess(comms.getMyNodeDesc());
 					} catch (DragonTopologyException e) {
-						((RemoveTopoGroupOp) op2).receiveError(comms, comms.getMyNodeDesc(),e.getMessage());
+						((RemoveTopoGroupOp) op2).receiveError(comms.getMyNodeDesc(),e.getMessage());
 					}
 					progress("waiting for up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",tt);
 				}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op2)->{
@@ -273,9 +273,9 @@ public class ServiceMsgProcessor extends Thread {
 					}).onRunning((op2) -> {
 						try {
 							node.removeTopo(tt.topologyId,tt.purge);
-							((RemoveTopoGroupOp) op2).receiveSuccess(comms, comms.getMyNodeDesc());
+							((RemoveTopoGroupOp) op2).receiveSuccess(comms.getMyNodeDesc());
 						} catch (DragonTopologyException e) {
-							((RemoveTopoGroupOp) op2).receiveError(comms, comms.getMyNodeDesc(),e.getMessage());
+							((RemoveTopoGroupOp) op2).receiveError(comms.getMyNodeDesc(),e.getMessage());
 						}
 						progress("removing topology from memory",tt);
 					}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op2)->{
@@ -303,9 +303,9 @@ public class ServiceMsgProcessor extends Thread {
 					}).onRunning((op2) -> {
 						try {
 							node.removeTopo(tt.topologyId,false);
-							((RemoveTopoGroupOp) op2).receiveSuccess(comms, comms.getMyNodeDesc());
+							((RemoveTopoGroupOp) op2).receiveSuccess(comms.getMyNodeDesc());
 						} catch (DragonTopologyException e) {
-							((RemoveTopoGroupOp) op2).receiveError(comms, comms.getMyNodeDesc(),e.getMessage());
+							((RemoveTopoGroupOp) op2).receiveError(comms.getMyNodeDesc(),e.getMessage());
 						}
 						progress("removing topology from memory",tt);
 					}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op2)->{
@@ -331,7 +331,7 @@ public class ServiceMsgProcessor extends Thread {
 			ListToposGroupOp ltgo = (ListToposGroupOp) op;
 			node.listTopologies(ltgo);
 			ltgo.aggregate(comms.getMyNodeDesc(), ltgo.state, ltgo.errors, ltgo.components, ltgo.metrics);
-			ltgo.receiveSuccess(comms,comms.getMyNodeDesc());
+			ltgo.receiveSuccess(comms.getMyNodeDesc());
 			progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
 		}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
 			op.fail("timed out waiting for nodes to respond");
@@ -354,10 +354,10 @@ public class ServiceMsgProcessor extends Thread {
 			}).onRunning((op) -> {
 				try {
 					node.haltTopology(htm.topologyId);
-					((HaltTopoGroupOp) op).receiveSuccess(comms, comms.getMyNodeDesc());
+					((HaltTopoGroupOp) op).receiveSuccess(comms.getMyNodeDesc());
 					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",htm);
 				} catch (DragonTopologyException | DragonInvalidStateException e) {
-					((HaltTopoGroupOp) op).receiveError(comms, comms.getMyNodeDesc(),e.getMessage());
+					((HaltTopoGroupOp) op).receiveError(comms.getMyNodeDesc(),e.getMessage());
 				}
 			}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
 				op.fail("timed out waiting for nodes to respond");
@@ -381,10 +381,10 @@ public class ServiceMsgProcessor extends Thread {
 			}).onRunning((op) -> {
 				try {
 					node.resumeTopology(htm.topologyId);
-					((ResumeTopoGroupOp) op).receiveSuccess(comms, comms.getMyNodeDesc());
+					((ResumeTopoGroupOp) op).receiveSuccess(comms.getMyNodeDesc());
 					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",htm);
 				} catch (DragonTopologyException | DragonInvalidStateException e) {
-					((ResumeTopoGroupOp) op).receiveError(comms, comms.getMyNodeDesc(),e.getMessage());
+					((ResumeTopoGroupOp) op).receiveError(comms.getMyNodeDesc(),e.getMessage());
 				}
 				
 			}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
@@ -501,9 +501,9 @@ public class ServiceMsgProcessor extends Thread {
 				int a = node.allocatePartition(partitionId, allocation.get(node.getComms().getMyNodeDesc()));
 				AllocPartGroupOp apgo = (AllocPartGroupOp) op;
 				if(a!=allocation.get(node.getComms().getMyNodeDesc())) {
-					apgo.receiveError(comms, comms.getMyNodeDesc(), "failed to allocate partitions on ["+node.getComms().getMyNodeDesc()+"]");
+					apgo.receiveError(comms.getMyNodeDesc(), "failed to allocate partitions on ["+node.getComms().getMyNodeDesc()+"]");
 				} else {
-					apgo.receiveSuccess(comms,comms.getMyNodeDesc());
+					apgo.receiveSuccess(comms.getMyNodeDesc());
 					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",apsm);
 				}
 			}
@@ -632,9 +632,9 @@ public class ServiceMsgProcessor extends Thread {
 				int a = node.deallocatePartition(partitionId, deletions.get(node.getComms().getMyNodeDesc()));
 				DeallocPartGroupOp apgo = (DeallocPartGroupOp) op;
 				if(a!=deletions.get(node.getComms().getMyNodeDesc())) {
-					apgo.receiveError(comms, comms.getMyNodeDesc(), "failed to delete partition on ["+node.getComms().getMyNodeDesc()+"]");
+					apgo.receiveError(comms.getMyNodeDesc(), "failed to delete partition on ["+node.getComms().getMyNodeDesc()+"]");
 				} else {
-					apgo.receiveSuccess(comms,comms.getMyNodeDesc());
+					apgo.receiveSuccess(comms.getMyNodeDesc());
 					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",apsm);
 				}
 			}
@@ -660,7 +660,7 @@ public class ServiceMsgProcessor extends Thread {
 			NodeStatus nodeStatus = node.getStatus();
 			nodeStatus.context=node.getNodeProcessor().getContext();
 			gsgo.aggregate(nodeStatus);
-			gsgo.receiveSuccess(comms, comms.getMyNodeDesc());
+			gsgo.receiveSuccess(comms.getMyNodeDesc());
 			progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
 		}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
 			op.fail("timed out waiting for nodes to respond");

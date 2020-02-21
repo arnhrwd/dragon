@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.stoptopo.TermTopoErrorNMsg;
 import dragon.network.messages.node.stoptopo.TermTopoNMsg;
@@ -33,8 +34,8 @@ public class TermTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public TermTopoGroupOp(String topologyId,IOpSuccess success, IOpFailure failure) {
-		super(success,failure);
+	public TermTopoGroupOp(IComms comms,String topologyId,IOpSuccess success, IOpFailure failure) {
+		super(comms,success,failure);
 		this.topologyId=topologyId;
 	}
 	

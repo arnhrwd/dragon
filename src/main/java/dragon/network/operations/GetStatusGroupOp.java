@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import dragon.network.NodeDescriptor;
 import dragon.network.NodeStatus;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.getstatus.GetStatusErrorNMsg;
 import dragon.network.messages.node.getstatus.GetStatusNMsg;
@@ -26,8 +27,8 @@ public class GetStatusGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public GetStatusGroupOp(IOpSuccess success, IOpFailure failure) {
-		super(success, failure);
+	public GetStatusGroupOp(IComms comms,IOpSuccess success, IOpFailure failure) {
+		super(comms,success, failure);
 		dragonStatus=new ArrayList<NodeStatus>();
 	}
 	

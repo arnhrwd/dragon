@@ -148,6 +148,15 @@ public class Op implements Serializable {
 		this.failure=failure;
 	}
 	
+	public Op(IOpStart start,IOpRunning running,
+			IOpSuccess success,IOpFailure failure) {
+		state=State.READY;
+		this.start=start;
+		this.running=running;
+		this.success=success;
+		this.failure=failure;
+	}
+	
 	/**
 	 * 
 	 */

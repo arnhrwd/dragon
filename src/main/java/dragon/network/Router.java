@@ -162,6 +162,7 @@ public class Router {
 											comms.sendNetworkTask(desc, task);
 										} catch (DragonCommsException e) {
 											log.error("failed to send network task to ["+desc+"]");
+											Node.inst().nodeFault(desc);
 										}
 									}
 								}

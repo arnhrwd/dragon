@@ -10,7 +10,6 @@ import org.apache.logging.log4j.Logger;
 import dragon.network.Node;
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
-import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.service.runtopo.RunTopoSMsg;
 import dragon.network.messages.service.termtopo.TermTopoSMsg;
 import dragon.topology.DragonTopology;
@@ -70,9 +69,9 @@ public class Ops extends Thread {
 	/**
 	 * @param node
 	 */
-	public Ops(Node node) {
+	public Ops() {
 		Ops.me = this;
-		this.node = node;
+		this.node = Node.inst();
 		groupOps = new HashMap<Long, Op>();
 		readyQueue = new LinkedBlockingQueue<Op>();
 		conditionalOps = new ArrayList<ConditionalOp>();
@@ -80,6 +79,18 @@ public class Ops extends Thread {
 		start();
 	}
 
+	public Op newOp(IOpStart start,IOpRunning running,
+			IOpSuccess success,IOpFailure failure) {
+		Op op = new Op(start,running,success,failure);
+		try {
+			readyQueue.put(op);
+		} catch (InterruptedException e) {
+			log.error("interrupted while putting op on queue");
+		}
+		return op;
+		
+	}
+	
 	/**
 	 * @param condition
 	 * @param success
@@ -108,7 +119,7 @@ public class Ops extends Thread {
 	 */
 	public RunTopoGroupOp newRunTopoGroupOp(String topologyId, byte[] jarFile, DragonTopology topology,
 			IOpSuccess success, IOpFailure failure) {
-		RunTopoGroupOp rtgo = new RunTopoGroupOp(topologyId, jarFile, success, failure);
+		RunTopoGroupOp rtgo = new RunTopoGroupOp(node.getComms(),topologyId, jarFile, success, failure);
 		return (RunTopoGroupOp) newGroupOp(rtgo, topology);
 	}
 
@@ -121,7 +132,7 @@ public class Ops extends Thread {
 	 */
 	public PrepareTopoGroupOp newPrepareTopoGroupOp(RunTopoSMsg rtm, DragonTopology topology, IOpSuccess success,
 			IOpFailure failure) {
-		PrepareTopoGroupOp ptgo = new PrepareTopoGroupOp(rtm, success, failure);
+		PrepareTopoGroupOp ptgo = new PrepareTopoGroupOp(node.getComms(),rtm, success, failure);
 		return (PrepareTopoGroupOp) newGroupOp(ptgo, topology);
 	}
 
@@ -132,7 +143,7 @@ public class Ops extends Thread {
 	 * @return
 	 */
 	public StartTopoGroupOp newStartTopologyGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
-		StartTopoGroupOp stgo = new StartTopoGroupOp(topologyId, success, failure);
+		StartTopoGroupOp stgo = new StartTopoGroupOp(node.getComms(),topologyId, success, failure);
 		return (StartTopoGroupOp) newGroupOp(stgo, topologyId);
 	}
 
@@ -143,7 +154,7 @@ public class Ops extends Thread {
 	 * @return
 	 */
 	public TermTopoGroupOp newTermTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
-		TermTopoGroupOp ttgo = new TermTopoGroupOp(topologyId, success, failure);
+		TermTopoGroupOp ttgo = new TermTopoGroupOp(node.getComms(),topologyId, success, failure);
 		return (TermTopoGroupOp) newGroupOp(ttgo, topologyId);
 	}
 
@@ -156,7 +167,7 @@ public class Ops extends Thread {
 	 */
 	public RemoveTopoGroupOp newRemoveTopoGroupOp(TermTopoSMsg ttm, DragonTopology topology, IOpSuccess success,
 			IOpFailure failure) {
-		RemoveTopoGroupOp trgo = new RemoveTopoGroupOp(ttm.topologyId,ttm.purge, success, failure);
+		RemoveTopoGroupOp trgo = new RemoveTopoGroupOp(node.getComms(),ttm.topologyId,ttm.purge, success, failure);
 		return (RemoveTopoGroupOp) newGroupOp(trgo, topology);
 	}
 
@@ -166,7 +177,7 @@ public class Ops extends Thread {
 	 * @return
 	 */
 	public ListToposGroupOp newListToposGroupOp(IOpSuccess success, IOpFailure failure) {
-		ListToposGroupOp ltgo = new ListToposGroupOp(success, failure);
+		ListToposGroupOp ltgo = new ListToposGroupOp(node.getComms(),success, failure);
 		// this group operation goes to EVERY dragon daemon
 		NodeContext nc = new NodeContext();
 		nc.putAll(node.getNodeProcessor().getContext());
@@ -184,7 +195,7 @@ public class Ops extends Thread {
 	 * @return
 	 */
 	public HaltTopoGroupOp newHaltTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
-		HaltTopoGroupOp htgo = new HaltTopoGroupOp(topologyId, success, failure);
+		HaltTopoGroupOp htgo = new HaltTopoGroupOp(node.getComms(),topologyId, success, failure);
 		return (HaltTopoGroupOp) newGroupOp(htgo, topologyId);
 	}
 
@@ -195,7 +206,7 @@ public class Ops extends Thread {
 	 * @return
 	 */
 	public ResumeTopoGroupOp newResumeTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
-		ResumeTopoGroupOp htgo = new ResumeTopoGroupOp(topologyId, success, failure);
+		ResumeTopoGroupOp htgo = new ResumeTopoGroupOp(node.getComms(),topologyId, success, failure);
 		return (ResumeTopoGroupOp) newGroupOp(htgo, topologyId);
 	}
 	
@@ -206,7 +217,7 @@ public class Ops extends Thread {
 	 * @return
 	 */
 	public JoinGroupOp newJoinGroupOp(NodeDescriptor desc,IOpSuccess success, IOpFailure failure) {
-		JoinGroupOp jgo = new JoinGroupOp(success,failure);
+		JoinGroupOp jgo = new JoinGroupOp(node.getComms(),success,failure);
 		jgo.add(desc);
 		register(jgo);
 		return jgo;
@@ -220,7 +231,7 @@ public class Ops extends Thread {
 	 * @return
 	 */
 	public AllocPartGroupOp newAllocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
-		AllocPartGroupOp apgo = new AllocPartGroupOp(partitionId,allocation,success,failure);
+		AllocPartGroupOp apgo = new AllocPartGroupOp(node.getComms(),partitionId,allocation,success,failure);
 		for(NodeDescriptor desc : allocation.keySet()) {
 			apgo.add(desc);
 		}
@@ -237,7 +248,7 @@ public class Ops extends Thread {
 	 * @return
 	 */
 	public DeallocPartGroupOp newDeallocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
-		DeallocPartGroupOp apgo = new DeallocPartGroupOp(partitionId,allocation,success,failure);
+		DeallocPartGroupOp apgo = new DeallocPartGroupOp(node.getComms(),partitionId,allocation,success,failure);
 		for(NodeDescriptor desc : allocation.keySet()) {
 			apgo.add(desc);
 		}
@@ -252,7 +263,7 @@ public class Ops extends Thread {
 	 * @return
 	 */
 	public GetStatusGroupOp newGetStatusGroupOp(IOpSuccess success, IOpFailure failure) {
-		GetStatusGroupOp apgo = new GetStatusGroupOp(success,failure);
+		GetStatusGroupOp apgo = new GetStatusGroupOp(node.getComms(),success,failure);
 		// this group operation goes to EVERY dragon daemon
 		NodeContext nc = new NodeContext();
 		nc.putAll(node.getNodeProcessor().getContext());
@@ -338,11 +349,7 @@ public class Ops extends Thread {
 					GroupOp go = (GroupOp) op;
 					try {
 						node.getOperationsLock().lockInterruptibly();
-						try {
-							go.initiate(node.getComms());
-						} catch (DragonCommsException e) {
-							node.nodeFault(e.desc);
-						}
+						go.start();
 					} catch(InterruptedException e) {
 						log.error("interrupted while waiting for node operations lock");
 						break;
@@ -353,19 +360,28 @@ public class Ops extends Thread {
 				} else if(op instanceof ConditionalOp){
 					try {
 						node.getOperationsLock().lockInterruptibly();
-						op.start();
+						try {
+							op.start();
+						} catch (Exception e) {
+							e.printStackTrace();
+							log.error(e);
+						}
 					} catch(InterruptedException e) {
 						log.error("interrupted while waiting for node operations lock");
 						break;
 					} finally {
 						node.getOperationsLock().unlock();
 					}
-					
 					conditionalOps.add((ConditionalOp)op);
 				} else {
 					try {
 						node.getOperationsLock().lockInterruptibly();
-						op.start();
+						try {
+							op.start();
+						} catch (Exception e) {
+							e.printStackTrace();
+							log.error(e);
+						}
 					} catch(InterruptedException e) {
 						log.error("interrupted while waiting for node operations lock");
 						break;

@@ -1,6 +1,7 @@
 package dragon.network.operations;
 
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.halttopo.HaltTopoErrorNMsg;
 import dragon.network.messages.node.halttopo.HaltTopoNMsg;
@@ -23,8 +24,8 @@ public class HaltTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public HaltTopoGroupOp(String topologyId,IOpSuccess success, IOpFailure failure) {
-		super(success,failure);
+	public HaltTopoGroupOp(IComms comms,String topologyId,IOpSuccess success, IOpFailure failure) {
+		super(comms,success,failure);
 		this.topologyId = topologyId;
 	}
 	

@@ -76,8 +76,8 @@ public class NodeMsgProcessor extends Thread {
 	 * 
 	 * @param node
 	 */
-	public NodeMsgProcessor(Node node) {
-		this.node=node;
+	public NodeMsgProcessor() {
+		this.node=Node.inst();
 		context=new NodeContext();
 		context.put(node.getComms().getMyNodeDesc());
 		setName("node processor");
@@ -91,8 +91,7 @@ public class NodeMsgProcessor extends Thread {
 	private void receiveError(NodeMessage msg) {
 		node.getOpsProcessor()
 		.getGroupOp(msg.getGroupOp().getId())
-		.receiveError(node.getComms(), msg,
-				((IErrorMessage)msg).getError());
+		.receiveError(msg,((IErrorMessage)msg).getError());
 	}
 	
 	/**
@@ -102,7 +101,7 @@ public class NodeMsgProcessor extends Thread {
 	private void receiveSuccess(NodeMessage msg) {
 		node.getOpsProcessor()
 		.getGroupOp(msg.getGroupOp().getId())
-		.receiveSuccess(node.getComms(),msg);
+		.receiveSuccess(msg);
 	}
 	
 	/**
@@ -113,7 +112,7 @@ public class NodeMsgProcessor extends Thread {
 	 * and that is being replied to
 	 */
 	private void sendSuccess(NodeMessage msg) {
-		msg.getGroupOp().sendSuccess(node.getComms());
+		msg.getGroupOp().sendSuccess();
 	}
 	
 	/**
@@ -125,7 +124,7 @@ public class NodeMsgProcessor extends Thread {
 	 * @param error an informative message explaining the error
 	 */
 	private void sendError(NodeMessage msg,String error) {
-		msg.getGroupOp().sendError(node.getComms(),error);
+		msg.getGroupOp().sendError(error);
 	}
 	
 	
@@ -372,7 +371,7 @@ public class NodeMsgProcessor extends Thread {
 	private synchronized void processGetTopologyInformation(GetTopoInfoNMsg gtim) {
 		ListToposGroupOp ltgo = (ListToposGroupOp)gtim.getGroupOp();
 		node.listTopologies(ltgo); 
-		ltgo.sendSuccess(node.getComms());
+		ltgo.sendSuccess();
 	}
 	
 	/**
@@ -394,9 +393,9 @@ public class NodeMsgProcessor extends Thread {
 		apgo.partitionId=apm.partitionId;
 		apgo.number=a;
 		if(a==apm.number) {
-			apgo.sendSuccess(node.getComms());
+			apgo.sendSuccess();
 		} else {
-			apgo.sendError(node.getComms(), "failed to allocate partitions on ["+apm.getSender()+"]");
+			apgo.sendError("failed to allocate partitions on ["+apm.getSender()+"]");
 		}
 	}
 	
@@ -425,7 +424,7 @@ public class NodeMsgProcessor extends Thread {
 		NodeStatus nodeStatus = node.getStatus();
 		nodeStatus.context = context;
 		gsgo.nodeStatus=nodeStatus;
-		gsgo.sendSuccess(node.getComms());
+		gsgo.sendSuccess();
 	}
 	
 	/**
@@ -456,9 +455,9 @@ public class NodeMsgProcessor extends Thread {
 		apgo.partitionId=apm.partitionId;
 		apgo.number=a;
 		if(a==apm.number) {
-			apgo.sendSuccess(node.getComms());
+			apgo.sendSuccess();
 		} else {
-			apgo.sendError(node.getComms(), "failed to deallocate partitions on ["+apm.getSender()+"]");
+			apgo.sendError("failed to deallocate partitions on ["+apm.getSender()+"]");
 		}
 	}
 	
@@ -637,6 +636,12 @@ public class NodeMsgProcessor extends Thread {
 				break;
 			}
 			log.debug("received ["+msg.getType().name()+"] from ["+msg.getSender());
+			if(msg.getGroupOp()!=null) {
+				/*
+				 * hook up our comms for sending replies.
+				 */
+				msg.getGroupOp().setComms(node.getComms());
+			}
 			switch(msg.getType()) {
 			case ACCEPTING_JOIN:
 				processAcceptingJoin((AcceptingJoinNMsg) msg);

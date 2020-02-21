@@ -1,6 +1,7 @@
 package dragon.network.operations;
 
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.preparejar.JarReadyNMsg;
 import dragon.network.messages.node.preparejar.PrepareJarErrorNMsg;
@@ -29,9 +30,9 @@ public class RunTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public RunTopoGroupOp(String topologyId,byte[] jar,IOpSuccess success,
+	public RunTopoGroupOp(IComms comms,String topologyId,byte[] jar,IOpSuccess success,
 			IOpFailure failure) {
-		super(success,failure);
+		super(comms,success,failure);
 		this.jar=jar;
 		this.topologyId=topologyId;
 	}
