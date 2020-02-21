@@ -2,7 +2,6 @@ package dragon.topology;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.HashSet;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -71,6 +70,7 @@ public class DragonTopology implements Serializable {
 			topology.put(fromComponentId,new DestComponentMap());
 		}
 		if(!sourceStreamComponentMap.containsKey(fromComponentId)) {
+			log.debug("creating "+fromComponentId);
 			sourceStreamComponentMap.put(fromComponentId,new HashMap<String,HashMap<String,GroupingsSet>>());
 		}
 		DestComponentMap destComponentMap = topology.get(fromComponentId);
@@ -88,11 +88,14 @@ public class DragonTopology implements Serializable {
 			groupingsSet.addAll(hashMap.get(streamId));
 			
 			if(!sourceStreamComponentMap.get(fromComponentId).containsKey(streamId)) {
+				log.debug("creating "+fromComponentId+","+streamId);
 				sourceStreamComponentMap.get(fromComponentId).put(streamId,new HashMap<String,GroupingsSet>());
 			}
 			if(!sourceStreamComponentMap.get(fromComponentId).get(streamId).containsKey(toComponentId)) {
+				log.debug("creating "+fromComponentId+","+streamId+","+toComponentId);
 				sourceStreamComponentMap.get(fromComponentId).get(streamId).put(toComponentId,new GroupingsSet());
 			}
+			log.debug("adding groupings "+hashMap.get(streamId));
 			sourceStreamComponentMap.get(fromComponentId).get(streamId).get(toComponentId).addAll(hashMap.get(streamId));
 		}
 	}
@@ -135,7 +138,26 @@ public class DragonTopology implements Serializable {
 		return getStreamMap(fromComponentId,toComponentId).get(streamId);
 	}
 	
+	/**
+	 * 
+	 * @param fromComponentId
+	 * @param streamId
+	 * @return
+	 */
 	public HashMap<String,GroupingsSet> getComponentDestSet(String fromComponentId, String streamId){
+		log.debug("getting "+fromComponentId+","+streamId);
+		if(sourceStreamComponentMap==null) {
+			System.out.println("sscm==null");
+			System.exit(-1);
+		}
+		if(sourceStreamComponentMap.get(fromComponentId)==null) {
+			System.out.println("sscmgfc==null");
+			System.exit(-1);
+		}
+		if(sourceStreamComponentMap.get(fromComponentId).get(streamId)==null) {
+			System.out.println("adfadfasdfasd=nlll");
+			System.exit(-1);
+		}
 		return sourceStreamComponentMap.get(fromComponentId).get(streamId);
 	}
 
