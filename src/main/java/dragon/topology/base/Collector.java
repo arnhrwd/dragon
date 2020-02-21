@@ -390,22 +390,18 @@ public class Collector {
 		tuple.setSourceTaskId(component.getTaskId());
 		tuple.setSourceStreamId(streamId);
 		component.incEmitted(1); // for metrics
-		for(String componentId : localCluster.getTopology().getTopology().get(component.getComponentId()).keySet()) {
-			StreamMap streamMap = localCluster.getTopology().getTopology().get(component.getComponentId()).get(componentId);
-			GroupingsSet groupingsSet = streamMap.get(streamId);
-			if(groupingsSet!=null) {
-				for(AbstractGrouping grouping : groupingsSet) {
-					List<Integer> taskIds = grouping.chooseTasks(0, values);
-					receivingTaskIds.addAll(taskIds);
-					component.incTransferred(receivingTaskIds.size()); // for metrics
-					transmit(tuple,
-							taskIds,
-							componentId,
-							streamId); 
-				}
-			}
+		localCluster.getTopology().getComponentDestSet(component.getComponentId(), streamId).forEach((componentId,groupingSet)->{
+			groupingSet.forEach((grouping)-> {
+				List<Integer> taskIds = grouping.chooseTasks(0, values);
+				receivingTaskIds.addAll(taskIds);
+				component.incTransferred(receivingTaskIds.size()); // for metrics
+				transmit(tuple,
+						taskIds,
+						componentId,
+						streamId); 
+			});
+		});
 			
-		}
 		setEmit();
 		return receivingTaskIds;
 	}
@@ -418,34 +414,44 @@ public class Collector {
 		emitDirect(taskId,Constants.DEFAULT_STREAM,values);
 	}
 	
-	// TODO: update this method for network operation - following above example
 	/**
 	 * @param taskId
 	 * @param streamId
 	 * @param values
 	 */
 	public synchronized void emitDirect(int taskId, String streamId, Values values){
-		List<Integer> receivingTaskIds = new ArrayList<Integer>();
 		Fields fields = component.getOutputFieldsDeclarer().getFieldsDirect(streamId);
-//		if(fields==null) {
-//			localCluster.setShouldTerminate("no fields have been declared for ["+
-//					component.getComponentId()+"] on direct stream ["+streamId+
-//					"] however it is attempting to emit on that stream");
-//		}
-//		if(values.size()!=fields.getFieldNames().length) {
-//			localCluster.setShouldTerminate("the number of values in ["+values+
-//					"] does not match the number of fields ["+
-//					fields.getFieldNamesAsString()+"]");
-//		}
-		Tuple tuple = new Tuple(fields,values);
+		if(component.isClosed()) {
+			log.error("spontaneous tuple emission after close, topology may not terminate properly");
+			return;
+		}
+		if(fields==null) {
+			throw new DragonEmitRuntimeException("no fields have been declared for ["+
+					component.getComponentId()+"] on stream ["+streamId+
+					"] however it is attempting to emit on that stream");
+		}
+		if(values.size()!=fields.getFieldNames().length) {
+			throw new DragonEmitRuntimeException("the number of values in ["+values+
+					"] does not match the number of fields ["+
+					fields.getFieldNamesAsString()+"]");
+		}
+		final Tuple tuple = new Tuple();
+		tuple.setFields(fields.copy());
+		tuple.setValues(values);
+		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskId(component.getTaskId());
 		tuple.setSourceStreamId(streamId);
-		for(String componentId : localCluster.getTopology().getTopology().get(component.getComponentId()).keySet()) {
-			//StreamMap toComponent = localCluster.getTopology().topology.get(component.getComponentId()).get(componentId);
-			List<Integer> taskIds = new ArrayList<Integer>();
-			receivingTaskIds.add(taskId);
-		}
+		component.incEmitted(1); // for metrics
+		localCluster.getTopology().getComponentDestSet(component.getComponentId(), streamId).forEach((componentId,groupingSet)->{
+				ArrayList<Integer> taskIds = new ArrayList<Integer>();
+				taskIds.add(taskId);
+				component.incTransferred(1); // for metrics
+				transmit(tuple,
+						taskIds,
+						componentId,
+						streamId); 
+		});
 		setEmit();
 	}
 	

@@ -735,13 +735,17 @@ public class Node {
 		setNodeState(NodeState.TERMINATING);
 		if(!localClusters.isEmpty()) {
 			log.error("topologies are still allocated");
+			localClusters.forEach((topologyId,localCluster)->{
+				localCluster.interruptAll();
+			});
 		}
+		metricsThread.interrupt();
+		timer.cancel();
+		router.terminate();
 		processManager.interrupt();
 		operationsThread.interrupt();
 		serviceThread.interrupt();
 		nodeThread.interrupt();
-		metricsThread.interrupt();
-		timer.cancel();
 	}
 	
 	/**

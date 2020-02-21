@@ -143,6 +143,7 @@ public class LocalCluster {
 	 * <li>{@link #RUNNING}</li>
 	 * <li>{@link #TERMINATING}</li>
 	 * <li>{@link #HALTED}</li>
+	 * <li>{@link #FAULT}</li>
 	 */
 	public static enum State {
 		/**

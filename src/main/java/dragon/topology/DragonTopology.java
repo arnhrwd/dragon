@@ -2,6 +2,7 @@ package dragon.topology;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,6 +41,11 @@ public class DragonTopology implements Serializable {
 	/**
 	 * 
 	 */
+	private HashMap<String,HashMap<String,HashMap<String,GroupingsSet>>> sourceStreamComponentMap;
+	
+	/**
+	 * 
+	 */
 	private ComponentEmbedding embedding;
 	
 	/**
@@ -52,6 +58,7 @@ public class DragonTopology implements Serializable {
 	 */
 	public DragonTopology() {
 		topology=new SourceComponentMap();
+		sourceStreamComponentMap = new HashMap<>();
 	}
 	
 	/**
@@ -62,6 +69,9 @@ public class DragonTopology implements Serializable {
 	public void add(String fromComponentId, String toComponentId, StreamMap hashMap) {
 		if(!topology.containsKey(fromComponentId)) {
 			topology.put(fromComponentId,new DestComponentMap());
+		}
+		if(!sourceStreamComponentMap.containsKey(fromComponentId)) {
+			sourceStreamComponentMap.put(fromComponentId,new HashMap<String,HashMap<String,GroupingsSet>>());
 		}
 		DestComponentMap destComponentMap = topology.get(fromComponentId);
 		
@@ -76,7 +86,14 @@ public class DragonTopology implements Serializable {
 			}
 			GroupingsSet groupingsSet = streamMap.get(streamId);
 			groupingsSet.addAll(hashMap.get(streamId));
-			log.debug(groupingsSet);
+			
+			if(!sourceStreamComponentMap.get(fromComponentId).containsKey(streamId)) {
+				sourceStreamComponentMap.get(fromComponentId).put(streamId,new HashMap<String,GroupingsSet>());
+			}
+			if(!sourceStreamComponentMap.get(fromComponentId).get(streamId).containsKey(toComponentId)) {
+				sourceStreamComponentMap.get(fromComponentId).get(streamId).put(toComponentId,new GroupingsSet());
+			}
+			sourceStreamComponentMap.get(fromComponentId).get(streamId).get(toComponentId).addAll(hashMap.get(streamId));
 		}
 	}
 	
@@ -116,6 +133,10 @@ public class DragonTopology implements Serializable {
 	 */
 	public GroupingsSet getGroupingsSet(String fromComponentId, String toComponentId, String streamId){
 		return getStreamMap(fromComponentId,toComponentId).get(streamId);
+	}
+	
+	public HashMap<String,GroupingsSet> getComponentDestSet(String fromComponentId, String streamId){
+		return sourceStreamComponentMap.get(fromComponentId).get(streamId);
 	}
 
 

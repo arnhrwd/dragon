@@ -25,6 +25,7 @@ import dragon.network.messages.service.dealloc.PartDeallocedSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsErrorSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsSMsg;
 import dragon.network.messages.service.getmetrics.MetricsSMsg;
+import dragon.network.messages.service.getnodecontext.GetNodeContextSMsg;
 import dragon.network.messages.service.getnodecontext.NodeContextSMsg;
 import dragon.network.messages.service.getstatus.GetStatusErrorSMsg;
 import dragon.network.messages.service.getstatus.GetStatusSMsg;
@@ -211,7 +212,7 @@ public class ServiceMsgProcessor extends Thread {
 	 * 
 	 * @param msg
 	 */
-	private void processGetNodeContext(NodeContextSMsg msg) {
+	private void processGetNodeContext(GetNodeContextSMsg msg) {
 		NodeContext nc = new NodeContext();
 		nc.putAll(node.getNodeProcessor().getContext());
 		client(new NodeContextSMsg(nc), msg);
@@ -694,7 +695,7 @@ public class ServiceMsgProcessor extends Thread {
 						processRunTopology((RunTopoSMsg) msg);
 						break;
 					case GET_NODE_CONTEXT:
-						processGetNodeContext((NodeContextSMsg) msg);
+						processGetNodeContext((GetNodeContextSMsg) msg);
 						break;
 					case GET_METRICS:
 						processGetMetrics((GetMetricsSMsg) msg);

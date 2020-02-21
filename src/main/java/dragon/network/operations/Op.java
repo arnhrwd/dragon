@@ -90,6 +90,7 @@ public class Op implements Serializable {
 	 * <li>{@link #RUNNING}</li>
 	 * <li>{@link #FAILED}</li>
 	 * <li>{@link #COMPLETED}</li>
+	 * <li>{@link #CANCELED}</li>
 	 * @author aaron
 	 *
 	 */
