@@ -29,5 +29,13 @@ public class PartDeallocedNMsg extends NodeMessage {
 		this.partitionId=partitionId;
 		this.number=number;
 	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	public void process() {
+		receiveSuccess();
+	}
 
 }

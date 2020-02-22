@@ -24,5 +24,13 @@ public class StartTopoErrorNMsg extends NodeErrorMessage {
 		super(NodeMessage.NodeMessageType.START_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveError();
+	}
 
 }

@@ -1,5 +1,6 @@
 package dragon.network.messages.node.term;
 
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
 
 /**
@@ -12,6 +13,15 @@ public class TermNodeNMsg extends NodeMessage {
 
 	public TermNodeNMsg(NodeMessageType type) {
 		super(NodeMessage.NodeMessageType.TERMINATE_NODE);
+	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		node.terminate();
 	}
 
 }

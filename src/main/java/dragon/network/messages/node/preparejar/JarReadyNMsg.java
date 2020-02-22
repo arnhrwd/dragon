@@ -21,5 +21,13 @@ public class JarReadyNMsg extends NodeMessage {
 		super(NodeMessage.NodeMessageType.JAR_READY);
 		this.topologyId = topologyId;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveSuccess();
+	}
 
 }

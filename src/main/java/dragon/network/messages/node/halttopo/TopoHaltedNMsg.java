@@ -21,4 +21,12 @@ public class TopoHaltedNMsg extends NodeMessage {
 		super(NodeMessage.NodeMessageType.TOPOLOGY_HALTED);
 		this.topologyId=topologyId;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveSuccess();
+	}
 }

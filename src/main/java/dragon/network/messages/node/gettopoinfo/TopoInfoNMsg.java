@@ -6,7 +6,9 @@ import java.util.List;
 
 import dragon.ComponentError;
 import dragon.metrics.Sample;
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.operations.ListToposGroupOp;
 
 /**
  * @author aaron
@@ -49,5 +51,17 @@ public class TopoInfoNMsg extends NodeMessage {
 		this.errors=errors;
 		this.components=components;
 		this.metrics=metrics;
+	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		((ListToposGroupOp)(node.getOpsProcessor()
+				.getGroupOp(getGroupOp().getId())))
+				.aggregate(getSender(),state,errors,components,metrics);
+		receiveSuccess();
 	}
 }

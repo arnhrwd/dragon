@@ -24,4 +24,12 @@ public class TermTopoErrorNMsg extends NodeErrorMessage {
 		super(NodeMessage.NodeMessageType.TERMINATE_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveError();
+	}
 }

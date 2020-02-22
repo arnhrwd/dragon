@@ -18,5 +18,13 @@ public class GetStatusErrorNMsg extends NodeErrorMessage {
 	public GetStatusErrorNMsg(String error) {
 		super(NodeMessage.NodeMessageType.GET_STATUS_ERROR, error);
 	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	public void process() {
+		receiveError();
+	}
 
 }

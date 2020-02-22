@@ -1,6 +1,9 @@
 package dragon.network.messages.node.preparetopo;
 
 import dragon.Config;
+import dragon.DragonRequiresClonableException;
+import dragon.network.DragonTopologyException;
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
 import dragon.topology.DragonTopology;
 
@@ -37,6 +40,24 @@ public class PrepareTopoNMsg extends NodeMessage {
 		this.topology=dragonTopology;
 		this.conf=conf;
 		
+	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		try {
+			try {
+				node.prepareTopology(topoloyId, conf, topology, false);
+			} catch (DragonTopologyException e) {
+				sendError(e.getMessage());
+			}
+			sendSuccess();
+		} catch (DragonRequiresClonableException e) {
+			sendError(e.getMessage());
+		}
 	}
 
 }

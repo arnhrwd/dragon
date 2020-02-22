@@ -1,5 +1,8 @@
 package dragon.network.messages.node.starttopo;
 
+import dragon.DragonInvalidStateException;
+import dragon.network.DragonTopologyException;
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
 
 /**
@@ -20,6 +23,20 @@ public class StartTopoNMsg extends NodeMessage {
 	public StartTopoNMsg(String topologyId) {
 		super(NodeMessage.NodeMessageType.START_TOPOLOGY);
 		this.topologyId=topologyId;
+	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		try {
+			node.startTopology(topologyId);
+			sendSuccess();
+		} catch (DragonTopologyException | DragonInvalidStateException e) {
+			sendError(e.getMessage());
+		}
 	}
 
 }

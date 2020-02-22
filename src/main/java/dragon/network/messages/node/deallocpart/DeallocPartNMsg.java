@@ -1,6 +1,8 @@
 package dragon.network.messages.node.deallocpart;
 
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.operations.DeallocPartGroupOp;
 
 /**
  * 
@@ -28,6 +30,23 @@ public class DeallocPartNMsg extends NodeMessage {
 		super(NodeMessage.NodeMessageType.DEALLOCATE_PARTITION);
 		this.partitionId=partitionId;
 		this.number=number;
+	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		DeallocPartGroupOp apgo = (DeallocPartGroupOp) getGroupOp();
+		int a=node.deallocatePartition(partitionId, number);
+		apgo.partitionId=partitionId;
+		apgo.number=a;
+		if(a==number) {
+			apgo.sendSuccess();
+		} else {
+			apgo.sendError("failed to deallocate partitions on ["+getSender()+"]");
+		}
 	}
 
 }

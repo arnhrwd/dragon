@@ -31,4 +31,12 @@ public class DeallocPartErrorNMsg extends NodeErrorMessage {
 		this.partitionId=partitionId;
 		this.number=number;
 	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	public void process() {
+		receiveError();
+	}
 }

@@ -1,5 +1,8 @@
 package dragon.network.messages.node.halttopo;
 
+import dragon.DragonInvalidStateException;
+import dragon.network.DragonTopologyException;
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
 
 /**
@@ -20,5 +23,19 @@ public class HaltTopoNMsg extends NodeMessage {
 	public HaltTopoNMsg(String topologyId) {
 		super(NodeMessage.NodeMessageType.HALT_TOPOLOGY);
 		this.topologyId=topologyId;
+	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		try {
+			node.haltTopology(topologyId);
+			sendSuccess();
+		} catch (DragonTopologyException | DragonInvalidStateException e) {
+			sendError(e.getMessage());
+		}
 	}
 }

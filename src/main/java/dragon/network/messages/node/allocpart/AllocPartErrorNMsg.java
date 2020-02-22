@@ -32,4 +32,12 @@ public class AllocPartErrorNMsg extends NodeErrorMessage {
 		this.number=number;
 	}
 	
+	/**
+	 * 
+	 */
+	@Override
+	public void process() {
+		receiveError();
+	}
+	
 }

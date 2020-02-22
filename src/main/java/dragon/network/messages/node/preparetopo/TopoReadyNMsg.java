@@ -21,5 +21,13 @@ public class TopoReadyNMsg extends NodeMessage {
 		super(NodeMessage.NodeMessageType.TOPOLOGY_READY);
 		this.topologyId=topologyId;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveSuccess();
+	}
 
 }

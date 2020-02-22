@@ -24,4 +24,12 @@ public class HaltTopoErrorNMsg extends NodeErrorMessage {
 		super(NodeMessage.NodeMessageType.HALT_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveError();
+	}
 }

@@ -21,5 +21,13 @@ public class TopoResumedNMsg extends NodeMessage {
 		super(NodeMessage.NodeMessageType.TOPOLOGY_RESUMED);
 		this.topologyId=topologyId;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveSuccess();
+	}
 
 }

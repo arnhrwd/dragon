@@ -1,6 +1,8 @@
 package dragon.network.messages.node.allocpart;
 
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.operations.AllocPartGroupOp;
 
 /**
  * Request the node to allocate a partition.
@@ -28,6 +30,23 @@ public class AllocPartNMsg extends NodeMessage {
 		super(NodeMessage.NodeMessageType.ALLOCATE_PARTITION);
 		this.partitionId=partitionId;
 		this.number=number;
+	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		AllocPartGroupOp apgo = (AllocPartGroupOp) getGroupOp();
+		int a=node.allocatePartition(partitionId, number);
+		apgo.partitionId=partitionId;
+		apgo.number=a;
+		if(a==number) {
+			apgo.sendSuccess();
+		} else {
+			apgo.sendError("failed to allocate partitions on ["+getSender()+"]");
+		}
 	}
 
 }

@@ -55,7 +55,6 @@ public class ResumeTopoSMsg extends ServiceMessage {
 					try {
 						node.resumeTopology(topologyId);
 						((ResumeTopoGroupOp) op).receiveSuccess(comms.getMyNodeDesc());
-						progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...");
 					} catch (DragonTopologyException | DragonInvalidStateException e) {
 						((ResumeTopoGroupOp) op).receiveError(comms.getMyNodeDesc(),e.getMessage());
 					}

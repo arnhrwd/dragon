@@ -23,4 +23,12 @@ public class ResumeTopoErrorNMsg extends NodeErrorMessage {
 		super(NodeMessage.NodeMessageType.RESUME_TOPOLOGY_ERROR,error);
 		this.topologyId=topologyId;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveError();
+	}
 }

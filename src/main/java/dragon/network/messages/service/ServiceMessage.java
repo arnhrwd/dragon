@@ -96,7 +96,6 @@ public class ServiceMessage extends Message {
 	/**
 	 * Utility function to send a message to the client.
 	 * @param msg
-	 * @param dest
 	 * @return true if it was sent, false otherwise
 	 */
 	public boolean client(ServiceMessage msg) {
@@ -112,9 +111,7 @@ public class ServiceMessage extends Message {
 	
 	/**
 	 * Utility function to report progress back to client.
-	 * @param msg
-	 * @param dest
-	 * @return true if message was sent, false otherwise
+	 * @param msg is shown to the user at the client
 	 */
 	public boolean progress(String msg) {
 		return client(new ProgressSMsg(msg));

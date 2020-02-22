@@ -22,4 +22,12 @@ public class TopoRemovedNMsg extends NodeMessage {
 		this.topologyId=topologyId;
 	}
 	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveSuccess();
+	}
+	
 }

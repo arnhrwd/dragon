@@ -1,5 +1,8 @@
 package dragon.network.messages.node.resumetopo;
 
+import dragon.DragonInvalidStateException;
+import dragon.network.DragonTopologyException;
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
 
 /**
@@ -20,6 +23,20 @@ public class ResumeTopoNMsg extends NodeMessage {
 	public ResumeTopoNMsg(String topologyId) {
 		super(NodeMessage.NodeMessageType.RESUME_TOPOLOGY);
 		this.topologyId=topologyId;
+	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		try {
+			node.resumeTopology(topologyId);
+			sendSuccess();
+		} catch (DragonTopologyException | DragonInvalidStateException e) {
+			sendError(e.getMessage());
+		}
 	}
 
 }

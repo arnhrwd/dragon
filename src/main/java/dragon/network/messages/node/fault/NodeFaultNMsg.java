@@ -1,5 +1,6 @@
 package dragon.network.messages.node.fault;
 
+import dragon.network.Node;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
 
@@ -23,6 +24,15 @@ public class NodeFaultNMsg extends NodeMessage {
 	public NodeFaultNMsg(NodeDescriptor desc) {
 		super(NodeMessage.NodeMessageType.NODE_FAULT);
 		this.desc=desc;
+	}
+	
+	/**
+	 * 
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		node.removeNode(desc);
 	}
 
 }

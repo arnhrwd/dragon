@@ -24,4 +24,11 @@ public class PrepareJarErrorNMsg extends NodeErrorMessage {
 		this.topologyId=topologyId;
 	}
 
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveError();
+	}
 }

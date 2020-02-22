@@ -21,5 +21,13 @@ public class TopoTermdNMsg extends NodeMessage {
 		super(NodeMessage.NodeMessageType.TOPOLOGY_TERMINATED);
 		this.topologyId = topologyId;
 	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		receiveSuccess();
+	}
 
 }

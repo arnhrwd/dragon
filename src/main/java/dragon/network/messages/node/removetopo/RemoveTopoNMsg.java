@@ -1,5 +1,7 @@
 package dragon.network.messages.node.removetopo;
 
+import dragon.network.DragonTopologyException;
+import dragon.network.Node;
 import dragon.network.messages.node.NodeMessage;
 
 /**
@@ -26,6 +28,20 @@ public class RemoveTopoNMsg extends NodeMessage {
 		super(NodeMessage.NodeMessageType.REMOVE_TOPOLOGY);
 		this.topologyId=topologyId;
 		this.purge=purge;
+	}
+	
+	/**
+	 *
+	 */
+	@Override
+	public void process() {
+		final Node node = Node.inst();
+		try {
+			node.removeTopo(topologyId,purge);
+			sendSuccess();
+		} catch (DragonTopologyException e) {
+			sendError(e.getMessage());
+		}
 	}
 
 }

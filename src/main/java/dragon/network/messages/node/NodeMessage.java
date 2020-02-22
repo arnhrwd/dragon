@@ -1,6 +1,8 @@
 package dragon.network.messages.node;
 
+import dragon.network.Node;
 import dragon.network.NodeDescriptor;
+import dragon.network.messages.IErrorMessage;
 import dragon.network.messages.Message;
 import dragon.network.operations.GroupOp;
 
@@ -116,6 +118,45 @@ public class NodeMessage extends Message {
 	 */
 	public GroupOp getGroupOp() {
 		return this.groupOperation;
+	}
+	
+	/**
+	 * Process an error message for the group operation.
+	 */
+	protected void receiveError() {
+		final Node node = Node.inst();
+		node.getOpsProcessor()
+		.getGroupOp(getGroupOp().getId())
+		.receiveError(this,((IErrorMessage)this).getError());
+	}
+	
+	/**
+	 * Process a success message for the group operation.
+	 */
+	protected void receiveSuccess() {
+		final Node node = Node.inst();
+		node.getOpsProcessor()
+		.getGroupOp(getGroupOp().getId())
+		.receiveSuccess(this);
+	}
+	
+	/**
+	 * Send a success message for a group operation. This should
+	 * be sent if the requested operation was successfully completed
+	 * on this daemon.
+	 */
+	protected void sendSuccess() {
+		getGroupOp().sendSuccess();
+	}
+	
+	/**
+	 * Send an error message for a group operation. This should
+	 * be sent if the requested operation was not successfully completed
+	 * on this daemon. 
+	 * @param error an informative message explaining the error
+	 */
+	protected void sendError(String error) {
+		getGroupOp().sendError(error);
 	}
 
 }
