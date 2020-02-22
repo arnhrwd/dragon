@@ -11,7 +11,7 @@ import dragon.network.messages.node.preparejar.PrepareJarNMsg;
  * @author aaron
  *
  */
-public class RunTopoGroupOp extends GroupOp {
+public class PrepJarGroupOp extends GroupOp {
 	private static final long serialVersionUID = -2038551040445600017L;
 	
 	/**
@@ -30,7 +30,7 @@ public class RunTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public RunTopoGroupOp(IComms comms,String topologyId,byte[] jar,IOpSuccess success,
+	public PrepJarGroupOp(IComms comms,String topologyId,byte[] jar,IOpSuccess success,
 			IOpFailure failure) {
 		super(comms,success,failure);
 		this.jar=jar;

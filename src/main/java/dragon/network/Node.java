@@ -37,6 +37,7 @@ import dragon.network.messages.node.fault.NodeFaultNMsg;
 import dragon.network.messages.node.fault.TopoFaultNMsg;
 import dragon.network.messages.node.join.AcceptingJoinNMsg;
 import dragon.network.messages.node.join.JoinCompleteNMsg;
+import dragon.network.operations.DragonInvalidContext;
 import dragon.network.operations.GroupOp;
 import dragon.network.operations.JoinGroupOp;
 import dragon.network.operations.ListToposGroupOp;
@@ -592,21 +593,31 @@ public class Node {
 	 * @param topologyId the name of the topology that has failed
 	 */
 	public synchronized void signalHaltTopology(String topologyId) {
-		operationsThread.newHaltTopoGroupOp(topologyId, (op) -> {
-			log.warn("topology was halted due to too many errors");
-		}, (op, error) -> {
+		try {
+			operationsThread.newHaltTopoGroupOp(topologyId, (op) -> {
+				log.warn("topology was halted due to too many errors");
+			}, (op, error) -> {
+				try {
+					topologyFault(topologyId);
+				} catch (DragonTopologyException e) {
+					e.printStackTrace();
+					log.error(e);
+				}
+			}).onRunning((op) -> {
+				try {
+					haltTopology(topologyId);
+				} catch (DragonTopologyException | DragonInvalidStateException e) {
+					op.fail(e.getMessage());
+				}
+			});
+		} catch (DragonInvalidContext e) {
 			try {
 				topologyFault(topologyId);
-			} catch (DragonTopologyException e) {
-				log.error(e.getMessage());
+			} catch (DragonTopologyException e2) {
+				e2.printStackTrace();
+				log.error(e2);
 			}
-		}).onRunning((op) -> {
-			try {
-				haltTopology(topologyId);
-			} catch (DragonTopologyException | DragonInvalidStateException e) {
-				op.fail(e.getMessage());
-			}
-		});
+		}
 	}
 
 	/**
@@ -849,6 +860,7 @@ public class Node {
 				try {
 					topologyFault(topologyId);
 				} catch (DragonTopologyException e) {
+					e.printStackTrace();
 					log.error(e.getMessage());
 				}
 			}

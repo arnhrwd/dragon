@@ -19,6 +19,7 @@ import dragon.network.comms.DragonCommsException;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.service.ServiceDoneSMsg;
+import dragon.network.messages.service.ServiceErrorMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.allocpart.AllocPartErrorSMsg;
 import dragon.network.messages.service.allocpart.AllocPartSMsg;
@@ -107,6 +108,7 @@ public class DragonSubmitter {
 	 */
 	private static void initComms(Config conf){
 		comms=null;
+		System.out.println("connecting to dragon daemon: ["+node+"]");
 		try {
 			comms = new TcpComms(conf);
 			comms.open(node);
@@ -121,10 +123,11 @@ public class DragonSubmitter {
 	
 	/**
 	 * Receive service message responses and print progress messages
-	 * if they arrive.
-	 * @return the first message that is not a progress message
+	 * if they arrive. Bail out on error.
+	 * @return the first message that is not a progress message or
+	 * error message
 	 */
-	private static ServiceMessage skipProgress() {
+	private static ServiceMessage fromServer() {
 		ServiceMessage message=null;
 		while(message==null || message.getType()==ServiceMessage.ServiceMessageType.PROGRESS) {
 			try {
@@ -136,9 +139,34 @@ public class DragonSubmitter {
 			}
 			if(message.getType()==ServiceMessage.ServiceMessageType.PROGRESS) {
 				System.out.println(((ProgressSMsg)message).msg);
+			} else if(message instanceof ServiceErrorMessage) {
+				System.out.println(((ServiceErrorMessage)message).error);
+				try {
+					comms.sendServiceMsg(new ServiceDoneSMsg());
+				} catch (DragonCommsException e1) {
+					System.out.println("could not send service done message");
+					System.exit(-1);
+				}
+				comms.close();
+				System.exit(-1);
 			}
 		}
+		System.out.println("received ["+message.getType().name()+"]");
 		return message;
+	}
+	
+	/**
+	 * Send a service message.
+	 * @param msg
+	 */
+	private static void toServer(ServiceMessage msg) {
+		System.out.println("sending ["+msg.getType().name()+"]");
+		try {
+			comms.sendServiceMsg(msg);
+		} catch (DragonCommsException e1) {
+			System.out.println("error: "+e1);
+			System.exit(-1);
+		}
 	}
 	
 	/**
@@ -148,76 +176,21 @@ public class DragonSubmitter {
 	 * @param topology the topology to submit
 	 */
 	public static void submitTopology(String string, Config conf, DragonTopology topology) {
-		System.out.println("connecting to dragon daemon: ["+node+"]");
 		initComms(conf);
-		System.out.println("requesting context from ["+node+"]");
-		try {
-			comms.sendServiceMsg(new GetNodeContextSMsg());
-		} catch (DragonCommsException e1) {
-			System.out.println("could not send get node context message");
-			System.exit(-1);
-		}
-		ServiceMessage message=skipProgress();
+		System.out.println("requesting context...");
+		toServer(new GetNodeContextSMsg());
+		ServiceMessage message=fromServer();
 		NodeContext context = ((NodeContextSMsg)message).context;
 		log.debug("received context  ["+context+"]");
 		IEmbeddingAlgo embedding = ReflectionUtils.newInstance(conf.getDragonEmbeddingAlgorithm());
 		topology.embedTopology(embedding, context, conf);
-		System.out.println("uploading jar file to ["+node+"]");
-		try {
-			comms.sendServiceMsg(new UploadJarSMsg(string,topologyJar));
-		} catch (DragonCommsException e1) {
-			System.out.println("could not send upload jar message");
-			System.exit(-1);
-		}
-		message = skipProgress();
-		UploadJarFailedSMsg te;
-		switch(message.getType()) {
-		case UPLOAD_JAR_FAILED:
-			te = (UploadJarFailedSMsg) message;
-			try {
-				comms.sendServiceMsg(new ServiceDoneSMsg());
-			} catch (DragonCommsException e1) {
-				System.out.println("could not send service done message");
-				System.exit(-1);
-			}
-			comms.close();
-			System.out.println("uploading jar failed for ["+string+"]: "+te.error);
-			System.exit(-1);
-		case UPLOAD_JAR_SUCCESS:
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		System.out.println("running topology on ["+node+"]");
-		try {
-			comms.sendServiceMsg(new RunTopoSMsg(string,conf,topology));
-		} catch (DragonCommsException e1) {
-			System.out.println("could not send run topoology message");
-			System.exit(-1);
-		}
-		message = skipProgress();
-		RunTopoErrorSMsg rtem;
-		switch(message.getType()){
-		case RUN_TOPOLOGY_ERROR:
-			rtem = (RunTopoErrorSMsg) message;
-			System.out.println("run topology error for ["+string+"]: "+rtem.error);
-			break;
-		case TOPOLOGY_RUNNING:
-			System.out.println("topology ["+string+"] running");
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		try {
-			comms.sendServiceMsg(new ServiceDoneSMsg());
-		} catch (DragonCommsException e) {
-			log.error("could not send service done message");
-			System.exit(-1);
-		}
+		System.out.println("uploading jar file...");
+		toServer(new UploadJarSMsg(string,topologyJar));
+		message = fromServer();
+		System.out.println("starting topology...");
+		toServer(new RunTopoSMsg(string,conf,topology));
+		message = fromServer();
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
@@ -228,25 +201,14 @@ public class DragonSubmitter {
 	 * @throws InterruptedException
 	 * @throws DragonCommsException
 	 */
-	public static void getMetrics(Config conf,String topologyId) throws InterruptedException, DragonCommsException{
+	public static void getMetrics(Config conf,String topologyId) {
 		initComms(conf);
-		comms.sendServiceMsg(new GetMetricsSMsg(topologyId));
-		ServiceMessage message = skipProgress();
-		switch(message.getType()){
-		case METRICS:
-			MetricsSMsg m = (MetricsSMsg) message;
-			System.out.println(m.samples.toString());
-			break;
-		case GET_METRICS_ERROR:
-			GetMetricsErrorSMsg e = (GetMetricsErrorSMsg) message;
-			System.out.println(e.error);
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		comms.sendServiceMsg(new ServiceDoneSMsg());
+		System.out.println("getting metrics...");
+		toServer(new GetMetricsSMsg(topologyId));
+		ServiceMessage message = fromServer();
+		MetricsSMsg m = (MetricsSMsg) message;
+		System.out.println(m.samples.toString());
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
@@ -258,25 +220,14 @@ public class DragonSubmitter {
 	 * @throws InterruptedException
 	 * @throws DragonCommsException
 	 */
-	public static void terminateTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
+	public static void terminateTopology(Config conf, String topologyId) {
 		initComms(conf);
-		System.out.println("terminating topology ["+topologyId+"]");
-		comms.sendServiceMsg(new TermTopoSMsg(topologyId,false));
-		ServiceMessage message = skipProgress();
-		TermTopoErrorSMsg tte;
-		switch(message.getType()) {
-		case TERMINATE_TOPOLOGY_ERROR:
-			tte = (TermTopoErrorSMsg) message;
-			System.out.println("terminate topology error ["+topologyId+"] "+tte.error);
-		case TOPOLOGY_TERMINATED:
-			System.out.println("topology terminated ["+topologyId+"]");
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		comms.sendServiceMsg(new ServiceDoneSMsg());
+		System.out.println("terminating topology ["+topologyId+"]...");
+		toServer(new TermTopoSMsg(topologyId,false));
+		@SuppressWarnings("unused")
+		ServiceMessage message = fromServer();
+		System.out.println("topology terminated ["+topologyId+"]");
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
@@ -287,24 +238,14 @@ public class DragonSubmitter {
 	 * @throws InterruptedException
 	 * @throws DragonCommsException
 	 */
-	public static void resumeTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
+	public static void resumeTopology(Config conf, String topologyId) {
 		initComms(conf);
-		comms.sendServiceMsg(new ResumeTopoSMsg(topologyId));
-		ServiceMessage message = skipProgress();
-		ResumeTopoErrorSMsg tte;
-		switch(message.getType()) {
-		case RESUME_TOPOLOGY_ERROR:
-			tte = (ResumeTopoErrorSMsg) message;
-			System.out.println("resume topology error ["+topologyId+"] "+tte.error);
-		case TOPOLOGY_RESUMED:
-			System.out.println("topology resumed ["+topologyId+"]");
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		comms.sendServiceMsg(new ServiceDoneSMsg());
+		System.out.println("resuming topology ["+topologyId+"]...");
+		toServer(new ResumeTopoSMsg(topologyId));
+		@SuppressWarnings("unused")
+		ServiceMessage message = fromServer();
+		System.out.println("topology resumed ["+topologyId+"]");
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
@@ -315,24 +256,14 @@ public class DragonSubmitter {
 	 * @throws InterruptedException
 	 * @throws DragonCommsException
 	 */
-	public static void haltTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException {
+	public static void haltTopology(Config conf, String topologyId)  {
 		initComms(conf);
-		comms.sendServiceMsg(new HaltTopoSMsg(topologyId));
-		ServiceMessage message = skipProgress();
-		HaltTopoErrorSMsg tte;
-		switch(message.getType()) {
-		case HALT_TOPOLOGY_ERROR:
-			tte = (HaltTopoErrorSMsg) message;
-			System.out.println("halt topology error ["+topologyId+"] "+tte.error);
-		case TOPOLOGY_HALTED:
-			System.out.println("topology halted ["+topologyId+"]");
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		comms.sendServiceMsg(new ServiceDoneSMsg());
+		System.out.println("halting topology ["+topologyId+"]...");
+		toServer(new HaltTopoSMsg(topologyId));
+		@SuppressWarnings("unused")
+		ServiceMessage message = fromServer();
+		System.out.println("topology halted ["+topologyId+"]");
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
@@ -342,11 +273,12 @@ public class DragonSubmitter {
 	 * @throws DragonCommsException
 	 * @throws InterruptedException
 	 */
-	public static void listTopologies(Config conf) throws DragonCommsException, InterruptedException {
+	public static void listTopologies(Config conf) {
 		initComms(conf);
-		comms.sendServiceMsg(new ListToposSMsg());
-		TopoListSMsg message = (TopoListSMsg) skipProgress();
-		comms.sendServiceMsg(new ServiceDoneSMsg());
+		System.out.println("requesting list of topologies...");
+		toServer(new ListToposSMsg());
+		TopoListSMsg message = (TopoListSMsg) fromServer();
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 		HashSet<String> topologies = new HashSet<String>();
 		for(String descid : message.descState.keySet()) {
@@ -392,17 +324,14 @@ public class DragonSubmitter {
 		System.out.println(output);
 	}
 	
-	public static void getStatus(Config conf) throws DragonCommsException, InterruptedException {
+	public static void getStatus(Config conf) {
 		initComms(conf);
-		comms.sendServiceMsg(new GetStatusSMsg());
-		StatusSMsg message = (StatusSMsg) skipProgress();
-		comms.sendServiceMsg(new ServiceDoneSMsg());
+		System.out.println("requesting status...");
+		toServer(new GetStatusSMsg());
+		StatusSMsg message = (StatusSMsg) fromServer();
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 		ArrayList<NodeStatus> dragonStatus = message.dragonStatus;
-		if(dragonStatus.isEmpty()) {
-			System.out.println("there are no topologies running");
-			return;
-		}
 		TreeNode dragon = new TreeNode("<dragon>");
 		for(NodeStatus nodeStatus : dragonStatus) {
 			TreeNode node = new TreeNode("["+nodeStatus.desc.toString()+"] "+(nodeStatus.primary?"(primary) ":"")+nodeStatus.state.name()+" at "+ (new Date(nodeStatus.timestamp)).toString());
@@ -431,8 +360,7 @@ public class DragonSubmitter {
 		
 	}
 	
-	public static void allocatePartition(Config conf,List<String> argList) throws ParseException, 
-			DragonCommsException, InterruptedException {
+	public static void allocatePartition(Config conf,List<String> argList) throws ParseException {
 		initComms(conf);
 		if(argList.size()!=3) {
 			throw new ParseException("required arguments: PARTITIONID NUMBER STRATEGY\n"+
@@ -454,28 +382,16 @@ public class DragonSubmitter {
 		default:
 			throw new ParseException("strategy must be: each|uniform|balanced");
 		}
-		comms.sendServiceMsg(new AllocPartSMsg(partitionId,number,strat));
-		ServiceMessage message = skipProgress();
-		AllocPartErrorSMsg apem;
-		switch(message.getType()) {
-		case ALLOCATE_PARTITION_ERROR:
-			apem = (AllocPartErrorSMsg) message;
-			System.out.println("error: "+apem.getError());
-			break;
-		case PARTITION_ALLOCATED:
-			System.out.println("partition allocated");
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		comms.sendServiceMsg(new ServiceDoneSMsg());
+		System.out.println("allocating partition ["+partitionId+"]...");
+		toServer(new AllocPartSMsg(partitionId,number,strat));
+		@SuppressWarnings("unused")
+		ServiceMessage message = fromServer();
+		System.out.println("partition allocated");
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 	}
 	
-	public static void deallocatePartition(Config conf,List<String> argList) throws ParseException, 
-		DragonCommsException, InterruptedException {
+	public static void deallocatePartition(Config conf,List<String> argList) throws ParseException {
 		initComms(conf);
 		if(argList.size()!=3) {
 			throw new ParseException("required arguments: PARTITIONID NUMBER STRATEGY\n"+
@@ -497,45 +413,23 @@ public class DragonSubmitter {
 		default:
 			throw new ParseException("strategy must be: each|uniform|balanced");
 		}
-		comms.sendServiceMsg(new DeallocPartSMsg(partitionId,number,strat));
-		ServiceMessage message = skipProgress();
-		DeallocPartErrorSMsg apem;
-		switch(message.getType()) {
-		case DEALLOCATE_PARTITION_ERROR:
-			apem = (DeallocPartErrorSMsg) message;
-			System.out.println("error: "+apem.getError());
-			break;
-		case PARTITION_DEALLOCATED:
-			System.out.println("partition deallocated");
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		comms.sendServiceMsg(new ServiceDoneSMsg());
+		System.out.println("deallocating partition ["+partitionId+"]...");
+		toServer(new DeallocPartSMsg(partitionId,number,strat));
+		@SuppressWarnings("unused")
+		ServiceMessage message = fromServer();
+		System.out.println("partition deallocated");
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 	}
 
-	public static void purgeTopology(Config conf, String topologyId) throws InterruptedException, DragonCommsException{
+	public static void purgeTopology(Config conf, String topologyId) {
 		initComms(conf);
-		System.out.println("purging topology ["+topologyId+"]");
-		comms.sendServiceMsg(new TermTopoSMsg(topologyId,true));
-		ServiceMessage message = skipProgress();
-		TermTopoErrorSMsg tte;
-		switch(message.getType()) {
-		case TERMINATE_TOPOLOGY_ERROR:
-			tte = (TermTopoErrorSMsg) message;
-			System.out.println("purge topology error ["+topologyId+"] "+tte.error);
-		case TOPOLOGY_TERMINATED:
-			System.out.println("topology purged ["+topologyId+"]");
-			break;
-		default:
-			System.out.println("unexpected response: "+message.getType().name());
-			comms.close();
-			System.exit(-1);
-		}
-		comms.sendServiceMsg(new ServiceDoneSMsg());
+		System.out.println("purging topology ["+topologyId+"]...");
+		toServer(new TermTopoSMsg(topologyId,true));
+		@SuppressWarnings("unused")
+		ServiceMessage message = fromServer();
+		System.out.println("topology purged ["+topologyId+"]");
+		toServer(new ServiceDoneSMsg());
 		comms.close();
 	}
 

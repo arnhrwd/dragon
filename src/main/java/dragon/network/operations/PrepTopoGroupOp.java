@@ -14,7 +14,7 @@ import dragon.network.messages.service.runtopo.RunTopoSMsg;
  * @author aaron
  *
  */
-public class PrepareTopoGroupOp extends GroupOp {
+public class PrepTopoGroupOp extends GroupOp {
 	private static final long serialVersionUID = 7223966055440319387L;
 	
 	/**
@@ -27,7 +27,7 @@ public class PrepareTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public PrepareTopoGroupOp(IComms comms,RunTopoSMsg orig,IOpSuccess success,
+	public PrepTopoGroupOp(IComms comms,RunTopoSMsg orig,IOpSuccess success,
 			IOpFailure failure) {
 		super(comms,success,failure);
 		this.rtm=orig;

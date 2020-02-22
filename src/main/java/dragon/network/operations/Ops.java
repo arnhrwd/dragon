@@ -10,14 +10,16 @@ import org.apache.logging.log4j.Logger;
 import dragon.network.Node;
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
+import dragon.network.messages.service.runtopo.RunTopoErrorSMsg;
 import dragon.network.messages.service.runtopo.RunTopoSMsg;
 import dragon.network.messages.service.termtopo.TermTopoSMsg;
 import dragon.topology.DragonTopology;
 
 /**
- * Provides a standard interface to construct new group operations and make them
- * asynchronous, so as not to block the calling thread while waiting to transmit
- * group messages. Also handles other kinds of ops such as conditional ops, etc.
+ * Provides asynchronous events, largely to support operations that require message
+ * passing, so as not to block the calling thread while waiting to transmit
+ * group messages and receive responses. Also handles other kinds of ops such
+ * as conditional ops, etc., that take place when given conditions arise.
  * 
  * @author aaron
  *
@@ -116,11 +118,12 @@ public class Ops extends Thread {
 	 * @param success
 	 * @param failure
 	 * @return
+	 * @throws DragonInvalidContext 
 	 */
-	public RunTopoGroupOp newRunTopoGroupOp(String topologyId, byte[] jarFile, DragonTopology topology,
-			IOpSuccess success, IOpFailure failure) {
-		RunTopoGroupOp rtgo = new RunTopoGroupOp(node.getComms(),topologyId, jarFile, success, failure);
-		return (RunTopoGroupOp) newGroupOp(rtgo, topology);
+	public PrepJarGroupOp newPrepJarGroupOp(String topologyId, byte[] jarFile, DragonTopology topology,
+			IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
+		PrepJarGroupOp rtgo = new PrepJarGroupOp(node.getComms(),topologyId, jarFile, success, failure);
+		return (PrepJarGroupOp) newGroupOp(rtgo, topology);
 	}
 
 	/**
@@ -129,11 +132,12 @@ public class Ops extends Thread {
 	 * @param success
 	 * @param failure
 	 * @return
+	 * @throws DragonInvalidContext 
 	 */
-	public PrepareTopoGroupOp newPrepareTopoGroupOp(RunTopoSMsg rtm, DragonTopology topology, IOpSuccess success,
-			IOpFailure failure) {
-		PrepareTopoGroupOp ptgo = new PrepareTopoGroupOp(node.getComms(),rtm, success, failure);
-		return (PrepareTopoGroupOp) newGroupOp(ptgo, topology);
+	public PrepTopoGroupOp newPreTopoGroupOp(RunTopoSMsg rtm, DragonTopology topology, IOpSuccess success,
+			IOpFailure failure) throws DragonInvalidContext {
+		PrepTopoGroupOp ptgo = new PrepTopoGroupOp(node.getComms(),rtm, success, failure);
+		return (PrepTopoGroupOp) newGroupOp(ptgo, topology);
 	}
 
 	/**
@@ -141,8 +145,9 @@ public class Ops extends Thread {
 	 * @param success
 	 * @param failure
 	 * @return
+	 * @throws DragonInvalidContext 
 	 */
-	public StartTopoGroupOp newStartTopologyGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
+	public StartTopoGroupOp newStartTopologyGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
 		StartTopoGroupOp stgo = new StartTopoGroupOp(node.getComms(),topologyId, success, failure);
 		return (StartTopoGroupOp) newGroupOp(stgo, topologyId);
 	}
@@ -152,8 +157,9 @@ public class Ops extends Thread {
 	 * @param success
 	 * @param failure
 	 * @return
+	 * @throws DragonInvalidContext 
 	 */
-	public TermTopoGroupOp newTermTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
+	public TermTopoGroupOp newTermTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
 		TermTopoGroupOp ttgo = new TermTopoGroupOp(node.getComms(),topologyId, success, failure);
 		return (TermTopoGroupOp) newGroupOp(ttgo, topologyId);
 	}
@@ -164,10 +170,27 @@ public class Ops extends Thread {
 	 * @param success
 	 * @param failure
 	 * @return
+	 * @throws DragonInvalidContext 
 	 */
 	public RemoveTopoGroupOp newRemoveTopoGroupOp(TermTopoSMsg ttm, DragonTopology topology, IOpSuccess success,
-			IOpFailure failure) {
+			IOpFailure failure) throws DragonInvalidContext {
 		RemoveTopoGroupOp trgo = new RemoveTopoGroupOp(node.getComms(),ttm.topologyId,ttm.purge, success, failure);
+		
+		if(ttm.purge) {
+			/*
+			 * The purge operation needs to be robust to missing nodes in the topology.
+			 * This case will not throw a DragonInvalidContext
+			 */
+			for (NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
+				if(!node.getNodeProcessor().getContext().containsKey(desc.toString())) {
+					log.warn("["+desc+"] does not exist");
+				} else {
+					trgo.add(desc);
+				}
+			}
+			return trgo;
+		}
+		
 		return (RemoveTopoGroupOp) newGroupOp(trgo, topology);
 	}
 
@@ -193,8 +216,9 @@ public class Ops extends Thread {
 	 * @param success
 	 * @param failure
 	 * @return
+	 * @throws DragonInvalidContext 
 	 */
-	public HaltTopoGroupOp newHaltTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
+	public HaltTopoGroupOp newHaltTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
 		HaltTopoGroupOp htgo = new HaltTopoGroupOp(node.getComms(),topologyId, success, failure);
 		return (HaltTopoGroupOp) newGroupOp(htgo, topologyId);
 	}
@@ -204,8 +228,9 @@ public class Ops extends Thread {
 	 * @param success
 	 * @param failure
 	 * @return
+	 * @throws DragonInvalidContext 
 	 */
-	public ResumeTopoGroupOp newResumeTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) {
+	public ResumeTopoGroupOp newResumeTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
 		ResumeTopoGroupOp htgo = new ResumeTopoGroupOp(node.getComms(),topologyId, success, failure);
 		return (ResumeTopoGroupOp) newGroupOp(htgo, topologyId);
 	}
@@ -278,18 +303,24 @@ public class Ops extends Thread {
 	 * @param go
 	 * @param topologyId
 	 * @return
+	 * @throws DragonInvalidContext 
 	 */
-	private GroupOp newGroupOp(GroupOp go, String topologyId) {
+	private GroupOp newGroupOp(GroupOp go, String topologyId) throws DragonInvalidContext {
 		return newGroupOp(go, node.getLocalClusters().get(topologyId).getTopology());
 	}
 
 	/**
+	 * Adds all of the nodes in the topology mapping to the group operation.
 	 * @param go
 	 * @param topology
 	 * @return
+	 * @throws DragonInvalidContext if a node in the topology does not exist
 	 */
-	private GroupOp newGroupOp(GroupOp go, DragonTopology topology) {
+	private GroupOp newGroupOp(GroupOp go, DragonTopology topology) throws DragonInvalidContext {
 		for (NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
+			if(!node.getNodeProcessor().getContext().containsKey(desc.toString())) {
+				throw new DragonInvalidContext("["+desc+"] does not exist");
+			}
 			go.add(desc);
 		}
 		register(go);
