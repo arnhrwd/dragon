@@ -1,9 +1,17 @@
 package dragon.network.messages.service;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import dragon.network.Node;
+import dragon.network.comms.DragonCommsException;
+import dragon.network.comms.IComms;
 import dragon.network.messages.Message;
+import dragon.network.messages.service.progress.ProgressSMsg;
 
 public class ServiceMessage extends Message {
 	private static final long serialVersionUID = -682715214185176661L;
+	private final static Logger log = LogManager.getLogger(ServiceMessage.class);
 	
 	/**
 	 * The client id, used to identify the client to respond to.
@@ -83,6 +91,33 @@ public class ServiceMessage extends Message {
 	 */
 	public String getMessageId() {
 		return messageId;
+	}
+	
+	/**
+	 * Utility function to send a message to the client.
+	 * @param msg
+	 * @param dest
+	 * @return true if it was sent, false otherwise
+	 */
+	public boolean client(ServiceMessage msg) {
+		final IComms comms = Node.inst().getComms();
+		try {
+			comms.sendServiceMsg(msg, this);
+		} catch (DragonCommsException e) {
+			log.fatal("can't communicate with client: " + e.getMessage());
+			return false;
+		}
+		return true;
+	}
+	
+	/**
+	 * Utility function to report progress back to client.
+	 * @param msg
+	 * @param dest
+	 * @return true if message was sent, false otherwise
+	 */
+	public boolean progress(String msg) {
+		return client(new ProgressSMsg(msg));
 	}
 	
 }
