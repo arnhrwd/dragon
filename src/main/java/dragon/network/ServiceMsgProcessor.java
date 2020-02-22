@@ -166,12 +166,6 @@ public class ServiceMsgProcessor extends Thread {
 				client(new RunTopoErrorSMsg(msg.topologyId, "could not read the jar file; please upload jar first"),msg);
 				return;
 			}
-			msg.dragonTopology.getReverseEmbedding().keySet().forEach((desc)->{
-				if(!node.getNodeProcessor().getContext().containsKey(desc.toString())) {
-					client(new RunTopoErrorSMsg(msg.topologyId, "invalid topology context: ["+desc+"] does not exist"),msg);
-					return;
-				}
-			});
 			try {
 				Ops.inst().newPrepJarGroupOp(msg.topologyId, jarfile, topo, (op) -> {
 					try {
@@ -273,7 +267,9 @@ public class ServiceMsgProcessor extends Thread {
 			final DragonTopology topology = node.getLocalClusters().get(msg.topologyId).getTopology();
 			if(msg.purge) {
 				try {
-					Ops.inst().newRemoveTopoGroupOp(msg, topology, (op2) -> {
+					Ops.inst().newRemoveTopoGroupOp(msg, topology, (op2)->{
+						progress("waiting for up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+					},(op2) -> {
 						client(new TopoTermdSMsg(msg.topologyId), msg);
 					}, (op2, error) -> {
 						client(new TermTopoErrorSMsg(msg.topologyId, error), msg);
@@ -284,7 +280,6 @@ public class ServiceMsgProcessor extends Thread {
 						} catch (DragonTopologyException e) {
 							((RemoveTopoGroupOp) op2).receiveError(comms.getMyNodeDesc(),e.getMessage());
 						}
-						progress("waiting for up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
 					}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op2)->{
 						op2.fail("timed out removing topology from memory, possibly some machines are overloaded");
 					});
@@ -295,9 +290,13 @@ public class ServiceMsgProcessor extends Thread {
 				}
 			} else {
 				try {
-					Ops.inst().newTermTopoGroupOp(msg.topologyId, (op) -> {
+					Ops.inst().newTermTopoGroupOp(msg.topologyId,(op)->{
+						progress("stopping spouts and waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds for bolts to finish...", msg);
+					},(op) -> {
 						try {
-							Ops.inst().newRemoveTopoGroupOp(msg, topology, (op2) -> {
+							Ops.inst().newRemoveTopoGroupOp(msg, topology, (op2)->{
+								progress("waiting for up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+							},(op2) -> {
 								client(new TopoTermdSMsg(msg.topologyId), msg);
 							}, (op2, error) -> {
 								client(new TermTopoErrorSMsg(msg.topologyId, error), msg);
@@ -325,13 +324,14 @@ public class ServiceMsgProcessor extends Thread {
 						} catch (DragonTopologyException | DragonInvalidStateException e) {
 							((TermTopoGroupOp) op).fail(e.getMessage());
 						}
-						progress("stopping spouts and waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds for bolts to finish...", msg);
 					}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
 						progress("topology is not finishing, possibly mis-behaving user code... will try purging...",msg);
 						op.cancel();
 						msg.purge=true;
 						try {
-							Ops.inst().newRemoveTopoGroupOp(msg, topology, (op2) -> {
+							Ops.inst().newRemoveTopoGroupOp(msg, topology, (op2)->{
+								progress("waiting for up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+							},(op2) -> {
 								client(new TopoTermdSMsg(msg.topologyId), msg);
 							}, (op2, error) -> {
 								client(new TermTopoErrorSMsg(msg.topologyId, error), msg);
@@ -365,7 +365,9 @@ public class ServiceMsgProcessor extends Thread {
 	 * @param msg
 	 */
 	private void processListTopologies(ListToposSMsg msg) {
-		Ops.inst().newListToposGroupOp((op) -> {
+		Ops.inst().newListToposGroupOp((op)->{
+			progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+		},(op) -> {
 			ListToposGroupOp ltgo = (ListToposGroupOp) op;
 			client(new TopoListSMsg(ltgo.descState, ltgo.descErrors, ltgo.descComponents, ltgo.descMetrics), msg);
 		}, (op, error) -> {
@@ -375,7 +377,6 @@ public class ServiceMsgProcessor extends Thread {
 			node.listTopologies(ltgo);
 			ltgo.aggregate(comms.getMyNodeDesc(), ltgo.state, ltgo.errors, ltgo.components, ltgo.metrics);
 			ltgo.receiveSuccess(comms.getMyNodeDesc());
-			progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
 		}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
 			op.fail("timed out waiting for nodes to respond");
 		});
@@ -391,7 +392,9 @@ public class ServiceMsgProcessor extends Thread {
 			client(new HaltTopoErrorSMsg(msg.topologyId, "topology does not exist"),msg);
 		} else {
 			try {
-				Ops.inst().newHaltTopoGroupOp(msg.topologyId, (op) -> {
+				Ops.inst().newHaltTopoGroupOp(msg.topologyId, (op)->{
+					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+				},(op) -> {
 					client(new TopoHaltedSMsg(msg.topologyId), msg);
 				}, (op, error) -> {
 					client(new HaltTopoErrorSMsg(msg.topologyId, error), msg);
@@ -399,7 +402,6 @@ public class ServiceMsgProcessor extends Thread {
 					try {
 						node.haltTopology(msg.topologyId);
 						((HaltTopoGroupOp) op).receiveSuccess(comms.getMyNodeDesc());
-						progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
 					} catch (DragonTopologyException | DragonInvalidStateException e) {
 						((HaltTopoGroupOp) op).receiveError(comms.getMyNodeDesc(),e.getMessage());
 					}
@@ -422,7 +424,9 @@ public class ServiceMsgProcessor extends Thread {
 			client(new ResumeTopoErrorSMsg(msg.topologyId, "topology does not exist"),msg);
 		} else {
 			try {
-				Ops.inst().newResumeTopoGroupOp(msg.topologyId, (op) -> {
+				Ops.inst().newResumeTopoGroupOp(msg.topologyId,(op)->{
+					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+				},	(op) -> {
 					client(new TopoResumedMsg(msg.topologyId), msg);
 				}, (op, error) -> {
 					client(new ResumeTopoErrorSMsg(msg.topologyId, error), msg);
@@ -434,7 +438,6 @@ public class ServiceMsgProcessor extends Thread {
 					} catch (DragonTopologyException | DragonInvalidStateException e) {
 						((ResumeTopoGroupOp) op).receiveError(comms.getMyNodeDesc(),e.getMessage());
 					}
-					
 				}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
 					op.fail("timed out waiting for nodes to respond");
 				});
@@ -544,6 +547,8 @@ public class ServiceMsgProcessor extends Thread {
 			return;
 		}
 		Ops.inst().newAllocPartGroupOp(partitionId,allocation, (op)->{
+			progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+		},(op)->{
 			client(new PartAllocedSMsg(partitionId,0), msg);
 		}, (op,error)->{
 			client(new AllocPartErrorSMsg(partitionId,0,error),msg);
@@ -555,7 +560,7 @@ public class ServiceMsgProcessor extends Thread {
 					apgo.receiveError(comms.getMyNodeDesc(), "failed to allocate partitions on ["+node.getComms().getMyNodeDesc()+"]");
 				} else {
 					apgo.receiveSuccess(comms.getMyNodeDesc());
-					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+					
 				}
 			}
 			
@@ -564,6 +569,10 @@ public class ServiceMsgProcessor extends Thread {
 		});
 	}
 	
+	/**
+	 * 
+	 * @param apsm
+	 */
 	private void processDeallocatePartition(DeallocPartSMsg apsm) {
 		final String partitionId = apsm.partitionId;
 		int daemons = apsm.daemons;
@@ -675,6 +684,8 @@ public class ServiceMsgProcessor extends Thread {
 			return;
 		}
 		Ops.inst().newDeallocPartGroupOp(partitionId,deletions, (op)->{
+			progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",apsm);
+		},(op)->{
 			client(new PartDeallocedSMsg(partitionId,0), apsm);
 		}, (op,error)->{
 			client(new DeallocPartErrorSMsg(partitionId,0,error),apsm);
@@ -686,7 +697,6 @@ public class ServiceMsgProcessor extends Thread {
 					apgo.receiveError(comms.getMyNodeDesc(), "failed to delete partition on ["+node.getComms().getMyNodeDesc()+"]");
 				} else {
 					apgo.receiveSuccess(comms.getMyNodeDesc());
-					progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",apsm);
 				}
 			}
 			
@@ -699,20 +709,20 @@ public class ServiceMsgProcessor extends Thread {
 	 * Get the status of the daemons.
 	 * @param msg
 	 */
-	private void processGetStatus(ServiceMessage msg) {
-		GetStatusSMsg gssm = (GetStatusSMsg) msg;
+	private void processGetStatus(GetStatusSMsg msg) {
 		Ops.inst().newGetStatusGroupOp((op)->{
+			progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
+		},(op)->{
 			GetStatusGroupOp gsgo = (GetStatusGroupOp) op;
-			client(new StatusSMsg(gsgo.dragonStatus),gssm);
+			client(new StatusSMsg(gsgo.dragonStatus),msg);
 		}, (op,error)->{
-			client(new GetStatusErrorSMsg((String)error),gssm);
+			client(new GetStatusErrorSMsg((String)error),msg);
 		}).onRunning((op)->{
 			GetStatusGroupOp gsgo = (GetStatusGroupOp) op;
 			NodeStatus nodeStatus = node.getStatus();
 			nodeStatus.context=node.getNodeProcessor().getContext();
 			gsgo.aggregate(nodeStatus);
 			gsgo.receiveSuccess(comms.getMyNodeDesc());
-			progress("waiting up to ["+node.getConf().getDragonServiceTimeoutMs()/1000+"] seconds...",msg);
 		}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
 			op.fail("timed out waiting for nodes to respond");
 		});
@@ -770,7 +780,7 @@ public class ServiceMsgProcessor extends Thread {
 						processDeallocatePartition((DeallocPartSMsg) msg);
 						break;
 					case GET_STATUS:
-						processGetStatus(msg);
+						processGetStatus((GetStatusSMsg) msg);
 						break;
 					default:
 						log.error("unrecognized command: " + msg.getType().name());

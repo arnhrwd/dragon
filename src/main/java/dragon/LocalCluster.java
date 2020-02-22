@@ -1114,6 +1114,7 @@ public class LocalCluster {
 	public void setFault() {
 		if(state==State.FAULT) return;
 		log.info("topology fault has occurred");
+		closeAll();
 		interruptAll();
 		state=State.FAULT;
 		
@@ -1135,6 +1136,47 @@ public class LocalCluster {
 		}
 		tickThread.interrupt();
 		tickCounterThread.interrupt();
+	}
+	
+	/*
+	 * Call all components' close(), specifically when purging, since
+	 * this close operation is not safe.
+	 */
+	public void closeAll() {
+		for(HashMap<Integer,Spout> spouts : spouts.values()) {
+			for(Spout component : spouts.values()) {
+				if(component.isClosing()!=true && component.isClosed()!=true) {
+					try {
+						component.setClosing();
+						component.close();
+						component.setClosed();
+					} catch (Exception e) {
+						e.printStackTrace();
+						log.warn("exception thrown by spout when closing: "+e.getMessage());
+					}
+					log.debug(component.getComponentId()+":"+component.getTaskId()+" closed");
+				} else {
+					log.debug(component.getComponentId()+":"+component.getTaskId()+" already closed");
+				}
+			}
+		}
+		for(HashMap<Integer,Bolt> bolts : bolts.values()) {
+			for(Bolt component : bolts.values()) {
+				if(component.isClosing()!=true && component.isClosed()!=true) {
+					try {
+						component.setClosing();
+						component.close();
+						component.setClosed();
+					} catch (Exception e) {
+						e.printStackTrace();
+						log.warn("exception thrown by bolt when closing: "+e.getMessage());
+					}
+					log.debug(component.getComponentId()+":"+component.getTaskId()+" closed");
+				} else {
+					log.debug(component.getComponentId()+":"+component.getTaskId()+" already closed");
+				}
+			}
+		}
 	}
 	
 	/**
@@ -1233,4 +1275,5 @@ public class LocalCluster {
 	public State getState() {
 		return state;
 	}
+
 }

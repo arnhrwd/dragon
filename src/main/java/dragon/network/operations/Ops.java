@@ -159,22 +159,23 @@ public class Ops extends Thread {
 	 * @return
 	 * @throws DragonInvalidContext 
 	 */
-	public TermTopoGroupOp newTermTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
-		TermTopoGroupOp ttgo = new TermTopoGroupOp(node.getComms(),topologyId, success, failure);
+	public TermTopoGroupOp newTermTopoGroupOp(String topologyId, IOpStart start,IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
+		TermTopoGroupOp ttgo = new TermTopoGroupOp(node.getComms(),topologyId, start,success, failure);
 		return (TermTopoGroupOp) newGroupOp(ttgo, topologyId);
 	}
 
 	/**
 	 * @param ttm
 	 * @param topology
+	 * @param start
 	 * @param success
 	 * @param failure
 	 * @return
 	 * @throws DragonInvalidContext 
 	 */
-	public RemoveTopoGroupOp newRemoveTopoGroupOp(TermTopoSMsg ttm, DragonTopology topology, IOpSuccess success,
-			IOpFailure failure) throws DragonInvalidContext {
-		RemoveTopoGroupOp trgo = new RemoveTopoGroupOp(node.getComms(),ttm.topologyId,ttm.purge, success, failure);
+	public RemoveTopoGroupOp newRemoveTopoGroupOp(TermTopoSMsg ttm, DragonTopology topology, IOpStart start,
+			IOpSuccess success,IOpFailure failure) throws DragonInvalidContext {
+		RemoveTopoGroupOp trgo = new RemoveTopoGroupOp(node.getComms(),ttm.topologyId,ttm.purge, start,success, failure);
 		
 		if(ttm.purge) {
 			/*
@@ -188,6 +189,7 @@ public class Ops extends Thread {
 					trgo.add(desc);
 				}
 			}
+			register(trgo);
 			return trgo;
 		}
 		
@@ -199,8 +201,8 @@ public class Ops extends Thread {
 	 * @param failure
 	 * @return
 	 */
-	public ListToposGroupOp newListToposGroupOp(IOpSuccess success, IOpFailure failure) {
-		ListToposGroupOp ltgo = new ListToposGroupOp(node.getComms(),success, failure);
+	public ListToposGroupOp newListToposGroupOp(IOpStart start,IOpSuccess success, IOpFailure failure) {
+		ListToposGroupOp ltgo = new ListToposGroupOp(node.getComms(),start,success, failure);
 		// this group operation goes to EVERY dragon daemon
 		NodeContext nc = new NodeContext();
 		nc.putAll(node.getNodeProcessor().getContext());
@@ -218,8 +220,8 @@ public class Ops extends Thread {
 	 * @return
 	 * @throws DragonInvalidContext 
 	 */
-	public HaltTopoGroupOp newHaltTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
-		HaltTopoGroupOp htgo = new HaltTopoGroupOp(node.getComms(),topologyId, success, failure);
+	public HaltTopoGroupOp newHaltTopoGroupOp(String topologyId, IOpStart start,IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
+		HaltTopoGroupOp htgo = new HaltTopoGroupOp(node.getComms(),topologyId,start, success, failure);
 		return (HaltTopoGroupOp) newGroupOp(htgo, topologyId);
 	}
 
@@ -230,8 +232,8 @@ public class Ops extends Thread {
 	 * @return
 	 * @throws DragonInvalidContext 
 	 */
-	public ResumeTopoGroupOp newResumeTopoGroupOp(String topologyId, IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
-		ResumeTopoGroupOp htgo = new ResumeTopoGroupOp(node.getComms(),topologyId, success, failure);
+	public ResumeTopoGroupOp newResumeTopoGroupOp(String topologyId, IOpStart start,IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
+		ResumeTopoGroupOp htgo = new ResumeTopoGroupOp(node.getComms(),topologyId, start,success, failure);
 		return (ResumeTopoGroupOp) newGroupOp(htgo, topologyId);
 	}
 	
@@ -255,8 +257,8 @@ public class Ops extends Thread {
 	 * @param failure
 	 * @return
 	 */
-	public AllocPartGroupOp newAllocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
-		AllocPartGroupOp apgo = new AllocPartGroupOp(node.getComms(),partitionId,allocation,success,failure);
+	public AllocPartGroupOp newAllocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpStart start,IOpSuccess success, IOpFailure failure) {
+		AllocPartGroupOp apgo = new AllocPartGroupOp(node.getComms(),partitionId,allocation,start,success,failure);
 		for(NodeDescriptor desc : allocation.keySet()) {
 			apgo.add(desc);
 		}
@@ -272,8 +274,8 @@ public class Ops extends Thread {
 	 * @param failure
 	 * @return
 	 */
-	public DeallocPartGroupOp newDeallocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
-		DeallocPartGroupOp apgo = new DeallocPartGroupOp(node.getComms(),partitionId,allocation,success,failure);
+	public DeallocPartGroupOp newDeallocPartGroupOp(String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpStart start,IOpSuccess success, IOpFailure failure) {
+		DeallocPartGroupOp apgo = new DeallocPartGroupOp(node.getComms(),partitionId,allocation,start,success,failure);
 		for(NodeDescriptor desc : allocation.keySet()) {
 			apgo.add(desc);
 		}
@@ -287,8 +289,8 @@ public class Ops extends Thread {
 	 * @param failure
 	 * @return
 	 */
-	public GetStatusGroupOp newGetStatusGroupOp(IOpSuccess success, IOpFailure failure) {
-		GetStatusGroupOp apgo = new GetStatusGroupOp(node.getComms(),success,failure);
+	public GetStatusGroupOp newGetStatusGroupOp(IOpStart start,IOpSuccess success, IOpFailure failure) {
+		GetStatusGroupOp apgo = new GetStatusGroupOp(node.getComms(),start,success,failure);
 		// this group operation goes to EVERY dragon daemon
 		NodeContext nc = new NodeContext();
 		nc.putAll(node.getNodeProcessor().getContext());

@@ -37,8 +37,8 @@ public class AllocPartGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public AllocPartGroupOp(IComms comms,String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpSuccess success, IOpFailure failure) {
-		super(comms,success, failure);
+	public AllocPartGroupOp(IComms comms,String partitionId,HashMap<NodeDescriptor,Integer> allocation,IOpStart start,IOpSuccess success, IOpFailure failure) {
+		super(comms,start,success, failure);
 		this.partitionId=partitionId;
 		this.allocation=allocation;
 	}

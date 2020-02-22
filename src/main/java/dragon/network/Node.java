@@ -306,6 +306,7 @@ public class Node {
 			return;
 		} else {
 			setNodeState(NodeState.JOIN_REQUESTED);
+			log.debug("waiting up to ["+getConf().getDragonCommsRetryMs()/1000+"] seconds to join with "+desc.toString());
 			Ops.inst().newJoinGroupOp(desc, (op)->{
 				log.info("joined to "+desc);
 				JoinGroupOp jgo = (JoinGroupOp) op;
@@ -334,8 +335,6 @@ public class Node {
 				setNodeState(NodeState.JOINING);
 				log.warn("error while joining: "+error);
 				sendJoinRequest(hosts);
-			}).onStart((op)->{
-				log.debug("waiting up to ["+getConf().getDragonCommsRetryMs()/1000+"] seconds to join with "+desc.toString());
 			}).onTimeout(getTimer(),getConf().getDragonServiceTimeoutMs(),TimeUnit.MILLISECONDS,(op)->{
 				op.fail("timed out joining node");
 			});
@@ -579,6 +578,7 @@ public class Node {
 			throw new DragonTopologyException("topology does not exist [" + topologyId+"]");
 		if(purge) {
 			log.warn("purging topology ["+topologyId+"]");
+			localClusters.get(topologyId).closeAll();
 			localClusters.get(topologyId).interruptAll();
 		}
 		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
@@ -594,7 +594,9 @@ public class Node {
 	 */
 	public synchronized void signalHaltTopology(String topologyId) {
 		try {
-			operationsThread.newHaltTopoGroupOp(topologyId, (op) -> {
+			operationsThread.newHaltTopoGroupOp(topologyId, (op)->{
+				log.warn("halting topology, waiting up to ["+getConf().getDragonServiceTimeoutMs()/1000+"] seconds...");
+			},	(op) -> {
 				log.warn("topology was halted due to too many errors");
 			}, (op, error) -> {
 				try {
@@ -609,6 +611,8 @@ public class Node {
 				} catch (DragonTopologyException | DragonInvalidStateException e) {
 					op.fail(e.getMessage());
 				}
+			}).onTimeout(getTimer(), getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
+				op.fail("timed out waiting for nodes to respond");
 			});
 		} catch (DragonInvalidContext e) {
 			try {

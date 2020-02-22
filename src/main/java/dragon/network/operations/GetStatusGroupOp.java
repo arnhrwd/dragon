@@ -27,8 +27,8 @@ public class GetStatusGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public GetStatusGroupOp(IComms comms,IOpSuccess success, IOpFailure failure) {
-		super(comms,success, failure);
+	public GetStatusGroupOp(IComms comms,IOpStart start,IOpSuccess success, IOpFailure failure) {
+		super(comms,start,success, failure);
 		dragonStatus=new ArrayList<NodeStatus>();
 	}
 	

@@ -24,8 +24,8 @@ public class HaltTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public HaltTopoGroupOp(IComms comms,String topologyId,IOpSuccess success, IOpFailure failure) {
-		super(comms,success,failure);
+	public HaltTopoGroupOp(IComms comms,String topologyId,IOpStart start,IOpSuccess success, IOpFailure failure) {
+		super(comms,start,success,failure);
 		this.topologyId = topologyId;
 	}
 	

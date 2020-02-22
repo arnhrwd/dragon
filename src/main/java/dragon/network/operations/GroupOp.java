@@ -49,16 +49,35 @@ public abstract class GroupOp extends Op implements Serializable {
 	protected transient IComms comms;
 	
 	/**
+	 * 
+	 * @param comms2
 	 * @param success
 	 * @param failure
 	 */
-	public GroupOp(IComms comms,IOpSuccess success,IOpFailure failure) {
+	public GroupOp(IComms comms, IOpSuccess success, IOpFailure failure) {
 		super(success,failure);
 		group = new HashSet<NodeDescriptor>();
 		received=new ArrayList<NodeMessage>();
 		this.comms=comms;
 	}
 	
+	/**
+	 * @param comms
+	 * @param start
+	 * @param success
+	 * @param failure
+	 */
+	public GroupOp(IComms comms,IOpStart start,IOpSuccess success,IOpFailure failure) {
+		super(start,success,failure);
+		group = new HashSet<NodeDescriptor>();
+		received=new ArrayList<NodeMessage>();
+		this.comms=comms;
+	}
+
+	/**
+	 * 
+	 * @param comms
+	 */
 	public void setComms(IComms comms) {
 		this.comms=comms;
 	}
@@ -98,6 +117,7 @@ public abstract class GroupOp extends Op implements Serializable {
 	 */
 	@Override
 	public void start() {
+		super.start();
 		ArrayList<NodeDescriptor> descs = new ArrayList<>();
 		descs.addAll(group);
 		sendStartMessages(descs);
@@ -105,11 +125,9 @@ public abstract class GroupOp extends Op implements Serializable {
 	
 	public void sendStartMessages(List<NodeDescriptor> descs) {
 		if(descs.size()==0) {
-			log.debug("calling super start");
-			super.start();
+			return;
 		} else {
 			NodeDescriptor desc=descs.remove(0);
-			log.debug("considering "+desc);
 			/*
 			* The thread that initiated the group op needs to make sure
 			* that it is resolved for the source desc.

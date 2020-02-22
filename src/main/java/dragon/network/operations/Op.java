@@ -15,11 +15,8 @@ import dragon.network.NodeDescriptor;
  * asynchronous protocols like group operations. At each state of the Operation, a callback
  * can bet set (usually to a lambda function) that can undertake tasks relevant to
  * the state. Every Op starts in the READY state and progresses to a final state of
- * either FAILED or COMPLETED.
- * @author aaron
- *
- */
-/**
+ * either FAILED, COMPLETED or CANCELED.
+ * 
  * @author aaron
  *
  */

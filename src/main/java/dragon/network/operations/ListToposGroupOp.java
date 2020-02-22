@@ -71,8 +71,8 @@ public class ListToposGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public ListToposGroupOp(IComms comms,IOpSuccess success, IOpFailure failure) {
-		super(comms,success,failure);
+	public ListToposGroupOp(IComms comms,IOpStart start,IOpSuccess success, IOpFailure failure) {
+		super(comms,start,success,failure);
 		descState=new HashMap<>();
 		descErrors=new HashMap<>();
 		descComponents=new HashMap<>();

@@ -158,6 +158,7 @@ public class TcpComms implements IComms {
 					serviceOutputStream.close();
 					serviceSocketClient.close();
 				} catch (ClassNotFoundException | IOException e2) {
+					e2.printStackTrace();
 					log.debug("class not found or ioexception: "+e2.toString());
 				} catch (InterruptedException e) {
 					log.debug("interrupted");
@@ -223,8 +224,10 @@ public class TcpComms implements IComms {
 									in.close();
 									socket.close();
 								} catch (IOException e){
+									e.printStackTrace();
 									log.error("exception with service socket: "+e.toString());
 								} catch (ClassNotFoundException e) {
+									e.printStackTrace();
 									log.error("something other than a ServiceMessage was received: "+e.toString());
 								} catch (InterruptedException e) {
 									log.warn("interrupted while putting on incomming service queue: "+e.toString());
@@ -257,10 +260,12 @@ public class TcpComms implements IComms {
 										NodeMessage message = (NodeMessage) socketManager.getInputStream("node", desc).readObject();
 										incomingNodeQueue.put(message);
 									} catch (IOException e) {
+										e.printStackTrace();
 										log.error("ioexception on node stream from ["+desc+"]: "+e.toString());
 										socketManager.delete("node",desc);
 										break;
 									} catch (ClassNotFoundException e) {
+										e.printStackTrace();
 										log.error("incorrect class transmitted on node stream from +["+desc+"]");
 										socketManager.close("node",desc);
 										break;
@@ -300,10 +305,12 @@ public class TcpComms implements IComms {
 										NetworkTask message = (NetworkTask) NetworkTask.readFromStream(in);
 										incomingTaskQueue.put(message);
 									} catch (IOException e) {
+										e.printStackTrace();
 										log.error("ioexception on task stream from ["+desc+"]: "+e.toString());
 										socketManager.delete("task",desc);
 										break;
 									} catch (ClassNotFoundException e) {
+										e.printStackTrace();
 										log.error("incorrect class transmitted on task stream from ["+desc+"]");
 										socketManager.close("task",desc);
 										break;
@@ -340,8 +347,8 @@ public class TcpComms implements IComms {
 			try {
 				serviceSocketServer.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
+				log.error("closing service socket: "+e.getMessage());
 			}
 		}
 		
@@ -377,7 +384,12 @@ public class TcpComms implements IComms {
 			}
 			return;
 		} catch (IOException e) {
-				log.error("service data was not transmitted");
+			e.printStackTrace();
+			log.error("service data was not transmitted: "+e.getMessage());
+		} catch (NullPointerException e) {
+			// probably the client went away
+			e.printStackTrace();
+			log.error("service data was not transmitted: "+e.getMessage());
 		}
 		throw new DragonCommsException("service data can not be transmitted");
 	}
@@ -427,7 +439,8 @@ public class TcpComms implements IComms {
 				try {
 					Thread.sleep(conf.getDragonCommsRetryMs());
 				} catch (InterruptedException e1) {
-					log.error("data was not transmitted");
+					e1.printStackTrace();
+					log.error("data was not transmitted: "+e1.getMessage());
 					return;
 				}
 			}
@@ -473,7 +486,7 @@ public class TcpComms implements IComms {
 				try {
 					Thread.sleep(conf.getDragonCommsRetryMs());
 				} catch (InterruptedException e1) {
-					log.error("data was not transmitted");
+					log.error("data was not transmitted: "+e1.getMessage());
 					return;
 				}
 			}

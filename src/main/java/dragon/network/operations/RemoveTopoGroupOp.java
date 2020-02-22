@@ -31,8 +31,8 @@ public class RemoveTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public RemoveTopoGroupOp(IComms comms,String topologyId,boolean purge,IOpSuccess success,IOpFailure failure) {
-		super(comms,success,failure);
+	public RemoveTopoGroupOp(IComms comms,String topologyId,boolean purge,IOpStart start,IOpSuccess success,IOpFailure failure) {
+		super(comms,start,success,failure);
 		this.topologyId=topologyId;
 		this.purge=purge;
 	}

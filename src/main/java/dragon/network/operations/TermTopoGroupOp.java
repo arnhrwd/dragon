@@ -34,8 +34,8 @@ public class TermTopoGroupOp extends GroupOp {
 	 * @param success
 	 * @param failure
 	 */
-	public TermTopoGroupOp(IComms comms,String topologyId,IOpSuccess success, IOpFailure failure) {
-		super(comms,success,failure);
+	public TermTopoGroupOp(IComms comms,String topologyId,IOpStart start,IOpSuccess success, IOpFailure failure) {
+		super(comms,start,success,failure);
 		this.topologyId=topologyId;
 	}
 	
