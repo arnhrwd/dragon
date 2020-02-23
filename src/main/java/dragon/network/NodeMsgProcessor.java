@@ -65,43 +65,7 @@ public class NodeMsgProcessor extends Thread {
 			case JOIN_COMPLETE:
 				msg.process();
 				break;
-			case CONTEXT_UPDATE:
-			case GET_TOPOLOGY_INFORMATION:
-			case HALT_TOPOLOGY:
-			case HALT_TOPOLOGY_ERROR:
-			case JAR_READY:
-			case JOIN_REQUEST:
-			case PREPARE_JAR:
-			case PREPARE_JAR_ERROR:
-			case PREPARE_TOPOLOGY:
-			case PREPARE_TOPOLOGY_ERROR:
-			case REMOVE_TOPOLOGY:
-			case REMOVE_TOPOLOGY_ERROR:
-			case RESUME_TOPOLOGY:
-			case RESUME_TOPOLOGY_ERROR:
-			case START_TOPOLOGY:
-			case START_TOPOLOGY_ERROR:
-			case TERMINATE_TOPOLOGY:
-			case TERMINATE_TOPOLOGY_ERROR:
-			case TOPOLOGY_HALTED:
-			case TOPOLOGY_INFORMATION:
-			case TOPOLOGY_READY:
-			case TOPOLOGY_REMOVED:
-			case TOPOLOGY_RESUMED:
-			case TOPOLOGY_STARTED:
-			case TOPOLOGY_TERMINATED:
-			case ALLOCATE_PARTITION:
-			case ALLOCATE_PARTITION_ERROR:
-			case PARTITION_ALLOCATED:
-			case GET_STATUS:
-			case GET_STATUS_ERROR:
-			case STATUS:
-			case DEALLOCATE_PARTITION:
-			case DEALLOCATE_PARTITION_ERROR:
-			case PARTITION_DEALLOCATED:
-			case TERMINATE_NODE:
-			case NODE_FAULT:
-			case TOPOLOGY_FAULT:
+			default:
 				// do when appropriate
 				node.getOpsProcessor().newConditionOp((op)->{
 					return node.getNodeState()==NodeState.OPERATIONAL;
@@ -117,8 +81,6 @@ public class NodeMsgProcessor extends Thread {
 				}, (op,error)->{
 					log.error(error);
 				});
-				break;
-			default:
 				break;
 			}
 		}
