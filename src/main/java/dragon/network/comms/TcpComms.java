@@ -1,8 +1,10 @@
 package dragon.network.comms;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -13,6 +15,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import dragon.Config;
+import dragon.network.Node;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.service.ServiceDoneSMsg;
@@ -178,6 +181,29 @@ public class TcpComms implements IComms {
 		return id;
 	}
 	
+	public static class TestCLInputStream extends ObjectInputStream
+	{
+	        private HashMap<String,ClassLoader> ldr;
+	        private HashMap<String,HashSet<String>> names;
+	        TestCLInputStream(InputStream str)
+	            throws IOException
+	        {
+	            super(str);
+	            this.ldr=Node.inst().pluginLoaders;
+	            this.names=Node.inst().pluginClasses;
+	        }
+	        
+			@Override
+	        protected Class resolveClass(ObjectStreamClass desc)
+	            throws IOException, ClassNotFoundException
+	        {
+	            if (names.get("main")!=null && names.get("main").contains(desc.getName())) {
+	                return ldr.get("main").loadClass(desc.getName());
+	            }
+	            return super.resolveClass(desc);
+	        }
+	}
+	
 	/**
 	 * Open both service and data port server sockets, i.e. to operate as a Dragon daemon.
 	 */
@@ -203,7 +229,7 @@ public class TcpComms implements IComms {
 									synchronized(serviceOutputStreams){
 										serviceOutputStreams.put(myid.toString(), new ObjectOutputStream(socket.getOutputStream()));
 									}
-									ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+									ObjectInputStream in = new TestCLInputStream(socket.getInputStream());
 									ServiceMessage message = (ServiceMessage) in.readObject();
 									while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
 										message.setMessageId(myid.toString());

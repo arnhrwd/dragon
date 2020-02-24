@@ -89,7 +89,7 @@ public class SocketManager {
 						Socket socket = server.accept();
 						log.debug("new socket from inet address ["+socket.getInetAddress()+"]");
 						ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-						ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+						ObjectInputStream in = new TcpComms.TestCLInputStream(socket.getInputStream());
 						NodeDescriptor endpoint = (NodeDescriptor) in.readObject();
 						String id = (String) in.readObject();
 						

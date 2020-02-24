@@ -2,9 +2,13 @@ package dragon.network;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -16,6 +20,8 @@ import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.jar.JarEntry;
+import java.util.jar.JarInputStream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -171,6 +177,9 @@ public class Node {
 	 */
 	private final Timer timer;
 	
+	public HashMap<String,ClassLoader> pluginLoaders;
+	public HashMap<String,HashSet<String>> pluginClasses;
+	
 	/**
 	 * Singleton reference
 	 */
@@ -192,6 +201,9 @@ public class Node {
 		this.conf = conf;
 		this.parentDesc = conf.getDragonNetworkParentDescriptor();
 		writePid();
+		
+		pluginLoaders = new HashMap<>();
+		pluginClasses = new HashMap<>();
 		
 		/*
 		 * Allocate the local clusters map.
@@ -449,13 +461,56 @@ public class Node {
 	 */
 	public synchronized boolean loadJarFile(String topologyId) {
 		Path pathname = Paths.get(conf.getJarPath() + "/" + comms.getMyNodeDesc(), topologyId);
+		ClassLoader mainLoader = Node.class.getClassLoader(); // some class in the main application
+		JarInputStream crunchifyJarFile = null;
 		try {
-			Agent.addToClassPath(new File(pathname.toString()));
+			pluginClasses.put("main",new HashSet<String>());
+			pluginLoaders.put("main",URLClassLoader.newInstance(new URL[]{pathname.toUri().toURL()}, mainLoader));
+			crunchifyJarFile = new JarInputStream(new FileInputStream(pathname.toString()));
+			JarEntry crunchifyJar;
+ 
+			while (true) {
+				crunchifyJar = crunchifyJarFile.getNextJarEntry();
+				if (crunchifyJar == null) {
+					break;
+				}
+				if ((crunchifyJar.getName().endsWith(".class"))) {
+					String className = crunchifyJar.getName().replaceAll("/", "\\.");
+					String myClass = className.substring(0, className.lastIndexOf('.'));
+					log.debug("loading className: "+className+" class: "+myClass);
+					try {
+						pluginLoaders.get("main").loadClass(myClass);
+						pluginClasses.get("main").add(myClass);
+					} catch (ClassNotFoundException e) {
+						//e.printStackTrace();
+					} catch (java.lang.NoClassDefFoundError e) {
+						//e.printStackTrace();
+					}
+					
+				}
+			}
 			return true;
+		} catch (MalformedURLException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} finally {
+			try {
+				crunchifyJarFile.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
+//		try {
+//			Agent.addToClassPath(new File(pathname.toString()));
+//			return true;
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		log.fatal("failed to add topology jar file to the classpath [" + topologyId + "]");
 		return false;
 	}
