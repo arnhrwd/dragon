@@ -176,6 +176,7 @@ public class DragonSubmitter {
 	 * @param topology the topology to submit
 	 */
 	public static void submitTopology(String string, Config conf, DragonTopology topology) {
+		topology.setTopologyId(string);
 		initComms(conf);
 		System.out.println("requesting context...");
 		toServer(new GetNodeContextSMsg());

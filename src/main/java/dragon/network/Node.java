@@ -177,7 +177,14 @@ public class Node {
 	 */
 	private final Timer timer;
 	
+	/**
+	 * A separate class loader is used for each topology.
+	 */
 	public HashMap<String,ClassLoader> pluginLoaders;
+	
+	/**
+	 * The class names available for each topology.
+	 */
 	public HashMap<String,HashSet<String>> pluginClasses;
 	
 	/**
@@ -202,6 +209,9 @@ public class Node {
 		this.parentDesc = conf.getDragonNetworkParentDescriptor();
 		writePid();
 		
+		/*
+		 * Allocate class loaders and name spaces for topologies. 
+		 */
 		pluginLoaders = new HashMap<>();
 		pluginClasses = new HashMap<>();
 		
@@ -464,8 +474,8 @@ public class Node {
 		ClassLoader mainLoader = Node.class.getClassLoader(); // some class in the main application
 		JarInputStream crunchifyJarFile = null;
 		try {
-			pluginClasses.put("main",new HashSet<String>());
-			pluginLoaders.put("main",URLClassLoader.newInstance(new URL[]{pathname.toUri().toURL()}, mainLoader));
+			pluginClasses.put(topologyId,new HashSet<String>());
+			pluginLoaders.put(topologyId,URLClassLoader.newInstance(new URL[]{pathname.toUri().toURL()}, mainLoader));
 			crunchifyJarFile = new JarInputStream(new FileInputStream(pathname.toString()));
 			JarEntry crunchifyJar;
  
@@ -475,16 +485,16 @@ public class Node {
 					break;
 				}
 				if ((crunchifyJar.getName().endsWith(".class"))) {
-					String className = crunchifyJar.getName().replaceAll("/", "\\.").replaceAll("$", "\\.");
+					String className = crunchifyJar.getName().replaceAll("/", "\\.");
 					String myClass = className.substring(0, className.lastIndexOf('.'));
 					log.debug("loading className: "+className+" class: "+myClass);
 					try {
-						pluginLoaders.get("main").loadClass(myClass);
-						pluginClasses.get("main").add(myClass);
+						pluginLoaders.get(topologyId).loadClass(myClass);
+						pluginClasses.get(topologyId).add(myClass);
 					} catch (ClassNotFoundException e) {
-						//e.printStackTrace();
+						log.warn("class not found: "+myClass);
 					} catch (java.lang.NoClassDefFoundError e) {
-						//e.printStackTrace();
+						log.warn("no class def: "+myClass);
 					}
 					
 				}
@@ -638,7 +648,10 @@ public class Node {
 		}
 		router.terminateTopology(topologyId, localClusters.get(topologyId).getTopology());
 		localClusters.remove(topologyId);
+		pluginLoaders.put(topologyId,null);
+		pluginClasses.get(topologyId).clear();
 		System.gc();
+		
 	}
 
 	/**

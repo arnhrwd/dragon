@@ -22,7 +22,7 @@ public class PrepareTopoNMsg extends NodeMessage {
 	/**
 	 * 
 	 */
-	public String topoloyId;
+	public String topologyId;
 	
 	/**
 	 * 
@@ -36,7 +36,7 @@ public class PrepareTopoNMsg extends NodeMessage {
 	 */
 	public PrepareTopoNMsg(String topologyName, Config conf, DragonTopology dragonTopology) {
 		super(NodeMessage.NodeMessageType.PREPARE_TOPOLOGY);
-		this.topoloyId=topologyName;
+		this.topologyId=topologyName;
 		this.topology=dragonTopology;
 		this.conf=conf;
 		
@@ -50,7 +50,7 @@ public class PrepareTopoNMsg extends NodeMessage {
 		final Node node = Node.inst();
 		try {
 			try {
-				node.prepareTopology(topoloyId, conf, topology, false);
+				node.prepareTopology(topologyId, conf, topology, false);
 			} catch (DragonTopologyException e) {
 				sendError(e.getMessage());
 			}

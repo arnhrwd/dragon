@@ -59,7 +59,8 @@ public class NodeMessage extends Message {
 		PARTITION_DEALLOCATED,
 		TERMINATE_NODE,
 		NODE_FAULT, 
-		TOPOLOGY_FAULT
+		TOPOLOGY_FAULT,
+		TOPOLOGY_ID
 	}
 	
 	/**

@@ -1,10 +1,14 @@
 package dragon.network.comms;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
+import java.io.ObjectStreamField;
+import java.io.OutputStream;
+import java.io.StreamCorruptedException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -18,8 +22,15 @@ import dragon.Config;
 import dragon.network.Node;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.node.preparejar.PrepareJarNMsg;
+import dragon.network.messages.node.preparetopo.PrepareTopoNMsg;
+import dragon.network.messages.node.preparetopo.TopologyIDNMsg;
 import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
+import dragon.network.messages.service.runtopo.RunTopoSMsg;
+import dragon.network.messages.service.runtopo.TopologyIDSMsg;
+import dragon.network.messages.service.uploadjar.UploadJarSMsg;
+import dragon.topology.DragonTopology;
 import dragon.tuple.NetworkTask;
 import dragon.utils.CircularBlockingQueue;
 
@@ -183,6 +194,7 @@ public class TcpComms implements IComms {
 	
 	public static class TestCLInputStream extends ObjectInputStream
 	{
+			private String loader;
 	        private HashMap<String,ClassLoader> ldr;
 	        private HashMap<String,HashSet<String>> names;
 	        TestCLInputStream(InputStream str)
@@ -197,12 +209,62 @@ public class TcpComms implements IComms {
 	        protected Class resolveClass(ObjectStreamClass desc)
 	            throws IOException, ClassNotFoundException
 	        {
-	            if (names.get("main")!=null && names.get("main").contains(desc.getName())) {
-	                return ldr.get("main").loadClass(desc.getName());
+	            if (loader!=null && names.get(loader)!=null && names.get(loader).contains(desc.getName())) {
+	                return ldr.get(loader).loadClass(desc.getName());
 	            }
 	            return super.resolveClass(desc);
 	        }
+			
+			public void setLoader(String loader) {
+				log.debug("setting loader to ["+loader+"]");
+				this.loader=loader;
+			}
+			
+//			@Override
+//			protected ObjectStreamClass readClassDescriptor() throws IOException,ClassNotFoundException
+//			{
+//				int type = read();
+//				if( type < 0 )
+//					throw new EOFException();
+//				switch( type )
+//				{
+//					case 0:
+//						return super.readClassDescriptor();
+//					case 1:
+//						super.readClassDescriptor();
+//						loader = readUTF();
+//						if(loader==null) throw new EOFException();
+//						Class<?> clazz = ldr.get(loader).loadClass("dragon.topology.DragonTopology");
+//						return ObjectStreamClass.lookup(clazz);
+//					default:
+//						throw new StreamCorruptedException("Unexpected class descriptor type: " + type);
+//				}
+//			}
 	}
+	
+//	public static class CLOutputStream extends ObjectOutputStream {
+//		private String loader=null;
+//		public CLOutputStream(OutputStream out) throws IOException {
+//			super(out);
+//		}
+//		
+//		public void writeDragonTopologyObject(Object obj,String topologyId) throws IOException {
+//			this.loader=topologyId;
+//			writeObject(obj);
+//		}
+//		
+//		@Override
+//		public void writeClassDescriptor(ObjectStreamClass osc) throws IOException {
+//			if(osc.getName()=="dragon.topology.DragonTopology") {
+//				write(1);
+//				writeUTF(loader);
+//			} else {
+//				write(0);
+//			}
+//			super.writeClassDescriptor(osc);
+//		}
+//		
+//	}
 	
 	/**
 	 * Open both service and data port server sockets, i.e. to operate as a Dragon daemon.
@@ -229,9 +291,13 @@ public class TcpComms implements IComms {
 									synchronized(serviceOutputStreams){
 										serviceOutputStreams.put(myid.toString(), new ObjectOutputStream(socket.getOutputStream()));
 									}
-									ObjectInputStream in = new TestCLInputStream(socket.getInputStream());
+									TestCLInputStream in = new TestCLInputStream(socket.getInputStream());
 									ServiceMessage message = (ServiceMessage) in.readObject();
 									while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
+										if(message.getType()==ServiceMessage.ServiceMessageType.TOPOLOGY_ID) {
+											in.setLoader(((TopologyIDSMsg)message).topologyId);
+											continue;
+										}
 										message.setMessageId(myid.toString());
 										incomingServiceQueue.put(message);
 										message = (ServiceMessage) in.readObject();
@@ -283,7 +349,12 @@ public class TcpComms implements IComms {
 							public void run() {
 								while(!isInterrupted()) {
 									try {
+										TestCLInputStream in = socketManager.getInputStream("node", desc);
 										NodeMessage message = (NodeMessage) socketManager.getInputStream("node", desc).readObject();
+										if(message.getType()==NodeMessage.NodeMessageType.TOPOLOGY_ID) {
+											in.setLoader(((TopologyIDNMsg)message).topologyId);
+											continue;
+										}
 										incomingNodeQueue.put(message);
 									} catch (IOException e) {
 										e.printStackTrace();
@@ -394,6 +465,16 @@ public class TcpComms implements IComms {
 	 * @throws DragonCommsException if the message could not be sent
 	 */
 	public void sendServiceMsg(ServiceMessage response) throws DragonCommsException {
+		/*
+		 * This kludge is to enable the class loader on the receiver to make use
+		 * of the loader for the given topology id, when loading the topology object,
+		 * which is all of the user's code.
+		 */
+		if(response.getType()==ServiceMessage.ServiceMessageType.RUN_TOPOLOGY) {
+			TopologyIDSMsg t = new TopologyIDSMsg(((RunTopoSMsg)response).topologyId);
+			t.setMessageId(response.getMessageId());
+			sendServiceMsg(t);
+		}
 		// no need to retry sending service message since we cannot form a connection
 		// back to the client
 		try {
@@ -438,6 +519,7 @@ public class TcpComms implements IComms {
 	public ServiceMessage receiveServiceMsg() throws InterruptedException {
 		ServiceMessage m=incomingServiceQueue.take();
 		log.debug("received service message ["+m.getType().name()+"]");
+		
 		return m;
 	}
 
@@ -450,6 +532,16 @@ public class TcpComms implements IComms {
 	 */
 	public void sendNodeMsg(NodeDescriptor desc, NodeMessage command) throws DragonCommsException {
 		command.setSender(me); // node messages typically require to be replied to
+		
+		/*
+		 * This kludge is to enable the class loader on the receiver to make use
+		 * of the loader for the given topology id, when loading the topology object,
+		 * which is all of the user's code.
+		 */
+		if(command.getType()==NodeMessage.NodeMessageType.PREPARE_TOPOLOGY) {
+			TopologyIDNMsg t = new TopologyIDNMsg(((PrepareTopoNMsg)command).topologyId);
+			sendNodeMsg(desc,t);
+		}
 		int tries=0;
 		while(tries<conf.getDragonCommsRetryAttempts()) {
 			try {

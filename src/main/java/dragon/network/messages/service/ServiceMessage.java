@@ -57,7 +57,8 @@ public class ServiceMessage extends Message {
 		DEALLOCATE_PARTITION,
 		DEALLOCATE_PARTITION_ERROR,
 		PARTITION_DEALLOCATED,
-		PROGRESS
+		PROGRESS,
+		TOPOLOGY_ID
 	}
 	
 	/**

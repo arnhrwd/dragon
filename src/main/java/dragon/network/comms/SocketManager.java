@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import dragon.network.NodeDescriptor;
+import dragon.network.comms.TcpComms.TestCLInputStream;
 
 /**
  * The socket manage is used to manage any number of incoming connections on the data port.
@@ -34,7 +35,7 @@ public class SocketManager {
 	/**
 	 * 
 	 */
-	TcpStreamMap<ObjectInputStream> inputStreamMap;
+	TcpStreamMap<TcpComms.TestCLInputStream> inputStreamMap;
 	
 	/**
 	 * 
@@ -75,7 +76,7 @@ public class SocketManager {
 	public SocketManager(int port,NodeDescriptor me) throws IOException {
 		this.me=me;
 		this.socketManager=this;
-		inputStreamMap = new TcpStreamMap<ObjectInputStream>();
+		inputStreamMap = new TcpStreamMap<TcpComms.TestCLInputStream>();
 		outputStreamMap = new TcpStreamMap<ObjectOutputStream>();
 		socketMap = new TcpStreamMap<Socket>();
 		inputsWaiting = new HashMap<String,LinkedBlockingQueue<NodeDescriptor>>();
@@ -89,7 +90,7 @@ public class SocketManager {
 						Socket socket = server.accept();
 						log.debug("new socket from inet address ["+socket.getInetAddress()+"]");
 						ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-						ObjectInputStream in = new TcpComms.TestCLInputStream(socket.getInputStream());
+						TcpComms.TestCLInputStream in = new TcpComms.TestCLInputStream(socket.getInputStream());
 						NodeDescriptor endpoint = (NodeDescriptor) in.readObject();
 						String id = (String) in.readObject();
 						
@@ -160,7 +161,7 @@ public class SocketManager {
 			Socket socket = new Socket(desc.getHost(),desc.getDataPort());
 			log.debug("writing handshake information ["+me+","+id+"] to ["+desc+"]");
 			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+			TcpComms.TestCLInputStream in = new TcpComms.TestCLInputStream(socket.getInputStream());
 			out.writeObject(me);
 			out.writeObject(id);
 			out.flush();
@@ -192,7 +193,7 @@ public class SocketManager {
 	 * @param desc
 	 * @return
 	 */
-	public ObjectInputStream getInputStream(String id,NodeDescriptor desc) {
+	public TestCLInputStream getInputStream(String id,NodeDescriptor desc) {
 		synchronized(this) {
 			return inputStreamMap.get(id+"_in").get(desc);
 		}

@@ -16,11 +16,12 @@ import dragon.network.NodeContext;
  */
 public class DragonTopology implements Serializable {
 	private static final long serialVersionUID = 5759609228559061827L;
+	private static Logger log = LogManager.getLogger(DragonTopology.class);
 	
 	/**
 	 * 
 	 */
-	private static Logger log = LogManager.getLogger(DragonTopology.class);
+	private String topologyId;
 	
 	/**
 	 * 
@@ -193,5 +194,21 @@ public class DragonTopology implements Serializable {
 	 */
 	public ReverseComponentEmbedding getReverseEmbedding() {
 		return reverseEmbedding;
+	}
+	
+	/**
+	 * 
+	 * @param topologyId
+	 */
+	public void setTopologyId(String topologyId) {
+		this.topologyId=topologyId;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public String getTopologyId() {
+		return topologyId;
 	}
 }
