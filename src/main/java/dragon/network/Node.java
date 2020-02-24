@@ -475,7 +475,7 @@ public class Node {
 					break;
 				}
 				if ((crunchifyJar.getName().endsWith(".class"))) {
-					String className = crunchifyJar.getName().replaceAll("/", "\\.");
+					String className = crunchifyJar.getName().replaceAll("/", "\\.").replaceAll("$", "\\.");
 					String myClass = className.substring(0, className.lastIndexOf('.'));
 					log.debug("loading className: "+className+" class: "+myClass);
 					try {
