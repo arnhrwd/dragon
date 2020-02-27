@@ -85,7 +85,7 @@ public class AllocPartSMsg extends ServiceMessage {
 	public void process() {
 		final Node node = Node.inst();
 		final IComms comms = node.getComms();
-		final NodeContext context = node.getNodeProcessor().getContext();
+		final NodeContext context = node.getNodeProcessor().getAliveContext();
 		int number = this.number;
 		/*
 		 * Who will allocate new processes and how many.

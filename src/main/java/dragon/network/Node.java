@@ -26,7 +26,6 @@ import java.util.jar.JarInputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import dragon.Agent;
 import dragon.ComponentError;
 import dragon.Config;
 import dragon.DragonInvalidStateException;
@@ -40,12 +39,10 @@ import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
 import dragon.network.messages.node.context.ContextUpdateNMsg;
 import dragon.network.messages.node.fault.NodeFaultNMsg;
+import dragon.network.messages.node.fault.RipNMsg;
 import dragon.network.messages.node.fault.TopoFaultNMsg;
-import dragon.network.messages.node.join.AcceptingJoinNMsg;
-import dragon.network.messages.node.join.JoinCompleteNMsg;
 import dragon.network.operations.DragonInvalidContext;
 import dragon.network.operations.GroupOp;
-import dragon.network.operations.JoinGroupOp;
 import dragon.network.operations.ListToposGroupOp;
 import dragon.network.operations.Ops;
 import dragon.network.operations.TermTopoGroupOp;
@@ -245,13 +242,19 @@ public class Node {
 		/*
 		 * This node is considering joining to other nodes.
 		 */
-		setNodeState(NodeState.JOINING);
+		//setNodeState(NodeState.JOINING);
+		setNodeState(NodeState.OPERATIONAL);
 		
 		/*
 		 * Open the communications layer.
 		 */
 		comms = new TcpComms(conf);
 		comms.open();
+		
+		/*
+		 * Start up the node message processor for node messages.
+		 */
+		nodeThread = new NodeMsgProcessor();
 		
 		/*
 		 * Start up the router for topology data.
@@ -264,11 +267,6 @@ public class Node {
 		serviceThread = new ServiceMsgProcessor();
 		
 		/*
-		 * Start up the node message processor for node messages.
-		 */
-		nodeThread = new NodeMsgProcessor();
-		
-		/*
 		 * If metrics is desired, startup a metrics monitor.
 		 */
 		if (conf.getDragonMetricsEnabled()) {
@@ -278,15 +276,45 @@ public class Node {
 		}
 		
 		/*
-		 * Get a list of hosts from the configuration file to consider
-		 * joining to.
+		 * Get a list of hosts from the configuration file to connect with.
 		 */
 		final ArrayList<NodeDescriptor> hosts = conf.getHosts();
 		if(hosts.size()>0 && !hosts.get(0).equals(comms.getMyNodeDesc())) {
-			sendJoinRequest(hosts);
-		} else {
-			setNodeState(NodeState.OPERATIONAL);
+			sendInitialContextUpdate(hosts);
+		} 
+	}
+	
+	/**
+	 * Send a context update, progressively trying all hosts in the list.
+	 * @param hosts the list of hosts to try to connect to
+	 */
+	private void sendInitialContextUpdate(final ArrayList<NodeDescriptor> hosts) {
+		if(hosts.isEmpty()) {
+			return;
 		}
+		NodeDescriptor desc = hosts.remove(0);
+		while(nodeThread.getAliveContext().containsKey(desc.toString())) {
+			if(hosts.isEmpty())return;
+			desc = hosts.remove(0);
+		}
+		final NodeDescriptor dest = desc;
+		Ops.inst().newOp((op)->{
+			try {
+				Node.inst().getComms().sendNodeMsg(dest, new ContextUpdateNMsg(nodeThread.getAliveContext()));
+			} catch (DragonCommsException e) {
+				nodeThread.setDead(dest);
+				op.fail("["+dest+"] is not reachable");
+			}
+		}, (op)->{
+			op.success();
+		}, (op)->{
+			log.info("sent context update to ["+dest+"]");
+			sendInitialContextUpdate(hosts);
+		}, (op,msg)->{
+			log.warn(msg);
+			sendInitialContextUpdate(hosts);
+		});
+		
 	}
 	
 	/**
@@ -308,58 +336,6 @@ public class Node {
 		if(ProcessHandle.current().parent().isPresent()) {
 			long parent_pid = ProcessHandle.current().parent().get().pid();
 			log.debug("parent pid = "+parent_pid);
-		}
-	}
-	
-	/**
-	 * Send a join request, progressively trying all hosts in the list until
-	 * one is found that is successful.
-	 * @param hosts the list of hosts to try to join to
-	 */
-	private void sendJoinRequest(final ArrayList<NodeDescriptor> hosts) {
-		if(hosts.isEmpty()) {
-			log.warn("did not join with any existing Dragon daemons");
-			setNodeState(NodeState.OPERATIONAL);
-			return;
-		}
-		NodeDescriptor desc = hosts.remove(0);
-		if(desc.equals(comms.getMyNodeDesc())) {
-			sendJoinRequest(hosts);
-			return;
-		} else {
-			setNodeState(NodeState.JOIN_REQUESTED);
-			log.debug("waiting up to ["+getConf().getDragonCommsRetryMs()/1000+"] seconds to join with "+desc.toString());
-			Ops.inst().newJoinGroupOp(desc, (op)->{
-				log.info("joined to "+desc);
-				JoinGroupOp jgo = (JoinGroupOp) op;
-				AcceptingJoinNMsg aj = (AcceptingJoinNMsg) jgo.getReceived().get(0);
-				
-				try {
-					comms.sendNodeMsg(aj.getSender(), new JoinCompleteNMsg());
-				} catch (DragonCommsException e) {
-					log.error("could not complete join with ["+aj.getSender());
-					nodeFault(aj.getSender());
-				}
-				nodeThread.contextPutAll(aj.context);
-				for(NodeDescriptor descriptor : nodeThread.getContext().values()) {
-					if(!descriptor.equals(comms.getMyNodeDesc())) {
-						try {
-							comms.sendNodeMsg(descriptor, new ContextUpdateNMsg(nodeThread.getContext()));
-						} catch (DragonCommsException e) {
-							log.error("could not send context update to ["+descriptor+"]");
-							nodeFault(descriptor);
-						}
-					}
-				}
-				
-				setNodeState(NodeState.OPERATIONAL);
-			}, (op,error)->{
-				setNodeState(NodeState.JOINING);
-				log.warn("error while joining: "+error);
-				sendJoinRequest(hosts);
-			}).onTimeout(getTimer(),getConf().getDragonServiceTimeoutMs(),TimeUnit.MILLISECONDS,(op)->{
-				op.fail("timed out joining node");
-			});
 		}
 	}
 
@@ -474,6 +450,7 @@ public class Node {
 		ClassLoader mainLoader = Node.class.getClassLoader(); // some class in the main application
 		JarInputStream crunchifyJarFile = null;
 		try {
+			log.info("creating class loader for: "+topologyId);
 			pluginClasses.put(topologyId,new HashSet<String>());
 			pluginLoaders.put(topologyId,URLClassLoader.newInstance(new URL[]{pathname.toUri().toURL()}, mainLoader));
 			crunchifyJarFile = new JarInputStream(new FileInputStream(pathname.toString()));
@@ -904,7 +881,7 @@ public class Node {
 		log.error("["+desc+"] is not reachable");
 		removeNode(desc);
 		HashSet<NodeDescriptor> more = new HashSet<>();
-		for(NodeDescriptor desc2 : nodeThread.getContext().values()) {
+		for(NodeDescriptor desc2 : nodeThread.getAliveContext().values()) {
 			if(!desc2.equals(comms.getMyNodeDesc())) {
 				try {
 					comms.sendNodeMsg(desc2, new NodeFaultNMsg(desc));
@@ -920,23 +897,40 @@ public class Node {
 	}
 	
 	/**
-	 * Called when receiving a message that a node is dead.
+	 * Called when receiving a message that a node is dead. Also called
+	 * as part of the local node fault detection method {@link #nodeFault(NodeDescriptor)}.
 	 * @param desc
 	 */
 	public synchronized void removeNode(NodeDescriptor desc) {
-		log.debug("removing ["+desc+"] from the node context");
-		nodeThread.getContext().remove(desc.toString());
-		// trigger topology faults as required
-		for(String topologyId : localClusters.keySet()) {
-			if(localClusters.get(topologyId).getTopology().getReverseEmbedding().containsKey(desc)){
+		if(nodeThread.getAliveContext().containsKey(desc.toString())) {
+			log.debug("removing ["+desc+"] from the node context");
+			nodeThread.setDead(desc);
+			// tell the node its dead, just in case it doesn't know
+			Ops.inst().newOp((op)->{
 				try {
-					topologyFault(topologyId);
-				} catch (DragonTopologyException e) {
-					e.printStackTrace();
-					log.error(e.getMessage());
+					Node.inst().getComms().sendNodeMsg(desc, new RipNMsg());
+				} catch (DragonCommsException e) {
+					op.fail("["+desc+"] is really dead");
+				}
+			}, (op)->{
+				op.success();
+			}, (op)->{
+				log.info("sent RIP to ["+desc+"]");
+			}, (op,msg)->{
+				log.warn(msg);
+			});
+			// trigger topology faults as required
+			for(String topologyId : localClusters.keySet()) {
+				if(localClusters.get(topologyId).getTopology().getReverseEmbedding().containsKey(desc)){
+					try {
+						topologyFault(topologyId);
+					} catch (DragonTopologyException e) {
+						e.printStackTrace();
+						log.error(e.getMessage());
+					}
 				}
 			}
-		}
+		} // else may have already been removed due to a node fault message
 	}
 	
 	/**
@@ -948,14 +942,27 @@ public class Node {
 		if(!localClusters.containsKey(topologyId)) {
 			throw new DragonTopologyException("topology does not exist ["+topologyId+"]");
 		}
+		if(localClusters.get(topologyId).getState()==LocalCluster.State.FAULT) {
+			// topology has already been faulted
+			return;
+		}
 		log.error("topology ["+topologyId+"] has faulted");
 		for (NodeDescriptor desc : localClusters.get(topologyId).getTopology().getReverseEmbedding().keySet()) {
-			if(nodeThread.getContext().containsKey(desc.toString()) && !desc.equals(comms.getMyNodeDesc())) {
-				try {
-					comms.sendNodeMsg(desc, new TopoFaultNMsg(topologyId));
-				} catch (DragonCommsException e) {
-					nodeFault(desc);
-				}
+			if(nodeThread.getAliveContext().containsKey(desc.toString()) && !desc.equals(comms.getMyNodeDesc())) {
+				Ops.inst().newOp((op)->{
+					try {
+						comms.sendNodeMsg(desc, new TopoFaultNMsg(topologyId));
+					} catch (DragonCommsException e) {
+						nodeFault(desc);
+						op.fail("topology ["+topologyId+"] may not be faulted correctly");
+					}
+				}, (op)->{
+					op.success();
+				}, (op)->{
+					log.info("sent topology fault to ["+desc+"]");
+				}, (op,msg)->{
+					log.warn(msg);
+				});
 			} else {
 				localClusters.get(topologyId).setFault();
 			}
@@ -971,6 +978,7 @@ public class Node {
 		if(!localClusters.containsKey(topologyId)) {
 			throw new DragonTopologyException("topology does not exist ["+topologyId+"]");
 		}
+		// this method will just return if the topology is already at fault
 		localClusters.get(topologyId).setFault();
 	}
 
@@ -980,19 +988,45 @@ public class Node {
 	 * @param topologyId
 	 * @param dragonTopology
 	 */
-	public void topologyFault(String topologyId,DragonTopology dragonTopology) {
+	public synchronized void topologyFault(String topologyId,DragonTopology dragonTopology) {
 		log.error("topology ["+topologyId+"] has faulted");
 		for (NodeDescriptor desc : dragonTopology.getReverseEmbedding().keySet()) {
-			if(nodeThread.getContext().containsKey(desc.toString()) && !desc.equals(comms.getMyNodeDesc())) {
-				try {
-					comms.sendNodeMsg(desc, new TopoFaultNMsg(topologyId));
-				} catch (DragonCommsException e) {
-					nodeFault(desc);
-				}
+			if(nodeThread.getAliveContext().containsKey(desc.toString()) && !desc.equals(comms.getMyNodeDesc())) {
+				Ops.inst().newOp((op)->{
+					try {
+						comms.sendNodeMsg(desc, new TopoFaultNMsg(topologyId));
+					} catch (DragonCommsException e) {
+						nodeFault(desc);
+						op.fail("topology ["+topologyId+"] may not be faulted correctly");
+					}
+				}, (op)->{
+					op.success();
+				}, (op)->{
+					log.info("sent topology fault to ["+desc+"]");
+				}, (op,msg)->{
+					log.warn(msg);
+				});
 			} else {
 				localClusters.get(topologyId).setFault();
 			}
 		}
 		
+	}
+
+	/**
+	 * Called when the node has been considered dead, it must now wait to
+	 * receive a context update.
+	 */
+	public void rip() {
+		log.warn("received RIP :-(");
+		ArrayList<String> topos = new ArrayList<String>(localClusters.keySet());
+		topos.forEach((topologyId)->{
+			try {
+				removeTopo(topologyId,true);
+			} catch (DragonTopologyException e) {
+				log.error("topology was removed elsewhere");
+			}
+		});
+		nodeThread.setAllDead();
 	}
 }

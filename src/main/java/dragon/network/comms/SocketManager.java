@@ -1,9 +1,7 @@
 package dragon.network.comms;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.StreamCorruptedException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -13,14 +11,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import dragon.network.NodeDescriptor;
-import dragon.network.comms.TcpComms.TestCLInputStream;
+import dragon.network.comms.TcpComms.CLInputStream;
 
 /**
- * The socket manage is used to manage any number of incoming connections on the data port.
- * @author aaron
- *
- */
-/**
+ * The socket manager is used to manage any number of incoming connections on the data port.
  * @author aaron
  *
  */
@@ -35,7 +29,7 @@ public class SocketManager {
 	/**
 	 * 
 	 */
-	TcpStreamMap<TcpComms.TestCLInputStream> inputStreamMap;
+	TcpStreamMap<TcpComms.CLInputStream> inputStreamMap;
 	
 	/**
 	 * 
@@ -76,7 +70,7 @@ public class SocketManager {
 	public SocketManager(int port,NodeDescriptor me) throws IOException {
 		this.me=me;
 		this.socketManager=this;
-		inputStreamMap = new TcpStreamMap<TcpComms.TestCLInputStream>();
+		inputStreamMap = new TcpStreamMap<TcpComms.CLInputStream>();
 		outputStreamMap = new TcpStreamMap<ObjectOutputStream>();
 		socketMap = new TcpStreamMap<Socket>();
 		inputsWaiting = new HashMap<String,LinkedBlockingQueue<NodeDescriptor>>();
@@ -90,7 +84,7 @@ public class SocketManager {
 						Socket socket = server.accept();
 						log.debug("new socket from inet address ["+socket.getInetAddress()+"]");
 						ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-						TcpComms.TestCLInputStream in = new TcpComms.TestCLInputStream(socket.getInputStream());
+						TcpComms.CLInputStream in = new TcpComms.CLInputStream(socket.getInputStream());
 						NodeDescriptor endpoint = (NodeDescriptor) in.readObject();
 						String id = (String) in.readObject();
 						
@@ -105,6 +99,7 @@ public class SocketManager {
 								inputsWaiting.get(id+"_in").put(endpoint);
 							}
 							if(!outputStreamMap.contains(id+"_in", endpoint)) {
+								// this output stream will never really be used
 								outputStreamMap.put(id+"_in",endpoint,out);
 							}
 							if(!socketMap.contains(id+"_in",endpoint)) {
@@ -131,7 +126,9 @@ public class SocketManager {
 	} 
 	
 	/**
-	 * @param id
+	 * Return a neighboring node for which there is an incoming data stream waiting
+	 * to be read.
+	 * @param id is a user supplied channel identifier
 	 * @return
 	 * @throws InterruptedException
 	 */
@@ -146,7 +143,8 @@ public class SocketManager {
 	
 	
 	/**
-	 * @param id
+	 * Return an output stream to use for sending to the given destination.
+	 * @param id is a user supplied channel identifier
 	 * @param desc
 	 * @return
 	 * @throws IOException
@@ -161,12 +159,13 @@ public class SocketManager {
 			Socket socket = new Socket(desc.getHost(),desc.getDataPort());
 			log.debug("writing handshake information ["+me+","+id+"] to ["+desc+"]");
 			ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-			TcpComms.TestCLInputStream in = new TcpComms.TestCLInputStream(socket.getInputStream());
+			TcpComms.CLInputStream in = new TcpComms.CLInputStream(socket.getInputStream());
 			out.writeObject(me);
 			out.writeObject(id);
 			out.flush();
 			
 			if(!inputStreamMap.contains(id+"_out",desc)) {
+				// this input stream will never really be used
 				inputStreamMap.put(id+"_out",desc,in);
 			}
 			if(!outputStreamMap.contains(id+"_out", desc)) {
@@ -175,15 +174,15 @@ public class SocketManager {
 			if(!socketMap.contains(id+"_out",desc)) {
 				socketMap.put(id+"_out",desc,socket);
 			}
-			if(!inputsWaiting.containsKey(id+"_out")) {
-				inputsWaiting.put(id+"_out", new LinkedBlockingQueue<NodeDescriptor>());
-			}
-			try {
-				inputsWaiting.get(id+"_out").put(desc);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+//			if(!inputsWaiting.containsKey(id+"_out")) {
+//				inputsWaiting.put(id+"_out", new LinkedBlockingQueue<NodeDescriptor>());
+//			}
+//			try {
+//				inputsWaiting.get(id+"_out").put(desc);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
 			return outputStreamMap.get(id+"_out").get(desc);
 		}
 	}
@@ -193,7 +192,7 @@ public class SocketManager {
 	 * @param desc
 	 * @return
 	 */
-	public TestCLInputStream getInputStream(String id,NodeDescriptor desc) {
+	public CLInputStream getInputStream(String id,NodeDescriptor desc) {
 		synchronized(this) {
 			return inputStreamMap.get(id+"_in").get(desc);
 		}
@@ -203,7 +202,7 @@ public class SocketManager {
 	 * @param id
 	 * @param desc
 	 */
-	public void delete(String id, NodeDescriptor desc) {
+	private void delete(String id, NodeDescriptor desc) {
 		synchronized(this) {
 			inputStreamMap.drop(id,desc);
 			outputStreamMap.drop(id,desc);
@@ -218,13 +217,43 @@ public class SocketManager {
 	public void close(String id, NodeDescriptor desc) {
 		synchronized(this) {
 			try {
-				outputStreamMap.get(id).get(desc).close();
-				inputStreamMap.get(id).get(desc).close();
-				socketMap.get(id).get(desc).close();
+				if(outputStreamMap.contains(id+"_out", desc))
+				outputStreamMap.get(id+"_out").get(desc).close();
 			} catch (IOException e) {
 				log.error("ioexception while closing a stream: "+e.toString());
 			}
+			try {
+				if(outputStreamMap.contains(id+"_in", desc))
+				outputStreamMap.get(id+"_in").get(desc).close();
+			} catch (IOException e) {
+				log.error("ioexception while closing a stream: "+e.toString());
+			}
+			try {
+				if(inputStreamMap.contains(id+"_in", desc))
+				inputStreamMap.get(id+"_in").get(desc).close();
+			} catch (IOException e) {
+				log.error("ioexception while closing a stream: "+e.toString());
+			}
+			try {
+				if(inputStreamMap.contains(id+"_out", desc))
+				inputStreamMap.get(id+"_in").get(desc).close();
+			} catch (IOException e) {
+				log.error("ioexception while closing a stream: "+e.toString());
+			}
+			try {
+				if(socketMap.contains(id+"_out", desc))
+				socketMap.get(id+"_out").get(desc).close();
+			} catch (IOException e) {
+				log.error("ioexception while closing a socket: "+e.toString());
+			}
+			try {
+				if(socketMap.contains(id+"_in", desc))
+				socketMap.get(id+"_in").get(desc).close();
+			} catch (IOException e) {
+				log.error("ioexception while closing a socket: "+e.toString());
+			}
 		}
-		delete(id,desc);
+		delete(id+"_in",desc);
+		delete(id+"_out",desc);
 	}
 }

@@ -294,6 +294,7 @@ public class DragonSubmitter {
 			TreeNode topo = new TreeNode("["+topologyId+"]");
 			dragon.addChild(topo);
 			for(String descid : message.descState.keySet()) {
+				if(message.descState.get(descid).get(topologyId)==null) continue;
 				TreeNode machine= new TreeNode("["+descid+"] "+message.descState.get(descid).get(topologyId));
 				topo.addChild(machine);
 				// list components

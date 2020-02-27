@@ -44,6 +44,11 @@ public class TcpStreamMap<T> extends HashMap<String,HashMap<NodeDescriptor,T>> {
 	 * @param desc
 	 */
 	public void drop(String id,NodeDescriptor desc) {
-		remove(id);
+		if(containsKey(id)) {	
+			get(id).remove(desc);
+			if(get(id).isEmpty()) {
+				remove(id);
+			}
+		}
 	}
 }

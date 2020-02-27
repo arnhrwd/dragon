@@ -23,7 +23,7 @@ public class GetStatusNMsg extends NodeMessage {
 
 	public void process() {
 		final Node node = Node.inst();
-		final NodeContext context  = node.getNodeProcessor().getContext();
+		final NodeContext context  = node.getNodeProcessor().getAliveContext();
 		GetStatusGroupOp gsgo = (GetStatusGroupOp) getGroupOp();
 		NodeStatus nodeStatus = node.getStatus();
 		nodeStatus.context = context;

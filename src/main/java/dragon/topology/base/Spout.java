@@ -36,7 +36,7 @@ public class Spout extends Component {
 		if(closing) {
 			try {
 				close();
-			} catch (Exception e) {
+			} catch (Throwable e) {
 				e.printStackTrace();
 				log.error("exception thrown when closing: "+e.getMessage());
 			}
@@ -60,7 +60,7 @@ public class Spout extends Component {
 				 */
 				getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
 			}
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			/*
 			 * Other exceptions are generally just bad user code.
 			 */

@@ -27,7 +27,7 @@ public class GetNodeContextSMsg extends ServiceMessage {
 	public void process() {
 		final Node node = Node.inst();
 		NodeContext nc = new NodeContext();
-		nc.putAll(node.getNodeProcessor().getContext());
+		nc.putAll(node.getNodeProcessor().getAliveContext());
 		client(new NodeContextSMsg(nc));
 	}
 

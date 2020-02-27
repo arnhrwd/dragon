@@ -202,8 +202,16 @@ public class Op implements Serializable {
 		return this;
 	}
 	
+	/**
+	 * 
+	 * @param timer
+	 * @param duration
+	 * @param unit
+	 * @param timeout
+	 * @return
+	 */
 	public synchronized Op onTimeout(Timer timer,long duration,TimeUnit unit,IOpTimeout timeout) {
-		if(this.state==State.FAILED || this.state==State.COMPLETED) return this;
+		if(this.state==State.FAILED || this.state==State.COMPLETED || this.state==State.CANCELED) return this;
 		this.timeout=timeout;
 		final Op me=this;
 		timerTask = new TimerTask() {
@@ -216,6 +224,11 @@ public class Op implements Serializable {
 		return this;
 	}
 	
+	/**
+	 * 
+	 * @param cancel
+	 * @return
+	 */
 	public synchronized Op onCancel(IOpCancel cancel) {
 		this.cancel=cancel;
 		if(state==State.CANCELED) {
@@ -259,6 +272,7 @@ public class Op implements Serializable {
 	 */
 	public synchronized void start() {
 		if(start!=null) start.start(this);
+		if(state!=State.READY) return;
 		state=State.RUNNING;
 		if(running!=null) {
 			running.running(this);
@@ -273,6 +287,10 @@ public class Op implements Serializable {
 			log.warn("operation has already failed");
 			return;
 		}
+		if(state==State.CANCELED) {
+			log.warn("operation has already been canceled");
+			return;
+		}
 		if(timerTask!=null) timerTask.cancel();
 		state=State.COMPLETED;
 		if(success!=null) success.success(this);
@@ -284,6 +302,10 @@ public class Op implements Serializable {
 	public synchronized void fail(String error) {
 		if(state==State.COMPLETED) {
 			log.error("operation has already completed");
+			return;
+		}
+		if(state==State.CANCELED) {
+			log.warn("operation has already been canceled");
 			return;
 		}
 		if(timerTask!=null) timerTask.cancel();

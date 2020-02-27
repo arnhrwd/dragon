@@ -196,6 +196,11 @@ public class Config extends HashMap<String, Object> {
 	 */
 	public static final String DRAGON_FAULTS_COMPONENT_TOLERANCE="dragon.faults.component.tolerance";
 	
+	/**
+	 * the time interval to wait before retrying to connect to a dead node, usually large 
+	 * like 10 or 20 minutes
+	 */
+	public static final String DRAGON_FAULTS_DEADNODE_TIMEOUT_MS="dragon.faults.deadnode.timeout.ms";
 
 	/**
 	 * the path of the Java binary
@@ -397,6 +402,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_COMMS_RESET_COUNT,128);
 		put(DRAGON_COMMS_INCOMING_BUFFER_SIZE,1024);
 		put(DRAGON_FAULTS_COMPONENT_TOLERANCE,3);
+		put(DRAGON_FAULTS_DEADNODE_TIMEOUT_MS,10*60*1000);
 		put(DRAGON_JAVA_BIN,"java");
 		put(DRAGON_PROCESSES_MAX,10);
 		put(DRAGON_DEPLOY_DIR,"dragon");
@@ -687,6 +693,20 @@ public class Config extends HashMap<String, Object> {
 	 */
 	public int getDragonFaultsComponentTolerance() {
 		return (Integer)get(DRAGON_FAULTS_COMPONENT_TOLERANCE);
+	}
+	
+	/**
+	 * 
+	 * @return the number of milliseconds to wait before
+	 * retrying a dead node
+	 */
+	public long getDragonFaultsDeadnodeTimeout() {
+		Object o=get(DRAGON_FAULTS_DEADNODE_TIMEOUT_MS);
+		if(o instanceof Integer) {
+			return (Long) ((Integer)o).longValue(); 
+		} else {
+			return (Long) o;
+		}
 	}
 	
 

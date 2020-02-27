@@ -79,6 +79,11 @@ public class Router {
 	 * 
 	 */
 	private final LinkedBlockingQueue<NetworkTaskBuffer> outputsPending;
+	
+	/**
+	 * 
+	 */
+	private final NodeContext context;
 
 	/**
 	 * @param conf
@@ -94,6 +99,7 @@ public class Router {
 		outputQueues = new TopologyQueueMap((Integer)conf.getDragonRouterOutputBufferSize());
 		outgoingThreads = new ArrayList<>();
 		incomingThreads = new ArrayList<>();
+		context = Node.inst().getNodeProcessor().getAliveContext();
 		
 		// A circular blocking queue is not so applicable here because the input and output queues
 		// change in response to topologies being started and stopped.
@@ -127,8 +133,8 @@ public class Router {
 							NetworkTaskBuffer buffer = outputsPending.take();
 							HashMap<NodeDescriptor,HashSet<Integer>> destinations = new HashMap<>();
 							buffer.bufferLock.lock();
+							NetworkTask task = buffer.poll();
 							try {
-								NetworkTask task = buffer.poll();
 								if(task!=null){
 									HashSet<Integer> taskIds=task.getTaskIds();
 									/*
@@ -159,7 +165,12 @@ public class Router {
 												task.getComponentId(),
 												task.getTopologyId());
 										try {
-											comms.sendNetworkTask(desc, task);
+											if(context.containsKey(desc.toString())) {
+												comms.sendNetworkTask(desc, task);
+											} else {
+												// the receiver has recently faulted
+												log.error("dopping network task since receiver ["+desc+"] is no longer alive");
+											}
 										} catch (DragonCommsException e) {
 											log.error("failed to send network task to ["+desc+"]");
 											Node.inst().nodeFault(desc);
@@ -167,7 +178,7 @@ public class Router {
 									}
 								}
 							} catch(NullPointerException e){
-								log.error("topology no longer exists, dropping network task");
+								log.error("topology ["+task.getTopologyId()+"] no longer exists, dropping network task");
 							} finally {
 								buffer.bufferLock.unlock();
 							}

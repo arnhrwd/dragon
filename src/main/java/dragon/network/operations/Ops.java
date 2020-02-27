@@ -183,7 +183,7 @@ public class Ops extends Thread {
 			 * This case will not throw a DragonInvalidContext
 			 */
 			for (NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
-				if(!node.getNodeProcessor().getContext().containsKey(desc.toString())) {
+				if(!node.getNodeProcessor().getAliveContext().containsKey(desc.toString())) {
 					log.warn("["+desc+"] does not exist");
 				} else {
 					trgo.add(desc);
@@ -205,7 +205,7 @@ public class Ops extends Thread {
 		ListToposGroupOp ltgo = new ListToposGroupOp(node.getComms(),start,success, failure);
 		// this group operation goes to EVERY dragon daemon
 		NodeContext nc = new NodeContext();
-		nc.putAll(node.getNodeProcessor().getContext());
+		nc.putAll(node.getNodeProcessor().getAliveContext());
 		for (NodeDescriptor desc : nc.values()) {
 			ltgo.add(desc);
 		}
@@ -235,19 +235,6 @@ public class Ops extends Thread {
 	public ResumeTopoGroupOp newResumeTopoGroupOp(String topologyId, IOpStart start,IOpSuccess success, IOpFailure failure) throws DragonInvalidContext {
 		ResumeTopoGroupOp htgo = new ResumeTopoGroupOp(node.getComms(),topologyId, start,success, failure);
 		return (ResumeTopoGroupOp) newGroupOp(htgo, topologyId);
-	}
-	
-	/**
-	 * @param desc
-	 * @param success
-	 * @param failure
-	 * @return
-	 */
-	public JoinGroupOp newJoinGroupOp(NodeDescriptor desc,IOpSuccess success, IOpFailure failure) {
-		JoinGroupOp jgo = new JoinGroupOp(node.getComms(),success,failure);
-		jgo.add(desc);
-		register(jgo);
-		return jgo;
 	}
 	
 	/**
@@ -293,7 +280,7 @@ public class Ops extends Thread {
 		GetStatusGroupOp apgo = new GetStatusGroupOp(node.getComms(),start,success,failure);
 		// this group operation goes to EVERY dragon daemon
 		NodeContext nc = new NodeContext();
-		nc.putAll(node.getNodeProcessor().getContext());
+		nc.putAll(node.getNodeProcessor().getAliveContext());
 		for (NodeDescriptor desc : nc.values()) {
 			apgo.add(desc);
 		}
@@ -320,7 +307,7 @@ public class Ops extends Thread {
 	 */
 	private GroupOp newGroupOp(GroupOp go, DragonTopology topology) throws DragonInvalidContext {
 		for (NodeDescriptor desc : topology.getReverseEmbedding().keySet()) {
-			if(!node.getNodeProcessor().getContext().containsKey(desc.toString())) {
+			if(!node.getNodeProcessor().getAliveContext().containsKey(desc.toString())) {
 				throw new DragonInvalidContext("["+desc+"] does not exist");
 			}
 			go.add(desc);

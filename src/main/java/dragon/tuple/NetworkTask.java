@@ -21,8 +21,14 @@ public class NetworkTask {
 	
 	/**
 	 * All tuples MUST have the same source component, task and stream ids.
+	 * They should be processed in the order of the array. Processing can
+	 * stop as soon as the first null element is reached.
 	 */
 	private Tuple[] tuples;
+	
+	/*
+	 * Destination of the tuples is below.
+	 */
 	
 	/**
 	 * 

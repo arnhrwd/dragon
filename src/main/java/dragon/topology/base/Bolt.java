@@ -98,9 +98,9 @@ public class Bolt extends Component {
 							 */
 							getLocalCluster().componentException(this,e.getMessage(),e.getStackTrace());
 						}
-					} catch (Exception e) {
+					} catch (Throwable e) {
 						/*
-						 * Other exceptions are generally just bad user code.
+						 * Other exceptions/throwables are generally just bad user code.
 						 */
 						e.printStackTrace();
 						log.error(e.getMessage());
@@ -149,7 +149,7 @@ public class Bolt extends Component {
 					if(upstreamComponents.isEmpty()) {
 						try {
 							close();
-						} catch (Exception e) {
+						} catch (Throwable e) {
 							e.printStackTrace();
 							log.error("exception thrown when closing: "+e.getMessage());
 						}

@@ -92,7 +92,7 @@ public class DeallocPartSMsg extends ServiceMessage {
 		final Node node = Node.inst();
 		final IComms comms = node.getComms();
 		int daemons = this.daemons;
-		final NodeContext context = node.getNodeProcessor().getContext();
+		final NodeContext context = node.getNodeProcessor().getAliveContext();
 		// total partition counts
 		final HashMap<String,Integer> partitionCount = new HashMap<>();
 		// individual node codes

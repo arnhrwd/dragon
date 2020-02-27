@@ -21,9 +21,6 @@ public class NodeMessage extends Message {
 	 *
 	 */
 	public static enum NodeMessageType {
-		JOIN_REQUEST,
-		ACCEPTING_JOIN,
-		JOIN_COMPLETE,
 		CONTEXT_UPDATE,
 		PREPARE_TOPOLOGY,
 		TOPOLOGY_READY,
@@ -60,7 +57,7 @@ public class NodeMessage extends Message {
 		TERMINATE_NODE,
 		NODE_FAULT, 
 		TOPOLOGY_FAULT,
-		TOPOLOGY_ID
+		TOPOLOGY_ID, RIP
 	}
 	
 	/**

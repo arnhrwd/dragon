@@ -46,7 +46,9 @@ public class PrepTopoGroupOp extends GroupOp {
 	 */
 	@Override
 	protected NodeMessage successNodeMessage() {
-		return new TopoReadyNMsg(rtm.topologyId);
+		final String topologyId=rtm.topologyId;
+		rtm=null;
+		return new TopoReadyNMsg(topologyId);
 	}
 
 	/* (non-Javadoc)
@@ -54,7 +56,9 @@ public class PrepTopoGroupOp extends GroupOp {
 	 */
 	@Override
 	protected NodeMessage errorNodeMessage(String error) {
-		return new PrepareTopoErrorNMsg(rtm.topologyId, error);
+		final String topologyId=rtm.topologyId;
+		rtm=null;
+		return new PrepareTopoErrorNMsg(topologyId, error);
 	}
 
 }

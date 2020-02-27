@@ -345,7 +345,9 @@ public class LocalCluster {
 	}
 	
 	/**
-	 * Submit a topology and run it immediately, useful only in local mode.
+	 * Submit a topology and run it immediately, useful only in local mode. This
+	 * method should only be called in local mode since it exits the system if
+	 * exceptions are thrown.
 	 * @param topologyName the name of the topology
 	 * @param conf the conf for the topology
 	 * @param dragonTopology the topology
@@ -356,15 +358,15 @@ public class LocalCluster {
 		try {
 			lconf = new Config(Constants.DRAGON_PROPERTIES,true);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.exit(-1);
 		}
 		lconf.putAll(conf);
 		try {
 			submitTopology(topologyName, lconf, dragonTopology, true);
-		} catch (DragonRequiresClonableException e) {
-			// TODO Auto-generated catch block
+		} catch (DragonRequiresClonableException | DragonTopologyException e) {
 			e.printStackTrace();
+			System.exit(-1);
 		}
 	}
 
@@ -378,9 +380,10 @@ public class LocalCluster {
 	 * @param dragonTopology the topology
 	 * @param start whether to start the topology immediately or not
 	 * @throws DragonRequiresClonableException if the topology contains components that are not clonable
+	 * @throws DragonTopologyException 
 	 */
 	@SuppressWarnings("unchecked")
-	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) throws DragonRequiresClonableException {
+	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) throws DragonRequiresClonableException, DragonTopologyException {
 		this.topologyName=topologyName;
 		this.conf=conf;
 		this.dragonTopology=dragonTopology;
@@ -440,7 +443,12 @@ public class LocalCluster {
 					spout.setOutputCollector(collector);
 					if(localtask) {
 						if(start) {
-							spout.open(conf, context, collector);
+							try {
+								spout.open(conf, context, collector);
+							} catch (Throwable e) {
+								e.printStackTrace();
+								throw new DragonTopologyException("spout ["+spout.getInstanceId()+"] throw exception when opening: "+e.getMessage());
+							}
 						} else {
 							openLater(spout,context,collector);
 						}
@@ -496,13 +504,18 @@ public class LocalCluster {
 					bolt.setOutputCollector(collector);
 					if(localtask) {
 						if(start) {
-							bolt.prepare(conf, context, collector);
+							try {
+								bolt.prepare(conf, context, collector);
+							} catch (Throwable e) {
+								e.printStackTrace();
+								throw new DragonTopologyException("bolt ["+bolt.getInstanceId()+"] threw exception when preparing: "+e.getMessage());
+							}
 						} else {
 							prepareLater(bolt,context,collector);
 						}
 					}
 				} catch (CloneNotSupportedException e) {
-					log.error("could not clone object: "+e.toString());
+					throw new DragonRequiresClonableException("bolts and spouts must be cloneable: "+boltDeclarer.getBolt().getComponentId());
 				}
 			}
 			totalParallelismHint+=numAllocated;//Math.ceil((double)numAllocated*boltDeclarer.getParallelismHint()/boltDeclarer.getNumTasks());
@@ -593,7 +606,7 @@ public class LocalCluster {
 			HashMap<String,StreamMap> 
 				fromComponent = dragonTopology.getDestComponentMap(fromComponentId);
 			if(fromComponent==null) {
-				throw new RuntimeException("spout ["+fromComponentId+"] has no components listening to it");
+				throw new DragonTopologyException("spout ["+fromComponentId+"] has no components listening to it");
 			}
 			log.debug(fromComponent);
 			for(String toComponentId : fromComponent.keySet()) {
@@ -772,21 +785,19 @@ public class LocalCluster {
 		if(state!=State.SUBMITTED) throw new DragonInvalidStateException("state must be "+State.SUBMITTED.name());
 		log.info("opening bolts");
 		for(BoltPrepare boltPrepare : boltPrepareList) {
-			//log.debug("calling prepare on bolt "+boltPrepare+" with collector "+boltPrepare.collector);
 			try {
 				boltPrepare.bolt.prepare(conf, boltPrepare.context, boltPrepare.collector);
-			} catch (Exception e) {
-				ComponentError ce = new ComponentError(e.getMessage(),e.getStackTrace());
-				throw new DragonTopologyException(ce.toString());
+			} catch (Throwable e) {
+				e.printStackTrace();
+				throw new DragonTopologyException("bolt ["+boltPrepare.bolt.getInstanceId()+"] threw: "+e.toString());
 			}
 		}
 		for(SpoutOpen spoutOpen : spoutOpenList) {
-			//log.debug("calling open on spout "+spoutOpen.spout+" with collector "+spoutOpen.collector);
 			try {
 				spoutOpen.spout.open(conf, spoutOpen.context, spoutOpen.collector);
-			} catch (Exception e) {
-				ComponentError ce = new ComponentError(e.getMessage(),e.getStackTrace());
-				throw new DragonTopologyException(ce.toString());
+			} catch (Throwable e) {
+				e.printStackTrace();
+				throw new DragonTopologyException("spout ["+spoutOpen.spout.getInstanceId()+"] threw: "+e.toString());
 			}
 		}
 		runComponentThreads();
@@ -830,7 +841,7 @@ public class LocalCluster {
 								spoutsClosed=false;
 								break;
 							} else {
-								log.debug("not closed yet: "+spout.getComponentId()+":"+spout.getTaskId());
+								log.debug("not closed yet: "+spout.getInstanceId());
 							}
 						}
 						if(spoutsClosed==false) {
@@ -854,7 +865,7 @@ public class LocalCluster {
 					HashMap<Integer,Spout> component = spouts.get(componentId);
 					for(Integer taskId : component.keySet()) {
 						Spout spout = component.get(taskId);
-						log.debug("spout ["+spout.getComponentId()+":"+spout.getTaskId()+"] emitting terminate tuple");
+						log.debug("spout ["+spout.getInstanceId()+"] emitting terminate tuple");
 						spout.getOutputCollector().emitTerminateTuple();
 						spout.getOutputCollector().expireAllTupleBundles();
 					}
@@ -1065,8 +1076,9 @@ public class LocalCluster {
 				componentExecutorThreads.get(index).interrupt();
 				try {
 					component.close();
-				} catch (Exception e) {
-					log.warn("exception thrown by spout when closing: "+e.getMessage());
+				} catch (Throwable e) {
+					e.printStackTrace();
+					log.error("throwable thrown by spout ["+component.getInstanceId()+"] when closing: "+e.getMessage());
 				}
 				log.debug(component.getComponentId()+":"+component.getTaskId()+" closed");
 				index++;
@@ -1150,13 +1162,13 @@ public class LocalCluster {
 						component.setClosing();
 						component.close();
 						component.setClosed();
-					} catch (Exception e) {
+					} catch (Throwable e) {
 						e.printStackTrace();
-						log.warn("exception thrown by spout when closing: "+e.getMessage());
+						log.error("throwable thrown by spout ["+component.getInstanceId()+"] when closing: "+e.getMessage());
 					}
-					log.debug(component.getComponentId()+":"+component.getTaskId()+" closed");
+					log.debug(component.getInstanceId()+" closed");
 				} else {
-					log.debug(component.getComponentId()+":"+component.getTaskId()+" already closed");
+					log.debug(component.getInstanceId()+" already closed");
 				}
 			}
 		}
@@ -1167,13 +1179,13 @@ public class LocalCluster {
 						component.setClosing();
 						component.close();
 						component.setClosed();
-					} catch (Exception e) {
+					} catch (Throwable e) {
 						e.printStackTrace();
-						log.warn("exception thrown by bolt when closing: "+e.getMessage());
+						log.error("throwable thrown by bolt ["+component.getInstanceId()+"] when closing: "+e.getMessage());
 					}
-					log.debug(component.getComponentId()+":"+component.getTaskId()+" closed");
+					log.debug(component.getInstanceId()+" closed");
 				} else {
-					log.debug(component.getComponentId()+":"+component.getTaskId()+" already closed");
+					log.debug(component.getInstanceId()+" already closed");
 				}
 			}
 		}

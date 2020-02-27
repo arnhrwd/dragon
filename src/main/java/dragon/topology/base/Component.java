@@ -149,6 +149,13 @@ public class Component implements Cloneable, Serializable{
 	}
 	
 	/**
+	 * @return
+	 */
+	public final String getInstanceId() {
+		return getComponentId()+":"+getTaskId();
+	}
+	
+	/**
 	 * @param declarer
 	 */
 	public final void setOutputFieldsDeclarer(OutputFieldsDeclarer declarer) {

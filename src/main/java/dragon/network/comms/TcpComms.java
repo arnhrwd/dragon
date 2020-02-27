@@ -6,9 +6,6 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
-import java.io.ObjectStreamField;
-import java.io.OutputStream;
-import java.io.StreamCorruptedException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -20,17 +17,15 @@ import org.apache.logging.log4j.Logger;
 
 import dragon.Config;
 import dragon.network.Node;
+import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
-import dragon.network.messages.node.preparejar.PrepareJarNMsg;
 import dragon.network.messages.node.preparetopo.PrepareTopoNMsg;
 import dragon.network.messages.node.preparetopo.TopologyIDNMsg;
 import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.runtopo.RunTopoSMsg;
 import dragon.network.messages.service.runtopo.TopologyIDSMsg;
-import dragon.network.messages.service.uploadjar.UploadJarSMsg;
-import dragon.topology.DragonTopology;
 import dragon.tuple.NetworkTask;
 import dragon.utils.CircularBlockingQueue;
 
@@ -134,12 +129,18 @@ public class TcpComms implements IComms {
 	private NodeDescriptor me;
 	
 	/**
+	 * 
+	 */
+	private NodeContext context;
+	
+	/**
 	 * This method opens comms as a Dragon daemon, using the parameters found in conf
 	 * to initialize its own NodeDescriptor.
 	 * @param conf
 	 */
 	public TcpComms(Config conf) {
 		this.conf=conf;
+		
 		incomingServiceQueue = new LinkedBlockingQueue<ServiceMessage>();
 		incomingNodeQueue = new LinkedBlockingQueue<NodeMessage>();
 		incomingTaskQueue = new CircularBlockingQueue<NetworkTask>(1024);
@@ -192,12 +193,12 @@ public class TcpComms implements IComms {
 		return id;
 	}
 	
-	public static class TestCLInputStream extends ObjectInputStream
+	public static class CLInputStream extends ObjectInputStream
 	{
 			private String loader;
 	        private HashMap<String,ClassLoader> ldr;
 	        private HashMap<String,HashSet<String>> names;
-	        TestCLInputStream(InputStream str)
+	        CLInputStream(InputStream str)
 	            throws IOException
 	        {
 	            super(str);
@@ -205,11 +206,14 @@ public class TcpComms implements IComms {
 	            this.names=Node.inst().pluginClasses;
 	        }
 	        
+			@SuppressWarnings({ "unchecked", "rawtypes" })
 			@Override
 	        protected Class resolveClass(ObjectStreamClass desc)
 	            throws IOException, ClassNotFoundException
 	        {
+				log.trace("received class: "+desc.getName());
 	            if (loader!=null && names.get(loader)!=null && names.get(loader).contains(desc.getName())) {
+	            	log.trace("getting class for: "+desc.getName()+" from loader: "+loader);
 	                return ldr.get(loader).loadClass(desc.getName());
 	            }
 	            return super.resolveClass(desc);
@@ -282,6 +286,7 @@ public class TcpComms implements IComms {
 					try {
 						log.debug("accepting service messages on port ["+serviceSocketServer.getLocalPort()+"]");
 						Socket socket = serviceSocketServer.accept();
+						log.debug("received a service connection from: "+socket.getInetAddress().getHostAddress());
 						id=id+1;
 						Thread servlet = new Thread(){
 							Long myid = nextId();
@@ -291,11 +296,15 @@ public class TcpComms implements IComms {
 									synchronized(serviceOutputStreams){
 										serviceOutputStreams.put(myid.toString(), new ObjectOutputStream(socket.getOutputStream()));
 									}
-									TestCLInputStream in = new TestCLInputStream(socket.getInputStream());
+									log.debug("creating class loader input stream");
+									CLInputStream in = new CLInputStream(socket.getInputStream());
+									log.debug("waiting for message");
 									ServiceMessage message = (ServiceMessage) in.readObject();
+									log.debug("received message");
 									while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
 										if(message.getType()==ServiceMessage.ServiceMessageType.TOPOLOGY_ID) {
 											in.setLoader(((TopologyIDSMsg)message).topologyId);
+											message = (ServiceMessage) in.readObject();
 											continue;
 										}
 										message.setMessageId(myid.toString());
@@ -341,29 +350,36 @@ public class TcpComms implements IComms {
 		nodeThread = new Thread() {
 			@Override
 			public void run() {
+				log.info("starting up");
 				while(!isInterrupted()) {
 					try {
 						NodeDescriptor desc = socketManager.getWaitingInputs("node");
 						Thread t = new Thread() {
 							@Override
 							public void run() {
+								log.info("starting up");
 								while(!isInterrupted()) {
 									try {
-										TestCLInputStream in = socketManager.getInputStream("node", desc);
-										NodeMessage message = (NodeMessage) socketManager.getInputStream("node", desc).readObject();
+										CLInputStream in = socketManager.getInputStream("node", desc);
+										if(in==null) break;
+										NodeMessage message = (NodeMessage) in.readObject();
 										if(message.getType()==NodeMessage.NodeMessageType.TOPOLOGY_ID) {
 											in.setLoader(((TopologyIDNMsg)message).topologyId);
 											continue;
 										}
 										incomingNodeQueue.put(message);
-									} catch (IOException e) {
+									} catch (EOFException e) {
+										log.info("closed connection from ["+desc+"]: "+e.toString());
+										socketManager.close("node",desc);
+										break;
+									}catch (IOException e) {
 										e.printStackTrace();
 										log.error("ioexception on node stream from ["+desc+"]: "+e.toString());
-										socketManager.delete("node",desc);
+										socketManager.close("node",desc);
 										break;
 									} catch (ClassNotFoundException e) {
 										e.printStackTrace();
-										log.error("incorrect class transmitted on node stream from +["+desc+"]");
+										log.error("incorrect class transmitted on node stream from ["+desc+"]");
 										socketManager.close("node",desc);
 										break;
 									} catch (InterruptedException e) {
@@ -371,16 +387,17 @@ public class TcpComms implements IComms {
 										socketManager.close("node",desc);
 									}
 								}
+								log.info("shutting down");
 							}
 						};
 						t.setName("node input "+nodeInputsThreads.size());
 						nodeInputsThreads.add(t);
 						t.start();
 					} catch (InterruptedException e) {
-						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
 				}
+				log.info("shutting down");
 			}
 		};
 		nodeThread.setName("node");
@@ -389,22 +406,29 @@ public class TcpComms implements IComms {
 		taskThread = new Thread() {
 			@Override
 			public void run() {
+				log.info("starting up");
 				while(!isInterrupted()) {
 					try {
 						NodeDescriptor desc = socketManager.getWaitingInputs("task");
 						Thread t = new Thread() {
 							@Override
 							public void run() {
+								log.info("starting up");
 								ObjectInputStream in = socketManager.getInputStream("task", desc);
 								while(!isInterrupted()) {
+									if(in==null) break;
 									try {
 										//NetworkTask message = (NetworkTask) socketManager.getInputStream("task", desc).readObject();
 										NetworkTask message = (NetworkTask) NetworkTask.readFromStream(in);
 										incomingTaskQueue.put(message);
+									} catch (EOFException e) {
+										log.info("closed connection from ["+desc+"]: "+e.toString());
+										socketManager.close("task", desc);
+										break;
 									} catch (IOException e) {
 										e.printStackTrace();
 										log.error("ioexception on task stream from ["+desc+"]: "+e.toString());
-										socketManager.delete("task",desc);
+										socketManager.close("task",desc);
 										break;
 									} catch (ClassNotFoundException e) {
 										e.printStackTrace();
@@ -416,6 +440,7 @@ public class TcpComms implements IComms {
 										socketManager.close("node",desc);
 									}
 								}
+								log.info("shutting down");
 							}
 						};
 						t.setName("task input "+taskInputsThreads.size());
@@ -426,6 +451,7 @@ public class TcpComms implements IComms {
 						e.printStackTrace();
 					}
 				}
+				log.info("shutting down");
 			}
 		};
 		taskThread.setName("task");
@@ -531,6 +557,11 @@ public class TcpComms implements IComms {
 	 * @throws DragonCommsException if finally it cannot send
 	 */
 	public void sendNodeMsg(NodeDescriptor desc, NodeMessage command) throws DragonCommsException {
+		if(!Node.inst().getNodeProcessor().getAliveContext().containsKey(desc.toString())
+				&& !(command.getType()==NodeMessage.NodeMessageType.CONTEXT_UPDATE)) {
+			log.error("dropping node message to ["+desc+"] since it is no longer alive");
+			return;
+		}
 		command.setSender(me); // node messages typically require to be replied to
 		
 		/*
@@ -551,13 +582,13 @@ public class TcpComms implements IComms {
 				socketManager.getOutputStream("node",desc).reset();
 				return;
 			} catch (IOException e) {
+				socketManager.close("node",desc);
 				tries++;
 				log.warn("could not connect to ["+desc+
 						"]... will retry #["+tries+"] after ["+conf.getDragonCommsRetryMs()+"] ms");
 				try {
 					Thread.sleep(conf.getDragonCommsRetryMs());
 				} catch (InterruptedException e1) {
-					e1.printStackTrace();
 					log.error("data was not transmitted: "+e1.getMessage());
 					return;
 				}
@@ -598,6 +629,7 @@ public class TcpComms implements IComms {
 				}
 				return;
 			} catch (IOException e) {
+				socketManager.close("task", desc);
 				tries++;
 				log.warn("could not connect to ["+desc+
 						"]... will retry #["+tries+"] after ["+conf.getDragonCommsRetryMs()+"] ms");

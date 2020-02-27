@@ -7,6 +7,11 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * A map of node names "hostname:dport" to NodeDescriptors.
+ * For convenience elsewhere the hashcode of a NodeDescriptor is the
+ * hashcode of the string "hostname:dport" and toString() returns
+ * the string "hostname:dport". In this class we explicitly use the
+ * toString() value for the key. In some cases, just getting the
+ * keySet() of this object, which is a set of names, is desired.
  * 
  * @author aaron
  *
@@ -35,9 +40,9 @@ public class NodeContext extends HashMap<String,NodeDescriptor>{
 	 * @param context
 	 */
 	public synchronized void putAll(NodeContext context) {
-		for(String key: context.keySet()) {
-			put(key,context.get(key));
-		}
+		context.forEach((k,v)->{
+			put(k,v);
+		});
 		logContext();
 	}
 	

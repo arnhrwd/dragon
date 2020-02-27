@@ -20,6 +20,10 @@ public class Tuple implements Serializable {
 	private final static Logger log = LogManager.getLogger(Tuple.class);
 	private static final long serialVersionUID = -8616313770722910200L;
 	
+	/*
+	 * Source of the tuple is below.
+	 */
+	
 	/**
 	 * 
 	 */

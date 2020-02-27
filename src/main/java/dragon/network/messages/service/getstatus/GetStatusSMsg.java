@@ -3,6 +3,7 @@ package dragon.network.messages.service.getstatus;
 import java.util.concurrent.TimeUnit;
 
 import dragon.network.Node;
+import dragon.network.NodeContext;
 import dragon.network.NodeStatus;
 import dragon.network.comms.IComms;
 import dragon.network.messages.service.ServiceMessage;
@@ -39,7 +40,8 @@ public class GetStatusSMsg extends ServiceMessage {
 		}).onRunning((op)->{
 			GetStatusGroupOp gsgo = (GetStatusGroupOp) op;
 			NodeStatus nodeStatus = node.getStatus();
-			nodeStatus.context=node.getNodeProcessor().getContext();
+			nodeStatus.context=new NodeContext();
+			nodeStatus.context.putAll(node.getNodeProcessor().getAliveContext());
 			gsgo.aggregate(nodeStatus);
 			gsgo.receiveSuccess(comms.getMyNodeDesc());
 		}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(), TimeUnit.MILLISECONDS, (op)->{
