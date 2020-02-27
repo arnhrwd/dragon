@@ -187,7 +187,7 @@ public abstract class GroupOp extends Op implements Serializable {
 	public void sendError(String error) {
 		if(!getSourceDesc().equals(comms.getMyNodeDesc())) {
 			try {
-				comms.sendNodeMsg(getSourceDesc(),errorNodeMessage(error));
+				sendGroupNodeMessage(comms,getSourceDesc(),errorNodeMessage(error));
 			} catch (DragonCommsException e) {
 				log.fatal("network errors prevented group operation");
 				Node.inst().nodeFault(getSourceDesc());

@@ -20,12 +20,14 @@ import dragon.network.Node;
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.node.NodeMessage;
+import dragon.network.messages.node.fault.RipNMsg;
 import dragon.network.messages.node.preparetopo.PrepareTopoNMsg;
 import dragon.network.messages.node.preparetopo.TopologyIDNMsg;
 import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.runtopo.RunTopoSMsg;
 import dragon.network.messages.service.runtopo.TopologyIDSMsg;
+import dragon.network.operations.Ops;
 import dragon.tuple.NetworkTask;
 import dragon.utils.CircularBlockingQueue;
 
@@ -211,9 +213,9 @@ public class TcpComms implements IComms {
 	        protected Class resolveClass(ObjectStreamClass desc)
 	            throws IOException, ClassNotFoundException
 	        {
-				log.trace("received class: "+desc.getName());
+				//log.trace("received class: "+desc.getName());
 	            if (loader!=null && names.get(loader)!=null && names.get(loader).contains(desc.getName())) {
-	            	log.trace("getting class for: "+desc.getName()+" from loader: "+loader);
+	            	//log.trace("getting class for: "+desc.getName()+" from loader: "+loader);
 	                return ldr.get(loader).loadClass(desc.getName());
 	            }
 	            return super.resolveClass(desc);
@@ -296,11 +298,8 @@ public class TcpComms implements IComms {
 									synchronized(serviceOutputStreams){
 										serviceOutputStreams.put(myid.toString(), new ObjectOutputStream(socket.getOutputStream()));
 									}
-									log.debug("creating class loader input stream");
 									CLInputStream in = new CLInputStream(socket.getInputStream());
-									log.debug("waiting for message");
 									ServiceMessage message = (ServiceMessage) in.readObject();
-									log.debug("received message");
 									while(message.getType()!=ServiceMessage.ServiceMessageType.SERVICE_DONE) {
 										if(message.getType()==ServiceMessage.ServiceMessageType.TOPOLOGY_ID) {
 											in.setLoader(((TopologyIDSMsg)message).topologyId);
@@ -414,13 +413,33 @@ public class TcpComms implements IComms {
 							@Override
 							public void run() {
 								log.info("starting up");
-								ObjectInputStream in = socketManager.getInputStream("task", desc);
+								final ObjectInputStream in = socketManager.getInputStream("task", desc);
+								final NodeContext context=Node.inst().getNodeProcessor().getAliveContext();
 								while(!isInterrupted()) {
 									if(in==null) break;
 									try {
 										//NetworkTask message = (NetworkTask) socketManager.getInputStream("task", desc).readObject();
 										NetworkTask message = (NetworkTask) NetworkTask.readFromStream(in);
-										incomingTaskQueue.put(message);
+										if(context.containsKey(desc.toString())) {
+											incomingTaskQueue.put(message);
+										} else {
+											log.warn("received network task from dead node: ["+desc+"]");
+											Ops.inst().newOp((op)->{
+												try {
+													Node.inst().getComms().sendNodeMsg(desc, new RipNMsg());
+												} catch (DragonCommsException e) {
+													op.fail("["+desc+"] is really dead");
+												}
+											}, (op)->{
+												op.success();
+											}, (op)->{
+												log.info("sent RIP to ["+desc+"]");
+											}, (op,error)->{
+												log.warn(error);
+											});
+											socketManager.close("task", desc);
+											break;
+										}
 									} catch (EOFException e) {
 										log.info("closed connection from ["+desc+"]: "+e.toString());
 										socketManager.close("task", desc);
@@ -558,7 +577,8 @@ public class TcpComms implements IComms {
 	 */
 	public void sendNodeMsg(NodeDescriptor desc, NodeMessage command) throws DragonCommsException {
 		if(!Node.inst().getNodeProcessor().getAliveContext().containsKey(desc.toString())
-				&& !(command.getType()==NodeMessage.NodeMessageType.CONTEXT_UPDATE)) {
+				&& !((command.getType()==NodeMessage.NodeMessageType.CONTEXT_UPDATE)||
+						(command.getType()==NodeMessage.NodeMessageType.RIP))) {
 			log.error("dropping node message to ["+desc+"] since it is no longer alive");
 			return;
 		}

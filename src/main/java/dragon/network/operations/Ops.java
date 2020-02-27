@@ -10,7 +10,6 @@ import org.apache.logging.log4j.Logger;
 import dragon.network.Node;
 import dragon.network.NodeContext;
 import dragon.network.NodeDescriptor;
-import dragon.network.messages.service.runtopo.RunTopoErrorSMsg;
 import dragon.network.messages.service.runtopo.RunTopoSMsg;
 import dragon.network.messages.service.termtopo.TermTopoSMsg;
 import dragon.topology.DragonTopology;

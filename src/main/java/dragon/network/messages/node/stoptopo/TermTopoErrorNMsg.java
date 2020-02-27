@@ -1,5 +1,6 @@
 package dragon.network.messages.node.stoptopo;
 
+
 import dragon.network.messages.node.NodeErrorMessage;
 import dragon.network.messages.node.NodeMessage;
 

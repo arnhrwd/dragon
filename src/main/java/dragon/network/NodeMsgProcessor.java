@@ -10,6 +10,7 @@ import dragon.network.Node.NodeState;
 import dragon.network.comms.DragonCommsException;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.context.ContextUpdateNMsg;
+import dragon.network.messages.node.fault.RipNMsg;
 import dragon.network.operations.Ops;
 
 
@@ -66,6 +67,23 @@ public class NodeMsgProcessor extends Thread {
 				break;
 			}
 			log.debug("received ["+msg.getType().name()+"] from ["+msg.getSender());
+			if(!alive.containsKey(msg.getSender().toString())&&msg.getType()!=NodeMessage.NodeMessageType.CONTEXT_UPDATE){
+				log.warn("sender is not alive, so dropping message");
+				Ops.inst().newOp((op)->{
+					try {
+						Node.inst().getComms().sendNodeMsg(msg.getSender(), new RipNMsg());
+					} catch (DragonCommsException e) {
+						op.fail("["+msg.getSender()+"] is really dead");
+					}
+				}, (op)->{
+					op.success();
+				}, (op)->{
+					log.info("sent RIP to ["+msg.getSender()+"]");
+				}, (op,error)->{
+					log.warn(error);
+				});
+				continue;
+			}
 			if(msg.getGroupOp()!=null) {
 				/*
 				 * hook up our comms for sending replies.

@@ -440,7 +440,7 @@ public class Node {
 	}
 
 	/**
-	 * Add a jar file for a given topology to the JVM classpath.
+	 * Load a topology's classes into a class loader.
 	 * 
 	 * @param topologyId the name of the topology to load
 	 * @return true if loaded successfully, false otherwise
@@ -464,7 +464,7 @@ public class Node {
 				if ((crunchifyJar.getName().endsWith(".class"))) {
 					String className = crunchifyJar.getName().replaceAll("/", "\\.");
 					String myClass = className.substring(0, className.lastIndexOf('.'));
-					log.debug("loading className: "+className+" class: "+myClass);
+					//log.debug("loading className: "+className+" class: "+myClass);
 					try {
 						pluginLoaders.get(topologyId).loadClass(myClass);
 						pluginClasses.get(topologyId).add(myClass);
@@ -616,8 +616,10 @@ public class Node {
 	 * @throws DragonTopologyException if the topology does not exist
 	 */
 	public synchronized void removeTopo(String topologyId,boolean purge) throws DragonTopologyException {
-		if (!localClusters.containsKey(topologyId))
-			throw new DragonTopologyException("topology does not exist [" + topologyId+"]");
+		if (!localClusters.containsKey(topologyId)) {
+			if(!purge) throw new DragonTopologyException("topology does not exist [" + topologyId+"]");
+			return; // when purging, we don't indicate error on non-existent topology
+		}
 		if(purge) {
 			log.warn("purging topology ["+topologyId+"]");
 			localClusters.get(topologyId).closeAll();

@@ -40,13 +40,13 @@ Unpack the distribution into a directory that will not be the deployment directo
     - hostname: 45.114.235.116
     dragon.deploy.dir: /home/ubuntu/packages
 
-Dragon has a number of deployment commands available, with `deploy` bundling a number of them together. It takes the original distro package as a command line parameter.
+Dragon has a number of deployment commands available, with `deploy` bundling a number of them together. It takes the original distro package as a command line parameter. **Note that these commands are destructive - they will overwrite whatever exists at the required locations.**
 
     ./dragon.sh deploy PATH_TO_DISTRO/dragon-VERSION-distro.zip [USERNAME]
 
 The distro must be one of `-distro.zip`, `-distro.tar.gz` or `-distro.tar.bz2`. The `USERNAME` is an optional parameter that is the username to login to the Ubuntu machines as, otherwise the user's login name will be used. The `deploy` command will install software on each Ubuntu machine:
 
-    mkdir -p /home/ubuntu/packages && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip && sudo apt autoremove
+    mkdir -p /home/ubuntu/packages && sudo apt update && sudo apt install -y openjdk-11-jre-headless unzip
 
 It will then copy the distribution into the deploy dir (`/home/ubuntu/packages` in this example), unpack it and configure it. The configuration file and other related files like log files will have the data port appended to them, so that they are unique when multiple Dragon daemons are on the same machine, e.g.:
     
@@ -63,6 +63,13 @@ It will also bring the daemons online using a command like:
 
     nohup /home/ubuntu/packages/dragon/bin/dragon.sh -d -C /home/ubuntu/packages/dragon/conf/dragon-4001.yaml > /home/ubuntu/packages/dragon/log/dragon-4001.stdout 2> /home/ubuntu/packages/dragon/log/dragon-4001.stderr &
 
+You may use `supervisord` to keep these nodes online.
+    
+If you just wanted to copy a new distribution to the machines and unpack it, i.e. skipping the installation of jdk and such, then:
+
+    ./dragon.sh distro PATH_TO_DISTRO/dragon-VERSION-distro.zip [USERNAME]
+    ./dragon.sh config [USERNAME]
+
 Now you can submit a topology to the Dragon cluster (see further below for detailed instructions):
 
     ./dragon.sh -h 45.114.235.125 -j YOUR_TOPOLOGY_JAR.jar -c YOUR.PACKAGE.TOPOLOGY TOPOLOGY_NAME
@@ -73,7 +80,7 @@ Other commands that are useful for controlling deployment are:
     ./dragon.sh online [USERNAME]
     ./dragon.sh config [USERNAME]
     
-These allow you to `kill` all Dragon daemons (bring them offline), bring them back online and to redo their configuration file, e.g. if you have added more Ubuntu machines, or parameters, etc.
+These allow you to `kill` all Dragon daemons (bring them offline), bring them back online and to redo their configuration file, e.g. if you have changed parameters, etc. If you decide to add more machines to the cluster then it can be done incrementally to an existing set of nodes that are running (by deploying only to those specific nodes), or, somewhat more straight forwardly, all nodes can be offlined, reconfigured and brought back online together.
 
 # Detailed Usage
  

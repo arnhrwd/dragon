@@ -1,5 +1,8 @@
 package dragon.network.messages.node;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import dragon.network.Node;
 import dragon.network.NodeDescriptor;
 import dragon.network.messages.IErrorMessage;
@@ -14,6 +17,10 @@ import dragon.network.operations.GroupOp;
  */
 public class NodeMessage extends Message {
 	private static final long serialVersionUID = -1656333391539097974L;
+	
+	@SuppressWarnings("unused")
+	private final static Logger log = LogManager.getLogger(NodeMessage.class);
+	
 
 	/**
 	 * 
