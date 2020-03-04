@@ -268,7 +268,7 @@ public class Op implements Serializable {
 	}
 	
 	/**
-	 * 
+	 * Must only be called once.
 	 */
 	public synchronized void start() {
 		if(start!=null) start.start(this);
@@ -291,6 +291,10 @@ public class Op implements Serializable {
 			log.warn("operation has already been canceled");
 			return;
 		}
+		if(state==State.COMPLETED) {
+			log.warn("operation has already completed");
+			return;
+		}
 		if(timerTask!=null) timerTask.cancel();
 		state=State.COMPLETED;
 		if(success!=null) success.success(this);
@@ -301,11 +305,15 @@ public class Op implements Serializable {
 	 */
 	public synchronized void fail(String error) {
 		if(state==State.COMPLETED) {
-			log.error("operation has already completed");
+			log.warn("operation has already completed");
 			return;
 		}
 		if(state==State.CANCELED) {
 			log.warn("operation has already been canceled");
+			return;
+		}
+		if(state==State.FAILED) {
+			log.warn("operation has already failed");
 			return;
 		}
 		if(timerTask!=null) timerTask.cancel();
@@ -326,8 +334,8 @@ public class Op implements Serializable {
 	 * 
 	 */
 	public synchronized void cancel() {
-		if(state==State.FAILED || state==State.COMPLETED) {
-			log.error("operation has already failed/completed");
+		if(state==State.FAILED || state==State.COMPLETED || state==State.CANCELED) {
+			log.error("operation has already failed/completed/canceled");
 			return;
 		}
 		if(timerTask!=null) timerTask.cancel();
