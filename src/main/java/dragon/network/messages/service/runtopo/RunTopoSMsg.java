@@ -85,13 +85,14 @@ public class RunTopoSMsg extends ServiceMessage {
 									client(new RunTopoErrorSMsg(topologyId, error));
 									node.topologyFault(topologyId,dragonTopology);
 								}).onRunning((op3) -> {
+									progress("starting topology on each daemon");
 									try {
 										node.startTopology(topologyId);
+										((StartTopoGroupOp) op3).receiveSuccess(comms.getMyNodeDesc());
 									} catch (DragonTopologyException | DragonInvalidStateException e) {
+										((StartTopoGroupOp) op3).receiveError(comms.getMyNodeDesc(),e.getMessage());
 										((StartTopoGroupOp)op3).fail(e.getMessage());
 									}
-									((StartTopoGroupOp) op3).receiveSuccess(comms.getMyNodeDesc());
-									progress("starting topology on each daemon");
 								}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(),
 										TimeUnit.MILLISECONDS, (op4)->{
 									op4.fail("timed out starting the topology");
@@ -102,6 +103,7 @@ public class RunTopoSMsg extends ServiceMessage {
 						}, (op2, error) -> {
 							client(new RunTopoErrorSMsg(topologyId, error));
 						}).onRunning((op2) -> {
+							progress("allocating topology on each daemon");
 							try {
 								node.prepareTopology(topologyId, conf, topo, false);
 								((PrepTopoGroupOp) op2).receiveSuccess(comms.getMyNodeDesc());
@@ -109,7 +111,6 @@ public class RunTopoSMsg extends ServiceMessage {
 								((PrepTopoGroupOp) op2).receiveError(comms.getMyNodeDesc(), 
 										e.getMessage());
 							}
-							progress("allocating topology on each daemon");
 						}).onTimeout(node.getTimer(), node.getConf().getDragonServiceTimeoutMs(),
 								TimeUnit.MILLISECONDS, (op3)->{
 							op3.fail("timed out preparing the topology");		
@@ -120,8 +121,8 @@ public class RunTopoSMsg extends ServiceMessage {
 				}, (op, error) -> {
 					client(new RunTopoErrorSMsg(topologyId, error));
 				}).onRunning((op) -> {
-					((PrepJarGroupOp) op).receiveSuccess(comms.getMyNodeDesc());
 					progress("distributing topology jar file");
+					((PrepJarGroupOp) op).receiveSuccess(comms.getMyNodeDesc());
 				}).onTimeout(node.getTimer(),node.getConf().getDragonServiceTimeoutMs(),TimeUnit.MILLISECONDS,(op)->{
 					op.fail("timed out distributing the topology");
 				});
