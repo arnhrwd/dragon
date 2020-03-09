@@ -80,7 +80,6 @@ public class Collector {
 		public String componentId;
 		public String streamId;
 		public HashSet<Integer> taskIds;
-		public boolean transmitted=false;
 		public TupleBundle(String componentId,String streamId,HashSet<Integer> taskIds) {
 			expireTime=Instant.now().toEpochMilli()+linger_ms;
 			if(nextExpire>expireTime) nextExpire=expireTime;
@@ -222,10 +221,8 @@ public class Collector {
 		long now = Instant.now().toEpochMilli();
 		while(bundleQueue.size()>0 && bundleQueue.peek().expireTime<=now) {
 			TupleBundle tb = bundleQueue.poll();
-			if(!tb.transmitted) {
-				transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
-				bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
-			}
+			transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
+			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
 		}
 		if(bundleQueue.size()>0) {
 			TupleBundle tb = bundleQueue.peek();
@@ -242,10 +239,22 @@ public class Collector {
 		log.debug("expiring all tuple bundles");
 		while(bundleQueue.size()>0) {
 			TupleBundle tb = bundleQueue.poll();
-			if(!tb.transmitted) {
-				transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
-				bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
-			}
+			transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
+			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
+		}
+		nextExpire = Instant.now().toEpochMilli()+linger_ms;
+	}
+	
+	/**
+	 * Expire all tuple bundles up to the given tuple bundle.
+	 * @param tb
+	 */
+	private void expireAllUpTo(TupleBundle tb) {
+		while(true) {
+			TupleBundle next = bundleQueue.poll();
+			transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
+			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
+			if(next==tb) break;
 		}
 		nextExpire = Instant.now().toEpochMilli()+linger_ms;
 	}
@@ -322,17 +331,6 @@ public class Collector {
 	}
 	
 	/**
-	 * Transmit a tuple bundle, marking it transmitted, and remove it
-	 * from the bundle map.
-	 * @param tb
-	 */
-	private void transmitBundle(TupleBundle tb) {
-		transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
-		bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
-		tb.transmitted=true;
-	}
-	
-	/**
 	 * Transmit a tuple, which will likely just bundle it into an existing
 	 * tuple bundle, waiting to be transmitted.
 	 * @param tuple
@@ -356,7 +354,8 @@ public class Collector {
 		}
 		tb.add(tuple);
 		if(tb.size==tb.tuples.length)  {
-			transmitBundle(tb);
+			// we expire all bundles up to this, to preserve order
+			expireAllUpTo(tb);
 		} 
 	}
 	
@@ -392,7 +391,7 @@ public class Collector {
 		component.incEmitted(1); // for metrics
 		localCluster.getTopology().getComponentDestSet(component.getComponentId(), streamId).forEach((componentId,groupingSet)->{
 			groupingSet.forEach((grouping)-> {
-				List<Integer> taskIds = grouping.chooseTasks(0, values);
+				List<Integer> taskIds = grouping.chooseTasks(component.getTaskId(), values);
 				receivingTaskIds.addAll(taskIds);
 				component.incTransferred(receivingTaskIds.size()); // for metrics
 				transmit(tuple,
@@ -505,7 +504,7 @@ public class Collector {
 				tuple.setSourceTaskId(component.getTaskId());
 				tuple.setType(Tuple.Type.TERMINATE);
 				for(AbstractGrouping grouping : groupingsSet) {
-					List<Integer> taskIds = grouping.chooseTasks(0, null);
+					List<Integer> taskIds = grouping.chooseTasks(component.getTaskId(), null);
 					transmit(tuple,
 							taskIds,
 							componentId,

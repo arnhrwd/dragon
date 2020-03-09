@@ -5,6 +5,7 @@ import java.util.List;
 
 import dragon.generated.GlobalStreamId;
 import dragon.task.WorkerTopologyContext;
+import dragon.tuple.Fields;
 
 /**
  * @author aaron
@@ -12,6 +13,18 @@ import dragon.task.WorkerTopologyContext;
  */
 public  abstract class AbstractGrouping implements Serializable {
 	private static final long serialVersionUID = -770441274639731781L;
+	
+	/**
+	 * The fields that this grouping supports. 
+	 */
+	protected Fields fields;
+	
+	/**
+	 * Set the fields that this grouping supports.
+	 */
+	public final void setSupportedFields(Fields fields) {
+		this.fields=fields;
+	}
 	
 	/**
 	 * Specify which tasks a tuple should go.

@@ -17,22 +17,27 @@ public class FieldGrouping  extends AbstractGrouping  {
 	 * 
 	 */
 	private List<Integer> targetTasks;
+	
+	/**
+	 * 
+	 */
+	private String[] fieldsSubset;
 
 	/**
 	 * @param fields
 	 */
 	public FieldGrouping(Fields fields) {
-		
+		this.fieldsSubset=fields.getFieldNames();
 	}
 
 	/* (non-Javadoc)
 	 * @see dragon.grouping.AbstractGrouping#chooseTasks(int, java.util.List)
 	 */
 	@Override
-	public List<Integer> chooseTasks(int arg0, List<Object> values) {
+	public List<Integer> chooseTasks(int taskId, List<Object> values) {
 		int hash=0;
-		for(Object obj : values) {
-			hash=hash ^ obj.hashCode();
+		for(String fieldName : fieldsSubset) {
+			hash=hash ^ values.get(fields.getFieldMap().get(fieldName)).hashCode();
 		}
 		if(hash<0)hash=-hash;
 		hash=hash%targetTasks.size();

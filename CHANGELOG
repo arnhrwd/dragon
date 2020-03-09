@@ -1,2 +1,4 @@
 
-# Not yet released
+# 0.0.2
+
+- Bug fixes: tuple ordering and fields grouping exhibited incorrect behavior for some cases
