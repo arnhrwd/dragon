@@ -3,8 +3,8 @@ package dragon.topology;
 import java.util.HashMap;
 
 import dragon.Constants;
+import dragon.LocalCluster;
 import dragon.tuple.Fields;
-import dragon.tuple.Tuple;
 
 /**
  * @author aaron
@@ -24,10 +24,32 @@ public class OutputFieldsDeclarer {
 	/**
 	 * 
 	 */
-	public OutputFieldsDeclarer() {
+	public final LocalCluster localCluster;
+	
+	/**
+	 * 
+	 */
+	public final String componentId;
+	
+	/**
+	 * 
+	 */
+	public OutputFieldsDeclarer(LocalCluster localCluster,String componentId) {
+		this.localCluster=localCluster;
+		this.componentId=componentId;
 		streamFields = new HashMap<String,Fields>();
 		directStreamFields = new HashMap<String,Fields>();
 		declare(Constants.SYSTEM_STREAM_ID,new Fields(Constants.SYSTEM_TUPLE_FIELDS));
+	}
+	
+	private void setFieldsForGrouping(String streamId, Fields fields) {
+		if(!streamId.equals(Constants.SYSTEM_STREAM_ID)) {
+			localCluster.getTopology().getComponentDestSet(componentId, streamId).forEach((component2Id,groupingSet)->{
+				groupingSet.forEach((grouping)-> {
+					grouping.setSupportedFields(fields);
+				});
+			});
+		}
 	}
 	
 	/**
@@ -55,6 +77,7 @@ public class OutputFieldsDeclarer {
 	 */
 	public void declare(String streamId,Fields fields) {
 		streamFields.put(streamId, fields);
+		setFieldsForGrouping(streamId, fields);
 	}
 	
 	/**

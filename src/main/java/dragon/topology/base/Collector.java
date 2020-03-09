@@ -391,7 +391,7 @@ public class Collector {
 		component.incEmitted(1); // for metrics
 		localCluster.getTopology().getComponentDestSet(component.getComponentId(), streamId).forEach((componentId,groupingSet)->{
 			groupingSet.forEach((grouping)-> {
-				List<Integer> taskIds = grouping.chooseTasks(0, values);
+				List<Integer> taskIds = grouping.chooseTasks(component.getTaskId(), values);
 				receivingTaskIds.addAll(taskIds);
 				component.incTransferred(receivingTaskIds.size()); // for metrics
 				transmit(tuple,
@@ -504,7 +504,7 @@ public class Collector {
 				tuple.setSourceTaskId(component.getTaskId());
 				tuple.setType(Tuple.Type.TERMINATE);
 				for(AbstractGrouping grouping : groupingsSet) {
-					List<Integer> taskIds = grouping.chooseTasks(0, null);
+					List<Integer> taskIds = grouping.chooseTasks(component.getTaskId(), null);
 					transmit(tuple,
 							taskIds,
 							componentId,

@@ -389,8 +389,73 @@ public class LocalCluster {
 		this.dragonTopology=dragonTopology;
 		
 		
-		//networkExecutorService = (ThreadPoolExecutor) Executors.newFixedThreadPool((Integer)conf.getDragonLocalclusterThreads());
+		/*
+		 * Prepare the groupings. This must be done before preparing/opening bolts/spouts, because
+		 * the outputs field declaration will tell the grouping which fields to expect, that may be
+		 * of use for the grouping, in particular for the fields grouping.
+		 */
+		for(String fromComponentId : dragonTopology.getSpoutMap().keySet()) {
+			log.debug("preparing groupings for spout["+fromComponentId+"]");
+			HashMap<String,StreamMap> 
+				fromComponent = dragonTopology.getDestComponentMap(fromComponentId);
+			if(fromComponent==null) {
+				throw new DragonTopologyException("spout ["+fromComponentId+"] has no components listening to it");
+			}
+			for(String toComponentId : fromComponent.keySet()) {
+				HashMap<String,GroupingsSet> 
+					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
+				BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(toComponentId);
+				ArrayList<Integer> taskIds=new ArrayList<Integer>();
+				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
+					taskIds.add(i);
+				}
+				for(String streamId : streams.keySet()) {
+					GroupingsSet groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
+					for(AbstractGrouping grouping : groupings) {
+						grouping.prepare(null, null, taskIds);
+					}
+				}
+			}
+			
+		}
+		
+		for(String fromComponentId : dragonTopology.getBoltMap().keySet()) {
+			log.debug("preparing groupings for bolt["+fromComponentId+"]");
+			HashMap<String,StreamMap> 
+				fromComponent = dragonTopology.getDestComponentMap(fromComponentId);
+			if(fromComponent==null) {
+				log.debug(fromComponentId+" is a sink");
+				continue;
+			}
+			log.debug(fromComponent);
+			for(String toComponentId : fromComponent.keySet()) {
+				HashMap<String,GroupingsSet> 
+					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
+				BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(toComponentId);
+				ArrayList<Integer> taskIds=new ArrayList<Integer>();
+				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
+					taskIds.add(i);
+				}
+				for(String streamId : streams.keySet()) {
+					GroupingsSet groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
+					for(AbstractGrouping grouping : groupings) {
+						grouping.prepare(null, null, taskIds);
+					}
+				}
+			}
+			
+		}
+		
+		/*
+		 * Allocate an array of threads for the outputs pending queue. These threads wont
+		 * be created until the system is started.
+		 */
 		networkExecutorThreads = new ArrayList<Thread>();
+		
+		/*
+		 * If we are not starting the topology immediately then allocated holding arrays
+		 * to go over later when open spouts and preparing bolts.
+		 */
 		if(!start) {
 			spoutOpenList = new ArrayList<SpoutOpen>();
 			boltPrepareList = new ArrayList<BoltPrepare>();
@@ -432,7 +497,7 @@ public class LocalCluster {
 					}
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
 					if(localtask) hm.put(i, spout);
-					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
+					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer(this,spoutId);
 					spout.declareOutputFields(declarer);
 					spout.setOutputFieldsDeclarer(declarer);
 					TopologyContext context = new TopologyContext(spoutId,i,taskIds);
@@ -490,7 +555,7 @@ public class LocalCluster {
 					if(localtask) numAllocated++;
 					Bolt bolt=(Bolt) boltDeclarer.getBolt().clone();
 					if(localtask) hm.put(i, bolt);
-					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer();
+					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer(this,boltId);
 					bolt.declareOutputFields(declarer);
 					bolt.setOutputFieldsDeclarer(declarer);
 					TopologyContext context = new TopologyContext(boltId,i,taskIds);
@@ -600,59 +665,7 @@ public class LocalCluster {
 		
 		
 		
-		// prepare groupings
-		for(String fromComponentId : dragonTopology.getSpoutMap().keySet()) {
-			log.debug("preparing groupings for spout["+fromComponentId+"]");
-			HashMap<String,StreamMap> 
-				fromComponent = dragonTopology.getDestComponentMap(fromComponentId);
-			if(fromComponent==null) {
-				throw new DragonTopologyException("spout ["+fromComponentId+"] has no components listening to it");
-			}
-			log.debug(fromComponent);
-			for(String toComponentId : fromComponent.keySet()) {
-				HashMap<String,GroupingsSet> 
-					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
-				BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(toComponentId);
-				ArrayList<Integer> taskIds=new ArrayList<Integer>();
-				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
-					taskIds.add(i);
-				}
-				for(String streamId : streams.keySet()) {
-					GroupingsSet groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
-					for(AbstractGrouping grouping : groupings) {
-						grouping.prepare(null, null, taskIds);
-					}
-				}
-			}
-			
-		}
 		
-		for(String fromComponentId : dragonTopology.getBoltMap().keySet()) {
-			log.debug("preparing groupings for bolt["+fromComponentId+"]");
-			HashMap<String,StreamMap> 
-				fromComponent = dragonTopology.getDestComponentMap(fromComponentId);
-			if(fromComponent==null) {
-				log.debug(fromComponentId+" is a sink");
-				continue;
-			}
-			log.debug(fromComponent);
-			for(String toComponentId : fromComponent.keySet()) {
-				HashMap<String,GroupingsSet> 
-					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
-				BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(toComponentId);
-				ArrayList<Integer> taskIds=new ArrayList<Integer>();
-				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
-					taskIds.add(i);
-				}
-				for(String streamId : streams.keySet()) {
-					GroupingsSet groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
-					for(AbstractGrouping grouping : groupings) {
-						grouping.prepare(null, null, taskIds);
-					}
-				}
-			}
-			
-		}
 		
 		boltTickCount = new HashMap<String,Integer>();
 		for(String boltId : bolts.keySet()) {
