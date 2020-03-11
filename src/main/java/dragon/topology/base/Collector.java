@@ -217,7 +217,7 @@ public class Collector {
 	/**
 	 * Transmit tuple bundles that have expired. 
 	 */
-	public void expireTupleBundles() {
+	public synchronized void expireTupleBundles() {
 		long now = Instant.now().toEpochMilli();
 		while(bundleQueue.size()>0 && bundleQueue.peek().expireTime<=now) {
 			TupleBundle tb = bundleQueue.poll();
@@ -235,7 +235,7 @@ public class Collector {
 	/**
 	 * Transmit all tuple bundles, regardless of expire time.
 	 */
-	public void expireAllTupleBundles() {
+	public synchronized void expireAllTupleBundles() {
 		log.debug("expiring all tuple bundles");
 		while(bundleQueue.size()>0) {
 			TupleBundle tb = bundleQueue.poll();
@@ -249,7 +249,7 @@ public class Collector {
 	 * Expire all tuple bundles up to the given tuple bundle.
 	 * @param tb
 	 */
-	private void expireAllUpTo(TupleBundle tb) {
+	private synchronized void expireAllUpTo(TupleBundle tb) {
 		while(true) {
 			TupleBundle next = bundleQueue.poll();
 			transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
