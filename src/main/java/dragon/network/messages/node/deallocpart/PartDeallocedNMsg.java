@@ -8,7 +8,7 @@ import dragon.network.messages.node.NodeMessage;
  *
  */
 public class PartDeallocedNMsg extends NodeMessage {
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = -8703014240357658735L;
 
 	/**
 	 * 

@@ -11,23 +11,23 @@ public class ComponentMap extends HashMap<String,TaskSet>{
 
 	/**
 	 * @param componentId
-	 * @param taskId
+	 * @param taskIndex
 	 */
-	public void put(String componentId,Integer taskId) {
+	public void put(String componentId,Integer taskIndex) {
 		if(!containsKey(componentId)) {
 			put(componentId,new TaskSet());
 		}
-		TaskSet taskIds = get(componentId);
-		taskIds.add(taskId);
+		TaskSet taskIndices = get(componentId);
+		taskIndices.add(taskIndex);
 	}
 
 	/**
 	 * @param componentId
-	 * @param taskId
+	 * @param taskIndex
 	 * @return
 	 */
-	public boolean contains(String componentId, Integer taskId) {
+	public boolean contains(String componentId, Integer taskIndex) {
 		if(!containsKey(componentId)) return false;
-		return get(componentId).contains(taskId);
+		return get(componentId).contains(taskIndex);
 	}
 }

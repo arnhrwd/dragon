@@ -13,15 +13,15 @@ public class ComponentEmbedding extends HashMap<String,HashMap<Integer,NodeDescr
 	
 	/**
 	 * @param componentId
-	 * @param taskId
+	 * @param taskIndex
 	 * @param node
 	 */
-	public void put(String componentId, Integer taskId, NodeDescriptor node) {
+	public void put(String componentId, Integer taskIndex, NodeDescriptor node) {
 		if(!containsKey(componentId)) {
 			put(componentId,new HashMap<Integer,NodeDescriptor>());
 		}
 		HashMap<Integer,NodeDescriptor> taskMap = get(componentId);
-		taskMap.put(taskId, node);
+		taskMap.put(taskIndex, node);
 	}
 	
 	
@@ -31,9 +31,9 @@ public class ComponentEmbedding extends HashMap<String,HashMap<Integer,NodeDescr
 	public ReverseComponentEmbedding getReverseComponentEmbedding() {
 		ReverseComponentEmbedding rce = new ReverseComponentEmbedding();
 		for(String componentId : keySet()) {
-			for(Integer taskId : get(componentId).keySet()) {
-				NodeDescriptor desc = get(componentId).get(taskId);
-				rce.put(desc, componentId, taskId);
+			for(Integer taskIndex : get(componentId).keySet()) {
+				NodeDescriptor desc = get(componentId).get(taskIndex);
+				rce.put(desc, componentId, taskIndex);
 			}
 		}
 		return rce;

@@ -144,7 +144,7 @@ public class Component implements Cloneable, Serializable{
 	/**
 	 * @return
 	 */
-	public final int getTaskId() {
+	public final int getTaskIndex() {
 		return context.getThisTaskIndex();
 	}
 	
@@ -152,7 +152,7 @@ public class Component implements Cloneable, Serializable{
 	 * @return
 	 */
 	public final String getInstanceId() {
-		return getComponentId()+":"+getTaskId();
+		return getComponentId()+":"+getTaskIndex();
 	}
 	
 	/**

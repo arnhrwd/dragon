@@ -14,25 +14,25 @@ public class ReverseComponentEmbedding extends HashMap<NodeDescriptor,ComponentM
 	/**
 	 * @param desc
 	 * @param componentId
-	 * @param taskId
+	 * @param taskIndex
 	 */
-	public void put(NodeDescriptor desc, String componentId, Integer taskId) {
+	public void put(NodeDescriptor desc, String componentId, Integer taskIndex) {
 		if(!containsKey(desc)) {
 			put(desc,new ComponentMap());
 		}
 		ComponentMap componentMap = get(desc);
-		componentMap.put(componentId, taskId);
+		componentMap.put(componentId, taskIndex);
 	}
 	
 	/**
 	 * @param desc
 	 * @param componentId
-	 * @param taskId
+	 * @param taskIndex
 	 * @return
 	 */
-	public boolean contains(NodeDescriptor desc,String componentId,Integer taskId) {
+	public boolean contains(NodeDescriptor desc,String componentId,Integer taskIndex) {
 		if(!containsKey(desc)) return false;
-		return get(desc).contains(componentId,taskId);
+		return get(desc).contains(componentId,taskIndex);
 	}
 	
 	/**

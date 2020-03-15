@@ -24,16 +24,16 @@ public class TaskMetricMap extends HashMap<Integer,ArrayList<Sample>>{
 	}
 	
 	/**
-	 * @param taskId
+	 * @param taskIndex
 	 * @param sample
 	 */
-	public void put(Integer taskId, Sample sample) {
-		if(!containsKey(taskId)){
-			put(taskId,new ArrayList<Sample>());
+	public void put(Integer taskIndex, Sample sample) {
+		if(!containsKey(taskIndex)){
+			put(taskIndex,new ArrayList<Sample>());
 		}
-		get(taskId).add(sample);
-		if(get(taskId).size()>sampleHistory){
-			get(taskId).remove(0);
+		get(taskIndex).add(sample);
+		if(get(taskIndex).size()>sampleHistory){
+			get(taskIndex).remove(0);
 		}
 		
 	}
@@ -43,9 +43,9 @@ public class TaskMetricMap extends HashMap<Integer,ArrayList<Sample>>{
 	 */
 	public String toString(){
 		String out = "";
-		for(Integer taskId : keySet()){
-			out+=taskId+"\n";
-			for(Sample sample : get(taskId)){
+		for(Integer taskIndex : keySet()){
+			out+=taskIndex+"\n";
+			for(Sample sample : get(taskIndex)){
 				out+=sample.toString();
 			}
 		}

@@ -37,7 +37,7 @@ public class Tuple implements Serializable {
 	/**
 	 * 
 	 */
-	private Integer sourceTaskId;
+	private Integer sourceTaskIndex;
 	
 	/**
 	 * 
@@ -192,10 +192,10 @@ public class Tuple implements Serializable {
 	}
 	
 	/**
-	 * @param taskId
+	 * @param taskIndex
 	 */
-	public void setSourceTaskId(Integer taskId) {
-		this.sourceTaskId = taskId;
+	public void setSourceTaskIndex(Integer taskIndex) {
+		this.sourceTaskIndex = taskIndex;
 	}
 	
 	/**
@@ -215,8 +215,8 @@ public class Tuple implements Serializable {
 	/**
 	 * @return
 	 */
-	public Integer getSourceTaskId() {
-		return sourceTaskId;
+	public Integer getSourceTaskIndex() {
+		return sourceTaskIndex;
 	}
 	
 	/* (non-Javadoc)
@@ -224,7 +224,7 @@ public class Tuple implements Serializable {
 	 */
 	@Override
 	public String toString() {
-		return "source("+sourceComponent+":"+sourceStreamId+":"+sourceTaskId+")<"+fields.getValues().toString()+">";
+		return "source("+sourceComponent+":"+sourceStreamId+":"+sourceTaskIndex+")<"+fields.getValues().toString()+">";
 	}
 	
 	/**
@@ -234,7 +234,7 @@ public class Tuple implements Serializable {
 	public void sendToStream(ObjectOutputStream out) throws IOException {
 		out.writeUTF(sourceComponent);
 		out.writeUTF(sourceStreamId);
-		out.writeInt(sourceTaskId);
+		out.writeInt(sourceTaskIndex);
 		out.writeUTF(type.name());
 		fields.sendToStream(out);
 	}
@@ -248,13 +248,13 @@ public class Tuple implements Serializable {
 	public static Tuple readFromStream(ObjectInputStream in) throws ClassNotFoundException, IOException {
 		String sourceComponent = in.readUTF();
 		String sourceStreamId = in.readUTF();
-		Integer sourceTaskId = in.readInt();
+		Integer sourceTaskIndex = in.readInt();
 		Type type = Type.valueOf(in.readUTF());
 		Fields fields = Fields.readFromStream(in);
 		Tuple t = new Tuple();
 		t.setSourceComponent(sourceComponent);
 		t.setSourceStreamId(sourceStreamId);
-		t.setSourceTaskId(sourceTaskId);
+		t.setSourceTaskIndex(sourceTaskIndex);
 		t.setFields(fields);
 		t.setType(type);
 		return t;

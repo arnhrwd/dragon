@@ -78,7 +78,7 @@ public class FileBasedCustomEmbedding implements IEmbeddingAlgo {
     }
 
     /***
-     * Add the embedding for the taskId -> node as given in the embedding placement plan. This method only adds an
+     * Add the embedding for the taskIndex -> node as given in the embedding placement plan. This method only adds an
      * embedding for nodes available in the system context at the topology submission time. Other nodes mentioned in
      * the embedding plan are ignored.
      *
@@ -88,14 +88,14 @@ public class FileBasedCustomEmbedding implements IEmbeddingAlgo {
      * @param context - System context that contains all the connected nodes
      * @param componentEmbedding - Resulting component embedding
      * @param embeddingPlanMap - Plan provided externally via file
-     * @param taskId - Task being mapped to a node
+     * @param taskIndex - Task being mapped to a node
      * @param numTasks - number of tasks (replicas) to be mapped
      */
     private void generateTaskToNodeEmbedding(NodeContext context, ComponentEmbedding componentEmbedding,
-                                             Map<String, ArrayList<String>> embeddingPlanMap, String taskId,
+                                             Map<String, ArrayList<String>> embeddingPlanMap, String taskIndex,
                                              int numTasks) {
-        if (embeddingPlanMap.containsKey(taskId)) {
-            ArrayList<String> nodesFromPlan = embeddingPlanMap.get(taskId);
+        if (embeddingPlanMap.containsKey(taskIndex)) {
+            ArrayList<String> nodesFromPlan = embeddingPlanMap.get(taskIndex);
             // intersection of the list of nodes given in the custom placement plan
             // for the particular task and the currently available nodes in the system context
             ArrayList<String> availableNodes = (ArrayList<String>) nodesFromPlan.stream()
@@ -104,7 +104,7 @@ public class FileBasedCustomEmbedding implements IEmbeddingAlgo {
             if (!availableNodes.isEmpty()) {
                 for (int i = 0; i < numTasks; i++) {
                     String taskEmbeddingNode = availableNodes.get(i % availableNodes.size());
-                    componentEmbedding.put(taskId, i, context.get(taskEmbeddingNode));
+                    componentEmbedding.put(taskIndex, i, context.get(taskEmbeddingNode));
                 }
             }
         }

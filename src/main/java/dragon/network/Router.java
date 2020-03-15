@@ -136,7 +136,7 @@ public class Router {
 							NetworkTask task = buffer.poll();
 							try {
 								if(task!=null){
-									HashSet<Integer> taskIds=task.getTaskIds();
+									HashSet<Integer> taskIndices=task.getTaskIndices();
 									/*
 									 * the following will fail with a null pointer exception
 									 * if the topology was abruptly removed just recently by
@@ -149,15 +149,15 @@ public class Router {
 											.get(task.getComponentId());
 									destinations.clear();
 									/*
-									 * Work out which task ids go to which machines.
+									 * Work out which task indices go to which machines.
 									 */
-									for(Integer taskId : taskIds) {
-										NodeDescriptor desc = taskMap.get(taskId);
+									for(Integer taskIndex : taskIndices) {
+										NodeDescriptor desc = taskMap.get(taskIndex);
 										if(!destinations.containsKey(desc)) {
 											destinations.put(desc,new HashSet<Integer>());
 										}
 										HashSet<Integer> tasks = destinations.get(desc);
-										tasks.add(taskId);
+										tasks.add(taskIndex);
 									}
 									for(NodeDescriptor desc : destinations.keySet()) {
 										task.init(task.getTuples(),

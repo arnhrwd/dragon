@@ -133,19 +133,19 @@ public class Bolt extends Component {
 								numTasks=getLocalCluster().getTopology().getBoltMap().get(componentId).getNumTasks();
 							}
 							
-							for(Integer taskId = 0;taskId<numTasks;taskId++) {
+							for(Integer taskIndex = 0;taskIndex<numTasks;taskIndex++) {
 								for(String streamId : getLocalCluster()
 										.getTopology().getBoltMap()
 										.get(getComponentId()).groupings.get(componentId).keySet()){
 									
-									upstreamComponents.add(componentId+","+taskId+","+streamId);
+									upstreamComponents.add(componentId+","+taskIndex+","+streamId);
 								}
 							}
 						}	
 						//log.debug("waiting for "+upstreamComponents);
 					}
 				
-					upstreamComponents.remove(tuple.getSourceComponent()+","+tuple.getSourceTaskId()+","+tuple.getSourceStreamId());
+					upstreamComponents.remove(tuple.getSourceComponent()+","+tuple.getSourceTaskIndex()+","+tuple.getSourceStreamId());
 					if(upstreamComponents.isEmpty()) {
 						try {
 							close();

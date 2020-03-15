@@ -18,17 +18,17 @@ public class TopologyContext {
 	/**
 	 * 
 	 */
-	private final List<Integer> taskIds;
+	private final List<Integer> taskIndices;
 	
 	/**
 	 * @param componentId
 	 * @param taskIndex
-	 * @param taskIds
+	 * @param taskIndices
 	 */
-	public TopologyContext(String componentId,int taskIndex,List<Integer> taskIds) {
+	public TopologyContext(String componentId,int taskIndex,List<Integer> taskIndices) {
 		this.componentId=componentId;
 		this.taskIndex=taskIndex;
-		this.taskIds=taskIds;
+		this.taskIndices=taskIndices;
 	}
 	
 	/**
@@ -36,7 +36,7 @@ public class TopologyContext {
 	 * @return
 	 */
 	public List<Integer> getComponentTasks(String componentId) {
-		return taskIds;
+		return taskIndices;
 	}
 	
 	/**

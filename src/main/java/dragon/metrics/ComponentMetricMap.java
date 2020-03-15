@@ -25,14 +25,14 @@ public class ComponentMetricMap extends HashMap<String,TaskMetricMap>{
 	
 	/**
 	 * @param componentId
-	 * @param taskId
+	 * @param taskIndex
 	 * @param sample
 	 */
-	public void put(String componentId, Integer taskId, Sample sample) {
+	public void put(String componentId, Integer taskIndex, Sample sample) {
 		if(!containsKey(componentId)){
 			put(componentId,new TaskMetricMap(sampleHistory));
 		}
-		get(componentId).put(taskId, sample);
+		get(componentId).put(taskIndex, sample);
 	}
 	
 	/* (non-Javadoc)

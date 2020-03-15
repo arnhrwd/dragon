@@ -26,14 +26,14 @@ public class TopologyMetricMap extends HashMap<String,ComponentMetricMap> {
 	/**
 	 * @param topologyId
 	 * @param componentId
-	 * @param taskId
+	 * @param taskIndex
 	 * @param sample
 	 */
-	public void put(String topologyId, String componentId, Integer taskId, Sample sample) {
+	public void put(String topologyId, String componentId, Integer taskIndex, Sample sample) {
 		if(!containsKey(topologyId)){
 			put(topologyId,new ComponentMetricMap(sampleHistory));
 		}
-		get(topologyId).put(componentId, taskId, sample);
+		get(topologyId).put(componentId, taskIndex, sample);
 		
 	}
 

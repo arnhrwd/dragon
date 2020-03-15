@@ -33,7 +33,7 @@ public class NetworkTask {
 	/**
 	 * 
 	 */
-	private HashSet<Integer> taskIds;
+	private HashSet<Integer> taskIndices;
 	
 	/**
 	 * 
@@ -54,23 +54,23 @@ public class NetworkTask {
 	
 	/**
 	 * @param tuples
-	 * @param taskIds
+	 * @param taskIndices
 	 * @param componentId
 	 * @param topologyId
 	 */
-	public NetworkTask(Tuple[] tuples,HashSet<Integer> taskIds,String componentId, String topologyId) {
-		init(tuples,taskIds,componentId,topologyId);
+	public NetworkTask(Tuple[] tuples,HashSet<Integer> taskIndices,String componentId, String topologyId) {
+		init(tuples,taskIndices,componentId,topologyId);
 	}
 	
 	/**
 	 * @param tuples
-	 * @param taskIds
+	 * @param taskIndices
 	 * @param componentId
 	 * @param topologyId
 	 */
-	public void init(Tuple[] tuples,HashSet<Integer> taskIds,String componentId, String topologyId) {
+	public void init(Tuple[] tuples,HashSet<Integer> taskIndices,String componentId, String topologyId) {
 		this.tuples=tuples;
-		this.taskIds=taskIds;
+		this.taskIndices=taskIndices;
 		this.componentId=componentId;
 		this.topologyId=topologyId;
 	}
@@ -85,8 +85,8 @@ public class NetworkTask {
 	/**
 	 * @return
 	 */
-	public HashSet<Integer> getTaskIds(){
-		return taskIds;
+	public HashSet<Integer> getTaskIndices(){
+		return taskIndices;
 	}
 	
 	/**
@@ -125,9 +125,9 @@ public class NetworkTask {
 //		out.writeObject(taskIds);
 //		out.writeObject(componentId);
 //		out.writeObject(topologyId);
-		out.writeInt(taskIds.size());
-		for(Integer taskId : taskIds) {
-			out.writeInt(taskId);
+		out.writeInt(taskIndices.size());
+		for(Integer taskIndex : taskIndices) {
+			out.writeInt(taskIndex);
 		}
 		out.writeUTF(componentId);
 		out.writeUTF(topologyId);
@@ -145,15 +145,15 @@ public class NetworkTask {
 		for(int i=0;i<size;i++) {
 			tuples[i] = Tuple.readFromStream(in);
 		}
-		HashSet<Integer> taskIds = new HashSet<Integer>();
+		HashSet<Integer> taskIndices = new HashSet<Integer>();
 		Integer num = in.readInt();
 		for(int i=0;i<num;i++) {
-			taskIds.add(in.readInt());
+			taskIndices.add(in.readInt());
 		}
 		String componentId = (String) in.readUTF();
 		String topologyId = (String) in.readUTF();
 		NetworkTask nt = new NetworkTask();
-		nt.init(tuples, taskIds, componentId, topologyId);
+		nt.init(tuples, taskIndices, componentId, topologyId);
 		return nt;
 	}
 }

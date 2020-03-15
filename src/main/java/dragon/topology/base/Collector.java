@@ -65,7 +65,7 @@ public class Collector {
 	/**
 	 * 
 	 */
-	private final HashSet<Integer> doneTaskIds;
+	private final HashSet<Integer> doneTaskIndices;
 	
 	/**
 	 * A bundle of tuples that will be sent when full, or
@@ -79,14 +79,14 @@ public class Collector {
 		public int size=0;
 		public String componentId;
 		public String streamId;
-		public HashSet<Integer> taskIds;
-		public TupleBundle(String componentId,String streamId,HashSet<Integer> taskIds) {
+		public HashSet<Integer> taskIndices;
+		public TupleBundle(String componentId,String streamId,HashSet<Integer> taskIndices) {
 			expireTime=Instant.now().toEpochMilli()+linger_ms;
 			if(nextExpire>expireTime) nextExpire=expireTime;
 			tuples=new Tuple[bundleSize];
 			this.componentId=componentId;
 			this.streamId=streamId;
-			this.taskIds=taskIds;
+			this.taskIndices=taskIndices;
 		}
 		public void add(Tuple tuple) {
 			tuples[size++]=tuple;
@@ -159,7 +159,7 @@ public class Collector {
 			}
 		}
 		totalBufferSpace=tbs;
-		doneTaskIds=new HashSet<>();
+		doneTaskIndices=new HashSet<>();
 	}
 	
 	/**
@@ -221,8 +221,8 @@ public class Collector {
 		long now = Instant.now().toEpochMilli();
 		while(bundleQueue.size()>0 && bundleQueue.peek().expireTime<=now) {
 			TupleBundle tb = bundleQueue.poll();
-			transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
-			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
+			transmit(tb.tuples,tb.taskIndices,tb.componentId,tb.streamId);
+			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIndices);
 		}
 		if(bundleQueue.size()>0) {
 			TupleBundle tb = bundleQueue.peek();
@@ -239,8 +239,8 @@ public class Collector {
 		log.debug("expiring all tuple bundles");
 		while(bundleQueue.size()>0) {
 			TupleBundle tb = bundleQueue.poll();
-			transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
-			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
+			transmit(tb.tuples,tb.taskIndices,tb.componentId,tb.streamId);
+			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIndices);
 		}
 		nextExpire = Instant.now().toEpochMilli()+linger_ms;
 	}
@@ -252,8 +252,8 @@ public class Collector {
 	private synchronized void expireAllUpTo(TupleBundle tb) {
 		while(true) {
 			TupleBundle next = bundleQueue.poll();
-			transmit(tb.tuples,tb.taskIds,tb.componentId,tb.streamId);
-			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIds);
+			transmit(tb.tuples,tb.taskIndices,tb.componentId,tb.streamId);
+			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIndices);
 			if(next==tb) break;
 		}
 		nextExpire = Instant.now().toEpochMilli()+linger_ms;
@@ -261,26 +261,26 @@ public class Collector {
 	
 	/**
 	 * @param tuples
-	 * @param taskIds
+	 * @param taskIndices
 	 * @param componentId
 	 * @param streamId
 	 */
 	private void transmit(Tuple[] tuples,
-			HashSet<Integer> taskIds,
+			HashSet<Integer> taskIndices,
 			String componentId,
 			String streamId) {
-		HashSet<Integer> remoteTaskIds=new HashSet<Integer>();
-		for(Integer taskId : taskIds){
-			if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskId)){
-				remoteTaskIds.add(taskId);
+		HashSet<Integer> remoteTaskIndices=new HashSet<Integer>();
+		for(Integer taskIndex : taskIndices){
+			if(!localCluster.getBolts().containsKey(componentId) || !localCluster.getBolts().get(componentId).containsKey(taskIndex)){
+				remoteTaskIndices.add(taskIndex);
 			}
 		}
-		HashSet<Integer> localTaskIds = new HashSet<Integer>(taskIds);
-		localTaskIds.removeAll(remoteTaskIds);
+		HashSet<Integer> localTaskIndices = new HashSet<Integer>(taskIndices);
+		localTaskIndices.removeAll(remoteTaskIndices);
 		
-		if(!remoteTaskIds.isEmpty()){
+		if(!remoteTaskIndices.isEmpty()){
 			NetworkTask task = new NetworkTask();
-			task.init(tuples, remoteTaskIds, componentId, localCluster.getTopologyId());
+			task.init(tuples, remoteTaskIndices, componentId, localCluster.getTopologyId());
 			try {
 				router.put(task);
 			} catch (InterruptedException e) {
@@ -290,7 +290,7 @@ public class Collector {
 			
 		}
 		
-		if(!localTaskIds.isEmpty()){
+		if(!localTaskIndices.isEmpty()){
 			/*
 			 * First try to directly send the tuple to the input queue(s).
 			 *
@@ -303,21 +303,21 @@ public class Collector {
 			final boolean empty=queue.isEmpty();
 			final HashMap<Integer,Bolt> destComp = localCluster.getBolts().get(componentId);
 			if(empty) {
-				doneTaskIds.clear();
-				for(Integer taskId:localTaskIds) {
-					if(destComp.get(taskId).getInputCollector().getQueue().offer(tuples))
-						doneTaskIds.add(taskId);
+				doneTaskIndices.clear();
+				for(Integer taskIndex:localTaskIndices) {
+					if(destComp.get(taskIndex).getInputCollector().getQueue().offer(tuples))
+						doneTaskIndices.add(taskIndex);
 				}
-				localTaskIds.removeAll(doneTaskIds);
+				localTaskIndices.removeAll(doneTaskIndices);
 			}
 			
 			/*
 			 * What we couldn't transmit ourselves, we leave to
 			 * the output scheduler. 
 			 */
-			if(!localTaskIds.isEmpty()) {
+			if(!localTaskIndices.isEmpty()) {
 				NetworkTask task = new NetworkTask();
-				task.init(tuples, localTaskIds, componentId, localCluster.getTopologyId());
+				task.init(tuples, localTaskIndices, componentId, localCluster.getTopologyId());
 				try {
 					queue.put(task);
 					if(queue.size()==1)localCluster.outputPending(queue);
@@ -334,23 +334,23 @@ public class Collector {
 	 * Transmit a tuple, which will likely just bundle it into an existing
 	 * tuple bundle, waiting to be transmitted.
 	 * @param tuple
-	 * @param taskIds
+	 * @param taskIndices
 	 * @param componentId
 	 * @param streamId
 	 */
 	private void transmit(Tuple tuple,
-			List<Integer> taskIds,
+			List<Integer> taskIndices,
 			String componentId,
 			String streamId) {
-		HashSet<Integer> taskIdSet=new HashSet<Integer>(taskIds);
+		HashSet<Integer> taskIndexSet=new HashSet<Integer>(taskIndices);
 		//transmit(new Tuple[] {tuple},taskIdSet,componentId,streamId);
 		TupleBundle tb;
-		if(!bundleMap.get(componentId).get(streamId).containsKey(taskIdSet)) {
-			tb=new TupleBundle(componentId,streamId,taskIdSet);
-			bundleMap.get(componentId).get(streamId).put(taskIdSet,tb);
+		if(!bundleMap.get(componentId).get(streamId).containsKey(taskIndexSet)) {
+			tb=new TupleBundle(componentId,streamId,taskIndexSet);
+			bundleMap.get(componentId).get(streamId).put(taskIndexSet,tb);
 			bundleQueue.add(tb);
 		} else {
-			tb = bundleMap.get(componentId).get(streamId).get(taskIdSet);
+			tb = bundleMap.get(componentId).get(streamId).get(taskIndexSet);
 		}
 		tb.add(tuple);
 		if(tb.size==tb.tuples.length)  {
@@ -366,10 +366,10 @@ public class Collector {
 	 * @return
 	 */
 	public synchronized List<Integer> emit(String streamId,Values values) {
-		final List<Integer> receivingTaskIds = new ArrayList<Integer>();
+		final List<Integer> receivingTaskIndices = new ArrayList<Integer>();
 		if(component.isClosed()) {
 			log.error("spontaneous tuple emission after close, topology may not terminate properly");
-			return receivingTaskIds;
+			return receivingTaskIndices;
 		}
 		final Fields fields = component.getOutputFieldsDeclarer().getFields(streamId);
 		if(fields==null) {
@@ -386,39 +386,39 @@ public class Collector {
 		tuple.setFields(fields.copy());
 		tuple.setValues(values);
 		tuple.setSourceComponent(component.getComponentId());
-		tuple.setSourceTaskId(component.getTaskId());
+		tuple.setSourceTaskIndex(component.getTaskIndex());
 		tuple.setSourceStreamId(streamId);
 		component.incEmitted(1); // for metrics
 		localCluster.getTopology().getComponentDestSet(component.getComponentId(), streamId).forEach((componentId,groupingSet)->{
 			groupingSet.forEach((grouping)-> {
-				List<Integer> taskIds = grouping.chooseTasks(component.getTaskId(), values);
-				receivingTaskIds.addAll(taskIds);
-				component.incTransferred(receivingTaskIds.size()); // for metrics
+				List<Integer> taskIndices = grouping.chooseTasks(component.getTaskIndex(), values);
+				receivingTaskIndices.addAll(taskIndices);
+				component.incTransferred(receivingTaskIndices.size()); // for metrics
 				transmit(tuple,
-						taskIds,
+						taskIndices,
 						componentId,
 						streamId); 
 			});
 		});
 			
 		setEmit();
-		return receivingTaskIds;
+		return receivingTaskIndices;
 	}
 	
 	/**
-	 * @param taskId
+	 * @param taskIndex
 	 * @param values
 	 */
-	public synchronized void emitDirect(int taskId, Values values){
-		emitDirect(taskId,Constants.DEFAULT_STREAM,values);
+	public synchronized void emitDirect(int taskIndex, Values values){
+		emitDirect(taskIndex,Constants.DEFAULT_STREAM,values);
 	}
 	
 	/**
-	 * @param taskId
+	 * @param taskIndex
 	 * @param streamId
 	 * @param values
 	 */
-	public synchronized void emitDirect(int taskId, String streamId, Values values){
+	public synchronized void emitDirect(int taskIndex, String streamId, Values values){
 		Fields fields = component.getOutputFieldsDeclarer().getFieldsDirect(streamId);
 		if(component.isClosed()) {
 			log.error("spontaneous tuple emission after close, topology may not terminate properly");
@@ -439,15 +439,15 @@ public class Collector {
 		tuple.setValues(values);
 		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceComponent(component.getComponentId());
-		tuple.setSourceTaskId(component.getTaskId());
+		tuple.setSourceTaskIndex(component.getTaskIndex());
 		tuple.setSourceStreamId(streamId);
 		component.incEmitted(1); // for metrics
 		localCluster.getTopology().getComponentDestSet(component.getComponentId(), streamId).forEach((componentId,groupingSet)->{
-				ArrayList<Integer> taskIds = new ArrayList<Integer>();
-				taskIds.add(taskId);
+				ArrayList<Integer> taskIndices = new ArrayList<Integer>();
+				taskIndices.add(taskIndex);
 				component.incTransferred(1); // for metrics
 				transmit(tuple,
-						taskIds,
+						taskIndices,
 						componentId,
 						streamId); 
 		});
@@ -455,14 +455,14 @@ public class Collector {
 	}
 	
 	/**
-	 * @param taskId
+	 * @param taskIndex
 	 * @param streamId
 	 * @param anchorTuple
 	 * @param values
 	 */
 	@Deprecated
-	public synchronized void emitDirect(int taskId, String streamId, Tuple anchorTuple, Values values){
-		emitDirect(taskId,Constants.DEFAULT_STREAM,values);
+	public synchronized void emitDirect(int taskIndex, String streamId, Tuple anchorTuple, Values values){
+		emitDirect(taskIndex,Constants.DEFAULT_STREAM,values);
 	}
 	
 	/**
@@ -501,12 +501,12 @@ public class Collector {
 				tuple.setFields(new Fields(Constants.SYSTEM_TUPLE_FIELDS));
 				tuple.setSourceComponent(component.getComponentId());
 				tuple.setSourceStreamId(streamId);
-				tuple.setSourceTaskId(component.getTaskId());
+				tuple.setSourceTaskIndex(component.getTaskIndex());
 				tuple.setType(Tuple.Type.TERMINATE);
 				for(AbstractGrouping grouping : groupingsSet) {
-					List<Integer> taskIds = grouping.chooseTasks(component.getTaskId(), null);
+					List<Integer> taskIndices = grouping.chooseTasks(component.getTaskIndex(), null);
 					transmit(tuple,
-							taskIds,
+							taskIndices,
 							componentId,
 							streamId); 
 				}

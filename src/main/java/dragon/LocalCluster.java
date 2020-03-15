@@ -78,13 +78,13 @@ public class LocalCluster {
 	private final Node node;
 	
 	/**
-	 * Map from component id to task id to instance of bolt, for only those
+	 * Map from component id to task index to instance of bolt, for only those
 	 * instances in the topology that are allocated to this daemon.
 	 */
 	private HashMap<String,HashMap<Integer,Bolt>> bolts;
 	
 	/**
-	 * Map from component id to task id to instance of spout, for only those
+	 * Map from component id to task index to instance of spout, for only those
 	 * instances in the topology that are allocated to this daemon.
 	 */
 	private HashMap<String,HashMap<Integer,Spout>> spouts;
@@ -405,14 +405,14 @@ public class LocalCluster {
 				HashMap<String,GroupingsSet> 
 					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
 				BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(toComponentId);
-				ArrayList<Integer> taskIds=new ArrayList<Integer>();
+				ArrayList<Integer> taskIndices=new ArrayList<Integer>();
 				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
-					taskIds.add(i);
+					taskIndices.add(i);
 				}
 				for(String streamId : streams.keySet()) {
 					GroupingsSet groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
 					for(AbstractGrouping grouping : groupings) {
-						grouping.prepare(null, null, taskIds);
+						grouping.prepare(null, null, taskIndices);
 					}
 				}
 			}
@@ -432,14 +432,14 @@ public class LocalCluster {
 				HashMap<String,GroupingsSet> 
 					streams = dragonTopology.getStreamMap(fromComponentId, toComponentId);
 				BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(toComponentId);
-				ArrayList<Integer> taskIds=new ArrayList<Integer>();
+				ArrayList<Integer> taskIndices=new ArrayList<Integer>();
 				for(int i=0;i<boltDeclarer.getNumTasks();i++) {
-					taskIds.add(i);
+					taskIndices.add(i);
 				}
 				for(String streamId : streams.keySet()) {
 					GroupingsSet groupings = dragonTopology.getGroupingsSet(fromComponentId, toComponentId, streamId);
 					for(AbstractGrouping grouping : groupings) {
-						grouping.prepare(null, null, taskIds);
+						grouping.prepare(null, null, taskIndices);
 					}
 				}
 			}
@@ -473,9 +473,9 @@ public class LocalCluster {
 					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId));
 			HashMap<Integer,Spout> hm=null;
 			SpoutDeclarer spoutDeclarer = dragonTopology.getSpoutMap().get(spoutId);
-			ArrayList<Integer> taskIds=new ArrayList<Integer>();
+			ArrayList<Integer> taskIndices=new ArrayList<Integer>();
 			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
-				taskIds.add(i);
+				taskIndices.add(i);
 			}
 			if(localcomponent) {
 				log.debug("allocating spout ["+spoutId+"]");
@@ -500,7 +500,7 @@ public class LocalCluster {
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer(this,spoutId);
 					spout.declareOutputFields(declarer);
 					spout.setOutputFieldsDeclarer(declarer);
-					TopologyContext context = new TopologyContext(spoutId,i,taskIds);
+					TopologyContext context = new TopologyContext(spoutId,i,taskIndices);
 					spout.setTopologyContext(context);
 					spout.setLocalCluster(this);
 					SpoutOutputCollector collector = new SpoutOutputCollector(this,spout);
@@ -534,9 +534,9 @@ public class LocalCluster {
 					!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),boltId));
 			HashMap<Integer,Bolt> hm=null;
 			BoltDeclarer boltDeclarer = dragonTopology.getBoltMap().get(boltId);
-			ArrayList<Integer> taskIds=new ArrayList<Integer>();
+			ArrayList<Integer> taskIndices=new ArrayList<Integer>();
 			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
-				taskIds.add(i);
+				taskIndices.add(i);
 			}
 			if(localcomponent) {
 				log.debug("allocating bolt ["+boltId+"]");
@@ -558,7 +558,7 @@ public class LocalCluster {
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer(this,boltId);
 					bolt.declareOutputFields(declarer);
 					bolt.setOutputFieldsDeclarer(declarer);
-					TopologyContext context = new TopologyContext(boltId,i,taskIds);
+					TopologyContext context = new TopologyContext(boltId,i,taskIndices);
 					bolt.setTopologyContext(context);
 					InputCollector inputCollector = new InputCollector(this, bolt);
 					if(localtask) totalInputsBufferSize+=getConf().getDragonInputBufferSize();
@@ -625,7 +625,7 @@ public class LocalCluster {
 						log.info("shutting down");
 					}
 				};
-				thread.setName(topologyName+":"+component.getComponentId()+":"+component.getTaskId());
+				thread.setName(topologyName+":"+component.getInstanceId());
 				componentExecutorThreads.add(thread);
 			}
 		}
@@ -658,7 +658,7 @@ public class LocalCluster {
 						log.info("shutting down");
 					}
 				};
-				thread.setName(topologyName+":"+component.getComponentId()+":"+component.getTaskId());
+				thread.setName(topologyName+":"+component.getInstanceId());
 				componentExecutorThreads.add(thread);
 			}
 		}
@@ -848,8 +848,8 @@ public class LocalCluster {
 					boolean spoutsClosed=true;
 					for(String componentId : spouts.keySet()) {
 						HashMap<Integer,Spout> component = spouts.get(componentId);
-						for(Integer taskId : component.keySet()) {
-							Spout spout = component.get(taskId);
+						for(Integer taskIndex : component.keySet()) {
+							Spout spout = component.get(taskIndex);
 							if(!spout.isClosed()) {
 								spoutsClosed=false;
 								break;
@@ -876,8 +876,8 @@ public class LocalCluster {
 				log.debug("emitting terminate tuples");
 				for(String componentId : spouts.keySet()) {
 					HashMap<Integer,Spout> component = spouts.get(componentId);
-					for(Integer taskId : component.keySet()) {
-						Spout spout = component.get(taskId);
+					for(Integer taskIndex : component.keySet()) {
+						Spout spout = component.get(taskIndex);
 						log.debug("spout ["+spout.getInstanceId()+"] emitting terminate tuple");
 						spout.getOutputCollector().emitTerminateTuple();
 						spout.getOutputCollector().expireAllTupleBundles();
@@ -967,7 +967,7 @@ public class LocalCluster {
 				@Override
 				public void run(){
 					log.info("starting up");
-					HashSet<Integer> doneTaskIds=new HashSet<Integer>();
+					HashSet<Integer> doneTaskIndices=new HashSet<Integer>();
 					NetworkTaskBuffer queue;
 					while(!isInterrupted()) {
 						if(state==LocalCluster.State.HALTED) {
@@ -998,14 +998,14 @@ public class LocalCluster {
 						while(networkTask!=null) {
 							final Tuple[] tuples = networkTask.getTuples();
 							final String name = networkTask.getComponentId();
-							doneTaskIds.clear();
-							for(Integer taskId : networkTask.getTaskIds()) {
-								if(bolts.get(name).get(taskId).getInputCollector().getQueue().offer(tuples)){
-									doneTaskIds.add(taskId);
+							doneTaskIndices.clear();
+							for(Integer taskIndex : networkTask.getTaskIndices()) {
+								if(bolts.get(name).get(taskIndex).getInputCollector().getQueue().offer(tuples)){
+									doneTaskIndices.add(taskIndex);
 								} 
 							}
-							networkTask.getTaskIds().removeAll(doneTaskIds);
-							if(networkTask.getTaskIds().isEmpty()) {
+							networkTask.getTaskIndices().removeAll(doneTaskIndices);
+							if(networkTask.getTaskIndices().isEmpty()) {
 								queue.poll();
 								networkTask = (NetworkTask) queue.peek();
 							} else {
@@ -1093,7 +1093,7 @@ public class LocalCluster {
 					e.printStackTrace();
 					log.error("throwable thrown by spout ["+component.getInstanceId()+"] when closing: "+e.getMessage());
 				}
-				log.debug(component.getComponentId()+":"+component.getTaskId()+" closed");
+				log.debug(component.getInstanceId()+" closed");
 				index++;
 			}
 		}
@@ -1273,7 +1273,7 @@ public class LocalCluster {
 			}
 		}
 		if(componentErrors.get(component).size()>tolerance) {
-			log.fatal("component ["+component.getComponentId()+":"+component.getTaskId()
+			log.fatal("component ["+component.getInstanceId()
 				+"] has failed more than ["+tolerance+"] times");
 			if(node!=null) {
 				if(state==LocalCluster.State.RUNNING) {

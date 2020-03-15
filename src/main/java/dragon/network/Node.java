@@ -699,20 +699,20 @@ public class Node {
 			comps.put(topologyId, new ArrayList<String>());
 			metrics.put(topologyId,new HashMap<String,Sample>());
 			for(String spoutid : localClusters.get(topologyId).getSpouts().keySet()) {
-				for(Integer taskId : localClusters.get(topologyId).getSpouts().get(spoutid).keySet()) {
-					comps.get(topologyId).add(spoutid+":"+taskId);
-					metrics.get(topologyId).put(spoutid+":"+taskId, new Sample(localClusters.get(topologyId).getSpouts().get(spoutid).get(taskId)));
+				for(Integer taskIndex : localClusters.get(topologyId).getSpouts().get(spoutid).keySet()) {
+					comps.get(topologyId).add(spoutid+":"+taskIndex);
+					metrics.get(topologyId).put(spoutid+":"+taskIndex, new Sample(localClusters.get(topologyId).getSpouts().get(spoutid).get(taskIndex)));
 				}
 			}
 			for(String boltid : localClusters.get(topologyId).getBolts().keySet()) {
-				for(Integer taskId : localClusters.get(topologyId).getBolts().get(boltid).keySet()) {
-					comps.get(topologyId).add(boltid+":"+taskId);
-					metrics.get(topologyId).put(boltid+":"+taskId, new Sample(localClusters.get(topologyId).getBolts().get(boltid).get(taskId)));
+				for(Integer taskIndex : localClusters.get(topologyId).getBolts().get(boltid).keySet()) {
+					comps.get(topologyId).add(boltid+":"+taskIndex);
+					metrics.get(topologyId).put(boltid+":"+taskIndex, new Sample(localClusters.get(topologyId).getBolts().get(boltid).get(taskIndex)));
 				}
 			}
 			errors.put(topologyId, new HashMap<String, ArrayList<ComponentError>>());
 			for (Component component : localClusters.get(topologyId).getComponentErrors().keySet()) {
-				String name = component.getComponentId() + ":" + component.getTaskId();
+				String name = component.getComponentId() + ":" + component.getTaskIndex();
 				errors.get(topologyId).put(name, localClusters.get(topologyId).getComponentErrors().get(component));
 			}
 		}

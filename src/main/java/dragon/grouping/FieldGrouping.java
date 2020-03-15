@@ -34,7 +34,7 @@ public class FieldGrouping  extends AbstractGrouping  {
 	 * @see dragon.grouping.AbstractGrouping#chooseTasks(int, java.util.List)
 	 */
 	@Override
-	public List<Integer> chooseTasks(int taskId, List<Object> values) {
+	public List<Integer> chooseTasks(int taskIndex, List<Object> values) {
 		int hash=0;
 		for(String fieldName : fieldsSubset) {
 			hash=hash ^ values.get(fields.getFieldMap().get(fieldName)).hashCode();

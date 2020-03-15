@@ -128,21 +128,21 @@ public class Metrics extends Thread {
 					log.info("sampling topology ["+topologyId+"]");
 					LocalCluster localCluster = localClusters.get(topologyId);
 					for(String componentId : localCluster.getSpouts().keySet()){
-						for(Integer taskId : localCluster.getSpouts().get(componentId).keySet()){
-							Sample sample = new Sample(localCluster.getSpouts().get(componentId).get(taskId));
+						for(Integer taskIndex : localCluster.getSpouts().get(componentId).keySet()){
+							Sample sample = new Sample(localCluster.getSpouts().get(componentId).get(taskIndex));
 							if(influxDBClient!=null) {
-								writeToInfluxDB(topologyId,componentId,taskId,sample);
+								writeToInfluxDB(topologyId,componentId,taskIndex,sample);
 							}
-							samples.put(topologyId, componentId, taskId, sample);
+							samples.put(topologyId, componentId, taskIndex, sample);
 						}
 					}
 					for(String componentId : localCluster.getBolts().keySet()){
-						for(Integer taskId : localCluster.getBolts().get(componentId).keySet()){
-							Sample sample = new Sample(localCluster.getBolts().get(componentId).get(taskId));
+						for(Integer taskIndex : localCluster.getBolts().get(componentId).keySet()){
+							Sample sample = new Sample(localCluster.getBolts().get(componentId).get(taskIndex));
 							if(influxDBClient!=null) {
-								writeToInfluxDB(topologyId,componentId,taskId,sample);
+								writeToInfluxDB(topologyId,componentId,taskIndex,sample);
 							}
-							samples.put(topologyId, componentId, taskId, sample);
+							samples.put(topologyId, componentId, taskIndex, sample);
 						}
 					}
 				}
@@ -159,29 +159,29 @@ public class Metrics extends Thread {
 	 * Send a sample to InfluxDB
 	 * @param topologyId
 	 * @param componentId
-	 * @param taskId
+	 * @param taskIndex
 	 * @param sample
 	 */
-	private void writeToInfluxDB(String topologyId, String componentId, Integer taskId, Sample sample) {
+	private void writeToInfluxDB(String topologyId, String componentId, Integer taskIndex, Sample sample) {
 		Point point;
 		point = Point.measurement("outputQueueSize").addTag("node", desc.toString())
-				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
+				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskIndex.toString())
 				.addField("value", sample.outputQueueSize).time(Instant.now().toEpochMilli(), WritePrecision.MS);
 		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
 		point = Point.measurement("inputQueueSize").addTag("node", desc.toString())
-				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
+				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskIndex.toString())
 				.addField("value", sample.inputQueueSize).time(Instant.now().toEpochMilli(), WritePrecision.MS);
 		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
 		point = Point.measurement("processed").addTag("node", desc.toString())
-				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
+				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskIndex.toString())
 				.addField("value", sample.processed).time(Instant.now().toEpochMilli(), WritePrecision.MS);
 		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
 		point = Point.measurement("emitted").addTag("node", desc.toString())
-				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
+				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskIndex.toString())
 				.addField("value", sample.emitted).time(Instant.now().toEpochMilli(), WritePrecision.MS);
 		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
 		point = Point.measurement("transferred").addTag("node", desc.toString())
-				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskId.toString())
+				.addTag("topology", topologyId).addTag("component", componentId).addTag("instance", taskIndex.toString())
 				.addField("value", sample.transferred).time(Instant.now().toEpochMilli(), WritePrecision.MS);
 		writeApi.writePoint(conf.getInfluxDBBucket(), conf.getInfluxDBOrganization(), point);
 	}
