@@ -1,6 +1,12 @@
 package dragon;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,6 +45,14 @@ import dragon.network.messages.service.uploadjar.UploadJarSMsg;
 import dragon.network.messages.service.progress.ProgressSMsg;
 import dragon.topology.DragonTopology;
 import dragon.topology.IEmbeddingAlgo;
+import dragon.topology.DestComponentMap;
+import dragon.topology.StreamMap;
+import dragon.topology.GroupingsSet;
+import dragon.grouping.AbstractGrouping;
+import dragon.grouping.AllGrouping;
+import dragon.grouping.DirectGrouping;
+import dragon.grouping.FieldGrouping;
+import dragon.grouping.ShuffleGrouping;
 import dragon.utils.ReflectionUtils;
 import io.bretty.console.tree.PrintableTreeNode;
 import io.bretty.console.tree.TreePrinter;
@@ -177,6 +191,61 @@ public class DragonSubmitter {
 		log.debug("received context  ["+context+"]");
 		IEmbeddingAlgo embedding = ReflectionUtils.newInstance(conf.getDragonEmbeddingAlgorithm());
 		topology.embedTopology(embedding, context, conf);
+		if(conf.getDragonTopologyGraphvizFile()!=null) {
+			File file;
+			BufferedWriter bw=null;
+			file=new File(conf.getDragonTopologyGraphvizFile());
+			FileOutputStream fos;
+			try {
+				fos = new FileOutputStream(file);
+				bw = new BufferedWriter(new OutputStreamWriter(fos));
+				bw.write("digraph G {\n");
+				final BufferedWriter bw2=bw;
+				topology.getTopology().forEach((String comp1,DestComponentMap destComponentMap)->{
+					destComponentMap.forEach((String comp2,StreamMap streamMap)->{
+						streamMap.forEach((String streamId,GroupingsSet groupingSet)->{
+							if(streamId.equals(Constants.SYSTEM_STREAM_ID)) return;
+							groupingSet.forEach((AbstractGrouping grouping)->{
+								try {
+									String edge=comp1+" -> "+comp2+" ";
+									if(grouping instanceof AllGrouping) {
+										edge+="[arrowhead = diamond";
+									} else if(grouping instanceof DirectGrouping) {
+										edge+="[arrowhead = normal";
+									} else if(grouping instanceof FieldGrouping) {
+										edge+="[arrowhead = dot";
+									} else if(grouping instanceof ShuffleGrouping) {
+										edge+="[arrowhead = invempty";
+									} else {
+										edge+="[arrowhead = tee";
+									}
+									if(streamId.equals(Constants.DEFAULT_STREAM)) {
+										edge+="];";
+									} else {
+										edge+=",label=\""+streamId+"\"];";
+									}
+									bw2.write(edge+"\n");
+								} catch (IOException e) {
+									log.error("could not write graphviz file: "+file);
+								}
+							});
+						});
+					});
+				});
+				bw.write("}\n");
+			} catch (IOException e) {
+				log.error("could not write graphviz file: "+file);
+			} finally {
+				if(bw!=null)
+					try {
+						bw.close();
+					} catch (IOException e) {
+						log.error(file+" did not close properly");
+					}
+				
+			}
+			
+		}
 		System.out.println("uploading jar file...");
 		toServer(new UploadJarSMsg(string,topologyJar));
 		message = fromServer();
@@ -263,10 +332,11 @@ public class DragonSubmitter {
 	/**
 	 * List all of the topologies.
 	 * @param conf
+	 * @throws IOException 
 	 * @throws DragonCommsException
 	 * @throws InterruptedException
 	 */
-	public static void listTopologies(Config conf) {
+	public static void listTopologies(Config conf, boolean outputGraphviz) {
 		initComms(conf);
 		System.out.println("requesting list of topologies...");
 		toServer(new ListToposSMsg());

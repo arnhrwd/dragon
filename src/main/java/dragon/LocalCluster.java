@@ -383,7 +383,10 @@ public class LocalCluster {
 	 * @throws DragonTopologyException 
 	 */
 	@SuppressWarnings("unchecked")
-	public void submitTopology(String topologyName, Config conf, DragonTopology dragonTopology, boolean start) throws DragonRequiresClonableException, DragonTopologyException {
+	public void submitTopology(String topologyName, 
+			Config conf, 
+			DragonTopology dragonTopology, 
+			boolean start) throws DragonRequiresClonableException, DragonTopologyException {
 		this.topologyName=topologyName;
 		this.conf=conf;
 		this.dragonTopology=dragonTopology;
@@ -487,20 +490,23 @@ public class LocalCluster {
 				spoutConfs.put(spoutId, spoutConf);
 			}
 			int numAllocated=0;
-			for(int i=0;i<spoutDeclarer.getNumTasks();i++) {
+			for(int taskIndex=0;taskIndex<spoutDeclarer.getNumTasks();taskIndex++) {
 				boolean localtask = node==null || !(dragonTopology.getReverseEmbedding()!=null &&
-						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId,i));
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),spoutId,taskIndex));
 				try {
 					if(localtask) {
 						numAllocated++;
 						spoutsAllocated++;
 					}
 					Spout spout=(Spout) spoutDeclarer.getSpout().clone();
-					if(localtask) hm.put(i, spout);
+					if(localtask) hm.put(taskIndex, spout);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer(this,spoutId);
 					spout.declareOutputFields(declarer);
 					spout.setOutputFieldsDeclarer(declarer);
-					TopologyContext context = new TopologyContext(spoutId,i,taskIndices);
+					TopologyContext context = new TopologyContext(spoutId,taskIndex,
+							dragonTopology.getComponentIndexIdMap().get(spoutId).get(taskIndex),taskIndices,
+							new ArrayList<Integer>(dragonTopology.getComponentIndexIdMap().get(spoutId).values()),
+							declarer);
 					spout.setTopologyContext(context);
 					spout.setLocalCluster(this);
 					SpoutOutputCollector collector = new SpoutOutputCollector(this,spout);
@@ -548,17 +554,20 @@ public class LocalCluster {
 				boltConfs.put(boltId, boltConf);
 			}
 			int numAllocated=0;
-			for(int i=0;i<boltDeclarer.getNumTasks();i++) {
+			for(int taskIndex=0;taskIndex<boltDeclarer.getNumTasks();taskIndex++) {
 				boolean localtask = !(dragonTopology.getReverseEmbedding()!=null &&
-						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),boltId,i));
+						!dragonTopology.getReverseEmbedding().contains(node.getComms().getMyNodeDesc(),boltId,taskIndex));
 				try {
 					if(localtask) numAllocated++;
 					Bolt bolt=(Bolt) boltDeclarer.getBolt().clone();
-					if(localtask) hm.put(i, bolt);
+					if(localtask) hm.put(taskIndex, bolt);
 					OutputFieldsDeclarer declarer = new OutputFieldsDeclarer(this,boltId);
 					bolt.declareOutputFields(declarer);
 					bolt.setOutputFieldsDeclarer(declarer);
-					TopologyContext context = new TopologyContext(boltId,i,taskIndices);
+					TopologyContext context = new TopologyContext(boltId,taskIndex,
+							dragonTopology.getComponentIndexIdMap().get(boltId).get(taskIndex),taskIndices,
+							new ArrayList<Integer>(dragonTopology.getComponentIndexIdMap().get(boltId).values()),
+							declarer);
 					bolt.setTopologyContext(context);
 					InputCollector inputCollector = new InputCollector(this, bolt);
 					if(localtask) totalInputsBufferSize+=getConf().getDragonInputBufferSize();

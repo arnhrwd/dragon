@@ -89,26 +89,7 @@ public class TopologyBuilder {
 	 * @return a DragonTopology
 	 */
 	public DragonTopology createTopology() {
-		DragonTopology topology=new DragonTopology();
-		for(String spoutId : spoutMap.keySet()) {
-			for(String boltId : boltMap.keySet()) {
-				if(boltMap.get(boltId).groupings.containsKey(spoutId)) {
-					// spoutId sends to boltId
-					log.debug("connecting spout["+spoutId+"] to bolt["+boltId+"]");
-					topology.add(spoutId,boltId,boltMap.get(boltId).groupings.get(spoutId));
-				}
-			}
-		}
-		for(String fromBoltId : boltMap.keySet()) {
-			for(String toBoltId : boltMap.keySet()) {
-				if(boltMap.get(toBoltId).groupings.containsKey(fromBoltId)) {
-					log.debug("connecting bolt["+fromBoltId+"] to bolt["+toBoltId+"]");
-					topology.add(fromBoltId, toBoltId, boltMap.get(toBoltId).groupings.get(fromBoltId));
-				}
-			}
-		}
-		topology.setSpoutMap(spoutMap);
-		topology.setBoltMap(boltMap);
+		DragonTopology topology=new DragonTopology(spoutMap,boltMap);
 		return topology;
 	}
 }

@@ -695,25 +695,28 @@ public class Node {
 		HashMap<String,HashMap<String, Sample>> metrics = new HashMap<>();
 		HashMap<String, HashMap<String, ArrayList<ComponentError>>> errors = new HashMap<>();
 		for (String topologyId : localClusters.keySet()) {
-			state.put(topologyId, localClusters.get(topologyId).getState().name());
+			LocalCluster localCluster = localClusters.get(topologyId);
+			state.put(topologyId, localCluster.getState().name());
 			comps.put(topologyId, new ArrayList<String>());
 			metrics.put(topologyId,new HashMap<String,Sample>());
-			for(String spoutid : localClusters.get(topologyId).getSpouts().keySet()) {
-				for(Integer taskIndex : localClusters.get(topologyId).getSpouts().get(spoutid).keySet()) {
+			for(String spoutid : localCluster.getSpouts().keySet()) {
+				for(Integer taskIndex : localCluster.getSpouts().get(spoutid).keySet()) {
 					comps.get(topologyId).add(spoutid+":"+taskIndex);
-					metrics.get(topologyId).put(spoutid+":"+taskIndex, new Sample(localClusters.get(topologyId).getSpouts().get(spoutid).get(taskIndex)));
+					metrics.get(topologyId).put(spoutid+":"+taskIndex, 
+							new Sample(localCluster.getSpouts().get(spoutid).get(taskIndex)));
 				}
 			}
-			for(String boltid : localClusters.get(topologyId).getBolts().keySet()) {
-				for(Integer taskIndex : localClusters.get(topologyId).getBolts().get(boltid).keySet()) {
+			for(String boltid : localCluster.getBolts().keySet()) {
+				for(Integer taskIndex : localCluster.getBolts().get(boltid).keySet()) {
 					comps.get(topologyId).add(boltid+":"+taskIndex);
-					metrics.get(topologyId).put(boltid+":"+taskIndex, new Sample(localClusters.get(topologyId).getBolts().get(boltid).get(taskIndex)));
+					metrics.get(topologyId).put(boltid+":"+taskIndex, 
+							new Sample(localCluster.getBolts().get(boltid).get(taskIndex)));
 				}
 			}
 			errors.put(topologyId, new HashMap<String, ArrayList<ComponentError>>());
-			for (Component component : localClusters.get(topologyId).getComponentErrors().keySet()) {
+			for (Component component : localCluster.getComponentErrors().keySet()) {
 				String name = component.getComponentId() + ":" + component.getTaskIndex();
-				errors.get(topologyId).put(name, localClusters.get(topologyId).getComponentErrors().get(component));
+				errors.get(topologyId).put(name, localCluster.getComponentErrors().get(component));
 			}
 		}
 		

@@ -680,6 +680,8 @@ public class Run {
 		options.addOption(statusOption);
 		Option purgeOption = new Option("P","purge",false,"purge a topology");
 		options.addOption(purgeOption);
+		Option graphvizOption = new Option("G","graphviz",false,"output graphviz with list command");
+		options.addOption(graphvizOption);
 		Option execOption = new Option("e","exec",true,"[daemon|metrics|terminate|resume|halt|"
 		+"list|allocate|deallocate|deploy|setup|distro|unzip|config|online|offline|status|purge]");
 		options.addOption(execOption);		
@@ -872,7 +874,7 @@ public class Run {
             case "list":{
             	DragonSubmitter.node = conf.getLocalHost();
             	extractHostSportCombo(cmd);
-    			DragonSubmitter.listTopologies(conf);
+    			DragonSubmitter.listTopologies(conf,cmd.hasOption("graphviz")?true:false);
     			break;
             }
             case "allocate":

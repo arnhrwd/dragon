@@ -11,6 +11,7 @@ import dragon.network.comms.IComms;
 import dragon.network.messages.node.NodeMessage;
 import dragon.network.messages.node.gettopoinfo.GetTopoInfoNMsg;
 import dragon.network.messages.node.gettopoinfo.TopoInfoNMsg;
+import dragon.topology.DragonTopology;
 
 /**
  * @author aaron

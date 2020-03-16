@@ -438,7 +438,6 @@ public class Collector {
 		tuple.setFields(fields.copy());
 		tuple.setValues(values);
 		tuple.setSourceComponent(component.getComponentId());
-		tuple.setSourceComponent(component.getComponentId());
 		tuple.setSourceTaskIndex(component.getTaskIndex());
 		tuple.setSourceStreamId(streamId);
 		component.incEmitted(1); // for metrics
@@ -489,7 +488,7 @@ public class Collector {
 	/**
 	 * 
 	 */
-	public void emitTerminateTuple() {
+	public synchronized void emitTerminateTuple() {
 		if(localCluster.getTopology().getTopology().get(component.getComponentId())==null) return;
 		for(String componentId : localCluster.getTopology().getTopology().get(component.getComponentId()).keySet()) {
 			StreamMap streamMap = localCluster.getTopology().getTopology().get(component.getComponentId()).get(componentId);

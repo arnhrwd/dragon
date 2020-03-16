@@ -19,54 +19,135 @@ public class DragonTopology implements Serializable {
 	private static Logger log = LogManager.getLogger(DragonTopology.class);
 	
 	/**
-	 * 
+	 * The user supplied name of the topology
 	 */
 	private String topologyId;
 	
 	/**
-	 * 
+	 * component id -> component's declarer.
 	 */
 	private HashMap<String,SpoutDeclarer> spoutMap;
 	
 	/**
-	 * 
+	 * component id -> component's declarer.
 	 */
 	private HashMap<String,BoltDeclarer> boltMap;
 	
 	/**
-	 * 
+	 * source component id ->
+	 * 	destination component id ->
+	 *   stream id ->
+	 *    set of groupings
 	 */
 	private SourceComponentMap topology;
 	
 	/**
-	 * 
+	 * source component id ->
+	 *  stream id ->
+	 *   destination component id ->
+	 *    set of groupings
 	 */
 	private HashMap<String,HashMap<String,HashMap<String,GroupingsSet>>> sourceStreamComponentMap;
 	
 	/**
-	 * 
+	 * component id ->
+	 *  task index ->
+	 *   node
 	 */
 	private ComponentEmbedding embedding;
 	
 	/**
-	 * 
+	 * node ->
+	 * 	component id ->
+	 * 	 task index set
 	 */
 	private ReverseComponentEmbedding reverseEmbedding;
 	
 	/**
-	 * 
+	 * task id ->
+	 *  component instance
 	 */
-	public DragonTopology() {
+	private HashMap<Integer,ComponentInstance> taskIdComponentInstanceMap;
+	
+	/**
+	 * component id ->
+	 *  task index ->
+	 *   task id
+	 */
+	private HashMap<String,HashMap<Integer,Integer>> componentIndexIdMap;
+	
+	
+	/**
+	 * Constructor
+	 */
+	public DragonTopology(HashMap<String, SpoutDeclarer> spoutMap,
+			HashMap<String, BoltDeclarer> boltMap) {
+		this.spoutMap=spoutMap;
+		this.boltMap=boltMap;
 		topology=new SourceComponentMap();
 		sourceStreamComponentMap = new HashMap<>();
+		taskIdComponentInstanceMap = new HashMap<>();
+		componentIndexIdMap = new HashMap<>();
+		for(String spoutId : spoutMap.keySet()) {
+			componentIndexIdMap.put(spoutId,new HashMap<Integer,Integer>());
+			/*
+			 * Allocate unique taskIds to the spout instances.
+			 */
+			for(int taskIndex=0;taskIndex<spoutMap.get(spoutId).getNumTasks();taskIndex++) {
+				int taskId = taskIdComponentInstanceMap.size();
+				taskIdComponentInstanceMap.put(taskId,new ComponentInstance(spoutId,taskIndex));
+				componentIndexIdMap.get(spoutId).put(taskIndex,taskId);
+			}
+			
+			
+			/*
+			 * Add mappings from this spout to all bolts that listen to it.
+			 */
+			for(String boltId : boltMap.keySet()) {
+				if(boltMap.get(boltId).groupings.containsKey(spoutId)) {
+					// spoutId sends to boltId
+					log.debug("connecting spout["+spoutId+"] to bolt["+boltId+"]");
+					add(spoutId,boltId,boltMap.get(boltId).groupings.get(spoutId));
+				}
+			}
+		}
+		for(String fromBoltId : boltMap.keySet()) {
+			componentIndexIdMap.put(fromBoltId,new HashMap<Integer,Integer>());
+			/*
+			 * Allocate unique taskIds to the bolt instances.
+			 */
+			for(int taskIndex=0;taskIndex<boltMap.get(fromBoltId).getNumTasks();taskIndex++) {
+				int taskId = taskIdComponentInstanceMap.size();
+				taskIdComponentInstanceMap.put(taskId,new ComponentInstance(fromBoltId,taskIndex));
+				componentIndexIdMap.get(fromBoltId).put(taskIndex,taskId);
+			}
+			
+			/*
+			 * Add mappings from this bolt to all bolts that listen to it.
+			 */
+			for(String toBoltId : boltMap.keySet()) {
+				if(boltMap.get(toBoltId).groupings.containsKey(fromBoltId)) {
+					log.debug("connecting bolt["+fromBoltId+"] to bolt["+toBoltId+"]");
+					add(fromBoltId, toBoltId, boltMap.get(toBoltId).groupings.get(fromBoltId));
+				}
+			}
+		}
 	}
 	
 	/**
+	 * Create various mappings that support efficient topology operations
+	 * throughout the system, especially in places like {@link dragon.LocalCluster} and 
+	 * {@link dragon.topology.base.Collector}.
 	 * @param fromComponentId
 	 * @param toComponentId
 	 * @param hashMap
 	 */
 	public void add(String fromComponentId, String toComponentId, StreamMap hashMap) {
+		
+		/*
+		 * Create various mappings that support efficient topology operations.
+		 */
+		
 		if(!topology.containsKey(fromComponentId)) {
 			topology.put(fromComponentId,new DestComponentMap());
 		}
@@ -211,4 +292,13 @@ public class DragonTopology implements Serializable {
 	public String getTopologyId() {
 		return topologyId;
 	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	public HashMap<String, HashMap<Integer, Integer>> getComponentIndexIdMap() {
+		return componentIndexIdMap;
+	}
+
 }

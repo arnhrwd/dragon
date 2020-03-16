@@ -28,7 +28,10 @@ public class BoltDeclarer extends Declarer {
 	private static final Logger log = LogManager.getLogger(BoltDeclarer.class);
 	
 	/**
-	 * 
+	 * The prototype bolt. Anything that is set in the constructor of this
+	 * bolt will be cloned to all bolt instances. Runtime specific state
+	 * can not be set within the constructor and is usually set within the prepare
+	 * method.
 	 */
 	private Bolt bolt;
 	

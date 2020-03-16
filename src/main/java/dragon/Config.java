@@ -247,6 +247,11 @@ public class Config extends HashMap<String, Object> {
 	public static final String DRAGON_LOG_DIR="dragon.log.dir";
 	
 	/**
+	 * file to write the topology description in dot language, prior to submitting it
+	 */
+	public static final String DRAGON_TOPOLOGY_GRAPHVIZ_FILE="dragon.topology.graphviz.file";
+	
+	/**
 	 * Use default config and drop parameters that are relevant to the daemon.
 	 */
 	public Config() {
@@ -406,6 +411,7 @@ public class Config extends HashMap<String, Object> {
 		put(DRAGON_JAVA_BIN,"java");
 		put(DRAGON_PROCESSES_MAX,10);
 		put(DRAGON_DEPLOY_DIR,"dragon");
+		put(DRAGON_TOPOLOGY_GRAPHVIZ_FILE,"topology.dot");
 	}
 	
 	/**
@@ -797,6 +803,15 @@ public class Config extends HashMap<String, Object> {
 			return (String)get(DRAGON_LOG_DIR);
 		}
 		return getDragonHomeDir()+"/log";
+	}
+	
+	/**
+	 * 
+	 * @return the file to write the topology description in dot format,
+	 * prior to submission
+	 */
+	public String getDragonTopologyGraphvizFile() {
+		return (String)get(DRAGON_TOPOLOGY_GRAPHVIZ_FILE);
 	}
 	
  	//

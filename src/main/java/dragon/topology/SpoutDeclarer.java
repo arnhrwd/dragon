@@ -7,7 +7,7 @@ import dragon.topology.base.Spout;
 
 /**
  * Spout declarer doesn't have much to declare because spouts do not listen
- * to any other component. They simply emit tuples.
+ * to any other components. They simply emit tuples.
  * @author aaron
  * @see dragon.tuple.Tuple
  *
@@ -18,7 +18,10 @@ public class SpoutDeclarer extends Declarer {
 	private static Logger log = LogManager.getLogger(SpoutDeclarer.class);
 	
 	/**
-	 * 
+	 * The prototype spout. Anything that is set in the constructor of this
+	 * spout will be cloned to all spout instances. Runtime specific state
+	 * can not be set within the constructor and is usually set within the open
+	 * method.
 	 */
 	private Spout spout;
 	

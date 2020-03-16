@@ -5,6 +5,9 @@ import java.util.HashMap;
 import dragon.network.NodeDescriptor;
 
 /**
+ * component id ->
+ *  task index ->
+ *   node
  * @author aaron
  *
  */
