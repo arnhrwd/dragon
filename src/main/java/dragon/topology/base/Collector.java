@@ -246,14 +246,14 @@ public class Collector {
 	}
 	
 	/**
-	 * Expire all tuple bundles up to the given tuple bundle.
+	 * Expire all tuple bundles up to and including the given tuple bundle.
 	 * @param tb
 	 */
 	private synchronized void expireAllUpTo(TupleBundle tb) {
 		while(true) {
 			TupleBundle next = bundleQueue.poll();
-			transmit(tb.tuples,tb.taskIndices,tb.componentId,tb.streamId);
-			bundleMap.get(tb.componentId).get(tb.streamId).remove(tb.taskIndices);
+			transmit(next.tuples,next.taskIndices,next.componentId,next.streamId);
+			bundleMap.get(next.componentId).get(next.streamId).remove(next.taskIndices);
 			if(next==tb) break;
 		}
 		nextExpire = Instant.now().toEpochMilli()+linger_ms;
@@ -354,7 +354,7 @@ public class Collector {
 		}
 		tb.add(tuple);
 		if(tb.size==tb.tuples.length)  {
-			// we expire all bundles up to this, to preserve order
+			// we expire all bundles up to and including tb, to preserve order
 			expireAllUpTo(tb);
 		} 
 	}
