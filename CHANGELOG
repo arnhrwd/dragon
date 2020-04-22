@@ -1,4 +1,12 @@
 
+# 0.0.4
+
+- Bug fixes: full tuple bundles now trigger proper expiration of previous tuple bundles
+
+# 0.0.3
+
+- Bug fixes: expired tupled bundles expire all othe bundles before them
+
 # 0.0.2
 
 - Bug fixes: tuple ordering and fields grouping exhibited incorrect behavior for some cases
