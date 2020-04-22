@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>tech.streamsoft</groupId>
 	<artifactId>dragon</artifactId>
-	<version>0.0.3</version>
+	<version>0.0.4-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>${project.groupId}:${project.artifactId}</name>
 	<description>A high performance, distributed stream processing system, loosely based on the Apache Storm API.</description>
@@ -28,10 +28,9 @@
 		</developer>
 	</developers>
 	<scm>
-	  <connection>scm:git:git@sunrise.cis.unimelb.edu.au:aaron/dragon.git</connection>
-	  <developerConnection>scm:git:git@sunrise.cis.unimelb.edu.au:aaron/dragon.git</developerConnection>
-	  <url>https://sunrise.cis.unimelb.edu.au/aaron/dragon/tree/master</url>
-    <tag>dragon-0.0.3</tag>
+	  <connection>scm:git:git://github.com/arnhrwd/dragon.git</connection>
+	  <developerConnection>scm:git:git@github.com:arnhrwd/dragon.git</developerConnection>
+	  <url>https://github.com/arnhrwd/dragon</url>
   </scm>
 	<distributionManagement>
 	  <snapshotRepository>
