@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -94,7 +95,7 @@ public class LocalCluster {
 	 * that are waiting to be serviced. One reference to such a queue is placed
 	 * on outputsPending for each NetworkTask it contains.
 	 */
-	private CircularBlockingQueue<NetworkTaskBuffer>[] outputsPending;
+	private LinkedBlockingQueue<NetworkTaskBuffer>[] outputsPending;
 
 	/**
 	 * Map from component id to the conf for spouts, for only those instances
@@ -587,9 +588,9 @@ public class LocalCluster {
 		}
 		
 		log.info("total outputs buffer size is "+totalOutputsBufferSize);
-		outputsPending = new CircularBlockingQueue[conf.getDragonLocalclusterThreads()];
+		outputsPending = new LinkedBlockingQueue[conf.getDragonLocalclusterThreads()];
 		for(int i=0;i<conf.getDragonLocalclusterThreads();i++) {
-			outputsPending[i]=new CircularBlockingQueue<NetworkTaskBuffer>(2*totalOutputsBufferSize);
+			outputsPending[i]=new LinkedBlockingQueue<NetworkTaskBuffer>();
 		}
 		log.info("total inputs buffer size is "+totalInputsBufferSize);
 		

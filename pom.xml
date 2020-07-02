@@ -28,10 +28,11 @@
 		</developer>
 	</developers>
 	<scm>
-	  <connection>scm:git:git@sunrise.cis.unimelb.edu.au:aaron/dragon.git</connection>
-	  <developerConnection>scm:git:git@sunrise.cis.unimelb.edu.au:aaron/dragon.git</developerConnection>
-	  <url>https://sunrise.cis.unimelb.edu.au/aaron/dragon/tree/master</url>
-    <tag>HEAD</tag>
+
+	  <connection>scm:git:git://github.com/arnhrwd/dragon.git</connection>
+	  <developerConnection>scm:git:git@github.com:arnhrwd/dragon.git</developerConnection>
+	  <url>https://github.com/arnhrwd/dragon</url>
+    
   </scm>
 	<distributionManagement>
 	  <snapshotRepository>

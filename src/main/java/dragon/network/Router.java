@@ -209,7 +209,10 @@ public class Router {
 							final NetworkTaskBuffer ntb = inputQueues.getBuffer(task);
 							final String topologyId = task.getTopologyId();
 							ntb.put(task);
-							if(ntb.size()==1) localClusters.get(topologyId).outputPending(ntb);
+							if(ntb.size()==1) {
+								log.debug("setting output pending");
+								localClusters.get(topologyId).outputPending(ntb);
+							}
 						} catch(NullPointerException e) {
 							log.error("received a network task for a non-existant topology ["+task.getTopologyId()+"]");
 						} catch(InterruptedException e) {
