@@ -34,7 +34,6 @@ import dragon.tuple.Fields;
 import dragon.tuple.NetworkTask;
 import dragon.tuple.Tuple;
 import dragon.tuple.Values;
-import dragon.utils.CircularBlockingQueue;
 import dragon.utils.NetworkTaskBuffer;
 
 /**
@@ -619,10 +618,10 @@ public class LocalCluster {
 								}
 								continue;
 							}
-	
-							//Maria: This is where we need to sleep....
 							
 							thisComponent.run();
+							
+							//Sleep based on agent's action
 							/*System.out.println("waiting for " + thisComponent.getDataEmissionInterval().longValue() + " nanoseconds before"
 									+ "invoking nextTuple() " + System.nanoTime()); 
 							log.debug("waiting for " + thisComponent.getDataEmissionInterval().longValue() + "nanoseconds before"

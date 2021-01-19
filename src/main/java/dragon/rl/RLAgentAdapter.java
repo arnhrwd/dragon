@@ -1,9 +1,7 @@
 package dragon.rl;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -23,12 +21,10 @@ import com.rabbitmq.client.DeliverCallback;
 
 import dragon.Config;
 import dragon.Constants;
-import dragon.Run;
 import dragon.metrics.Sample;
 import dragon.network.NodeDescriptor;
 import dragon.network.comms.IComms;
 import dragon.network.comms.TcpComms;
-import dragon.network.messages.node.NodeMessage.NodeMessageType;
 import dragon.network.messages.service.ServiceDoneSMsg;
 import dragon.network.messages.service.ServiceErrorMessage;
 import dragon.network.messages.service.ServiceMessage;
@@ -36,7 +32,6 @@ import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 import dragon.network.messages.service.execRlAction.ExecRlActionSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsSMsg;
 import dragon.network.messages.service.getmetrics.MetricsSMsg;
-import dragon.tuple.NetworkTask;
 
 /**
  * Stand-alone utility to interact with an RL Agent via RabbitMQ.
@@ -64,7 +59,6 @@ public class RLAgentAdapter {
 	public void runRlAdapter() throws Exception {
 
 		conf = new Config(Constants.DRAGON_PROPERTIES, true);
-		//comms = new TcpComms(conf);
 		initalizeRabbitMq();
 
 	}
@@ -159,13 +153,8 @@ public class RLAgentAdapter {
 		int totalSpouts = 0;
 		int totalBolts = 0;
 		
-		//TODO queue size not captured acurately, it may be that it was just flushed when queriedadd queue rations
-		//count number of flushes maybe?
-				
-		
-
 		//Is combining all metrics for all nodes, all components a good idea?
-		//should we capture the relationship between components, their placement, and trakc their individual metrics?
+		//should we capture the relationship between components, their placement, and track their individual metrics?
 		for (NodeDescriptor desc : conf.getHosts()) {
 
 			comms = new TcpComms(conf);
@@ -240,7 +229,7 @@ public class RLAgentAdapter {
 			// queue capacity ratios
 			// spout emitted (emmission rate?)
 			// total completely processed?? harder to implement...
-			// all of these have to be relative to a time period, not cummulative...the agent can look after it
+			// all of these have to be relative to a time period, not cumulative...the agent should ensure this
 			
 			//Spouts
 			for (String componentId : meanOutputQueueLengthSpouts.keySet()) {
