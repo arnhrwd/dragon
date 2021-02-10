@@ -51,6 +51,7 @@ public class ExecRlActionSMsg extends ServiceMessage {
 				for (String componentId : localCluster.getSpouts().keySet()) {
 					for (Integer taskId : localCluster.getSpouts().get(componentId).keySet()) {
 						Spout spout = localCluster.getSpouts().get(componentId).get(taskId);
+						//spout.updateDataEmissionIntervalDelta(delta);
 						spout.updateDataEmissionInterval(delta);
 					}
 				}

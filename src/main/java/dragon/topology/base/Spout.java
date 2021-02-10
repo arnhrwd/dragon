@@ -129,16 +129,12 @@ public class Spout extends Component {
 		
 	}
 	
-	public void updateDataEmissionInterval(long delta) {
+	public void updateDataEmissionIntervalDelta(long delta) {
 		dataEmissionInterval.updateAndGet(value -> value + delta >= 0 ? value + delta : 0);
-		
-		/*if(dataEmissionInterval == null) {
-			
-			dataEmissionInterval = new AtomicLong(0);
-		}
-		if(dataEmissionInterval.longValue() + delta >= 0) {
-			dataEmissionInterval.addAndGet(delta);
-		}*/
+	}
+	
+	public void updateDataEmissionInterval(long emissionInterval) {
+		dataEmissionInterval.updateAndGet(value -> emissionInterval >= 0 ? emissionInterval : 0);
 	}
 	
 	public AtomicLong getDataEmissionInterval() {

@@ -33,9 +33,10 @@ public class Bolt extends Component {
 	private Tuple tickTuple=null;
 	
 	/**
-	 * 
 	 */
 	private long processed=0;
+	
+	protected long avgLatency = 0;
 	
 	/**
 	 * 
@@ -231,6 +232,10 @@ public class Bolt extends Component {
 	 */
 	public final long getProcessed(){
 		return processed;
+	}
+	
+	public double getAvgLatency() {
+		return avgLatency;
 	}
 	
 }

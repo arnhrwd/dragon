@@ -50,6 +50,7 @@ public class Sample implements Serializable {
 	public double inputQueueRatio = 0;
 	public double outputQueueRatio = 0;
 	public int outputBufferSpace = 0;
+	public double avgLatency = 0.0;
 
 	/**
 	 * @param bolt
@@ -72,6 +73,7 @@ public class Sample implements Serializable {
 		processed = bolt.getProcessed();
 		emitted = bolt.getEmitted();
 		transferred = bolt.getTransferred();
+		avgLatency = bolt.getAvgLatency();
 		isSpout = false;
 	}
 

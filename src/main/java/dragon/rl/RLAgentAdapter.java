@@ -30,6 +30,8 @@ import dragon.network.messages.service.ServiceErrorMessage;
 import dragon.network.messages.service.ServiceMessage;
 import dragon.network.messages.service.ServiceMessage.ServiceMessageType;
 import dragon.network.messages.service.execRlAction.ExecRlActionSMsg;
+import dragon.network.messages.service.getRLMetrics.GetRLMetricsSMsg;
+import dragon.network.messages.service.getRLMetrics.RLMetricsSMsg;
 import dragon.network.messages.service.getmetrics.GetMetricsSMsg;
 import dragon.network.messages.service.getmetrics.MetricsSMsg;
 
@@ -122,31 +124,33 @@ public class RLAgentAdapter {
 
 		log.debug("hosts are " + conf.getHosts());
 
-		HashMap<String, Float> meanInputQueueLengthBolts = new HashMap<String, Float>();
-		HashMap<String, Float> meanOutputQueueLengthBolts = new HashMap<String, Float>();
-		HashMap<String, Double> meanRatioInputQueueLengthBolts = new HashMap<String, Double>();
-		HashMap<String, Double> meanRatioOutputQueueLengthBolts = new HashMap<String, Double>();
+		HashMap<String, Integer> maxInputQueueLengthBolts = new HashMap<String, Integer>();
+		HashMap<String, Integer> maxOutputQueueLengthBolts = new HashMap<String, Integer>();
+		HashMap<String, Double> maxRatioInputQueueLengthBolts = new HashMap<String, Double>();
+		HashMap<String, Double> maxRatioOutputQueueLengthBolts = new HashMap<String, Double>();
 		HashMap<String, Long> totalProcessedBolts = new HashMap<String, Long>();
 		HashMap<String, Long> totalEmittedBolts = new HashMap<String, Long>();
 		HashMap<String, Long> totalTransferredBolts = new HashMap<String, Long>();
 		
 		//new
-		HashMap<String, Float> meanOutputQueueLengthSpouts = new HashMap<String, Float>();
-		HashMap<String, Double> meanRatioOutputQueueLengthSpouts = new HashMap<String, Double>();
+		HashMap<String, Integer> maxOutputQueueLengthSpouts = new HashMap<String, Integer>();
+		HashMap<String, Double> maxRatioOutputQueueLengthSpouts = new HashMap<String, Double>();
+		HashMap<String, Double> maxAvgLatencyBolts = new HashMap<String, Double>();
 		HashMap<String, Long> totalProcessedSpouts = new HashMap<String, Long>();
 		HashMap<String, Long> totalEmittedSpouts = new HashMap<String, Long>();
 		HashMap<String, Long> totalTransferredSpouts = new HashMap<String, Long>();
 		
 		// TODO refine metrics that will be part of the env's state
-		Float aggMeanInputQueueLengthBolts = 0F;
-		Float aggMeanOutputQueueLengthBolts = 0F;
-		Double aggMeanRatioInputQueueLengthBolts = 0D;
-		Double aggMeanRatioOutputQueueLengthBolts = 0D;
+		Integer aggMaxInputQueueLengthBolts = 0;
+		Integer aggMaxOutputQueueLengthBolts = 0;
+		Double aggMaxRatioInputQueueLengthBolts = 0D;
+		Double aggMaxRatioOutputQueueLengthBolts = 0D;
+		Double aggMaxAvgLatencyBolts = 0D;
 		Long aggTotalProcessedBolts = 0L;
 		Long aggTotalEmittedBolts = 0L;
 		Long aggTotalTransferredBolts = 0L;
-		Float aggMeanOutputQueueLengthSpouts = 0F;
-		Double aggMeanRatioOutputQueueLengthSpouts = 0D;
+		Integer aggMaxOutputQueueLengthSpouts = 0;
+		Double aggMaxRatioOutputQueueLengthSpouts = 0D;
 		Long aggTotalProcessedSpouts = 0L;
 		Long aggTotalEmittedSpouts = 0L;
 		Long aggTotalTransferredSpouts = 0L;
@@ -162,12 +166,12 @@ public class RLAgentAdapter {
 					+ "]");
 
 			comms.open(desc);
-			comms.sendServiceMsg(new GetMetricsSMsg(topologyId));
+			comms.sendServiceMsg(new GetRLMetricsSMsg(topologyId));
 			ServiceMessage response = comms.receiveServiceMsg();
 
-			if (response.getType().equals(ServiceMessageType.METRICS)) {
+			if (response.getType().equals(ServiceMessageType.RL_METRICS)) {
 
-				MetricsSMsg m = (MetricsSMsg) response;
+				RLMetricsSMsg m = (RLMetricsSMsg) response;
 
 				for (String componentId : m.samples.keySet()) {
 					
@@ -175,47 +179,53 @@ public class RLAgentAdapter {
 					for (Integer taskId : m.samples.get(componentId).keySet()) {
 						ArrayList<Sample> samples = m.samples.get(componentId).get(taskId);
 						Sample sample = samples.get(samples.size() - 1);
-						int spoutTasks = 0;
-						int boltTasks = 0;
 						if(sample.isSpout) { //spout metrics
 							//initialize maps if needed
-							if(!meanOutputQueueLengthSpouts.containsKey(componentId)) {
-								meanOutputQueueLengthSpouts.put(componentId, 0F);
-								meanRatioOutputQueueLengthSpouts.put(componentId, 0.0);
+							if(!maxOutputQueueLengthSpouts.containsKey(componentId)) {
+								maxOutputQueueLengthSpouts.put(componentId, 0);
+								maxRatioOutputQueueLengthSpouts.put(componentId, 0.0);
 								totalProcessedSpouts.put(componentId, 0L);
 								totalEmittedSpouts.put(componentId, 0L);
 								totalTransferredSpouts.put(componentId, 0L);
 							}
 							
 							//calculate totals
-							meanOutputQueueLengthSpouts.put(componentId, (((meanOutputQueueLengthSpouts.get(componentId) * spoutTasks) + sample.outputQueueSize))/(spoutTasks + 1));
-							meanRatioOutputQueueLengthSpouts.put(componentId, (((meanRatioOutputQueueLengthSpouts.get(componentId) * spoutTasks) + sample.outputQueueRatio))/(spoutTasks + 1));
+							int maxLegth = maxOutputQueueLengthSpouts.get(componentId) > sample.outputQueueSize ? maxOutputQueueLengthSpouts.get(componentId) : sample.outputQueueSize;
+							maxOutputQueueLengthSpouts.put(componentId, maxLegth);//(((maxOutputQueueLengthSpouts.get(componentId) * spoutTasks) + sample.outputQueueSize))/(spoutTasks + 1));
+							double maxRatio = maxRatioOutputQueueLengthSpouts.get(componentId) > sample.outputQueueRatio ? maxRatioOutputQueueLengthSpouts.get(componentId) : sample.outputQueueRatio;
+							maxRatioOutputQueueLengthSpouts.put(componentId, maxRatio);//(((maxRatioOutputQueueLengthSpouts.get(componentId) * spoutTasks) + sample.outputQueueRatio))/(spoutTasks + 1));
 
 							totalProcessedSpouts.put(componentId, totalProcessedSpouts.get(componentId) + sample.processed);
 							totalEmittedSpouts.put(componentId, totalEmittedSpouts.get(componentId) + sample.emitted);
 							totalTransferredSpouts.put(componentId, totalTransferredSpouts.get(componentId) + sample.transferred);
-							spoutTasks++;
-						} else { //bolt metrics
+							
+						} else { //bolt metrics //ADD AVGLATENCY, TEST NEW ON DEMAND METRIC MESSAGE, change to max queue size
 							//initialize maps if needed
-							if (!meanInputQueueLengthBolts.containsKey(componentId)) {
-								meanInputQueueLengthBolts.put(componentId, (float) 0.0);
-								meanOutputQueueLengthBolts.put(componentId, (float) 0.0);
-								meanRatioInputQueueLengthBolts.put(componentId, 0.0);
-								meanRatioOutputQueueLengthBolts.put(componentId, 0.0);
+							if (!maxInputQueueLengthBolts.containsKey(componentId)) {
+								maxInputQueueLengthBolts.put(componentId, 0);
+								maxOutputQueueLengthBolts.put(componentId, 0);
+								maxRatioInputQueueLengthBolts.put(componentId, 0.0);
+								maxRatioOutputQueueLengthBolts.put(componentId, 0.0);
 								totalProcessedBolts.put(componentId, 0L);
 								totalEmittedBolts.put(componentId, 0L);
 								totalTransferredBolts.put(componentId, 0L);
+								maxAvgLatencyBolts.put(componentId, 0.0);
 							}
 							//calculate totals
-							meanInputQueueLengthBolts.put(componentId,(((meanInputQueueLengthBolts.get(componentId) * boltTasks) + sample.inputQueueSize))/(boltTasks + 1));
-							meanOutputQueueLengthBolts.put(componentId,(((meanOutputQueueLengthBolts.get(componentId) * boltTasks) + sample.outputQueueSize))/(boltTasks + 1));
-							meanRatioInputQueueLengthBolts.put(componentId,(((meanRatioInputQueueLengthBolts.get(componentId) * boltTasks) + sample.inputQueueRatio))/(boltTasks + 1));
-							meanRatioOutputQueueLengthBolts.put(componentId,(((meanRatioOutputQueueLengthBolts.get(componentId) * boltTasks) + sample.outputQueueRatio))/(boltTasks + 1));
-							
+							int maxLength = maxInputQueueLengthBolts.get(componentId) > sample.inputQueueSize ? maxInputQueueLengthBolts.get(componentId) : sample.inputQueueSize;
+							maxInputQueueLengthBolts.put(componentId, maxLength); //(((meanInputQueueLengthBolts.get(componentId) * boltTasks) + sample.inputQueueSize))/(boltTasks + 1));
+							maxLength = maxOutputQueueLengthBolts.get(componentId) > sample.outputQueueSize ? maxOutputQueueLengthBolts.get(componentId) : sample.outputQueueSize;
+							maxOutputQueueLengthBolts.put(componentId, maxLength);//(((meanOutputQueueLengthBolts.get(componentId) * boltTasks) + sample.outputQueueSize))/(boltTasks + 1));
+							double maxRatio = maxRatioInputQueueLengthBolts.get(componentId) > sample.inputQueueRatio ? maxRatioInputQueueLengthBolts.get(componentId) : sample.inputQueueRatio;
+							maxRatioInputQueueLengthBolts.put(componentId, maxRatio);//(((meanRatioInputQueueLengthBolts.get(componentId) * boltTasks) + sample.inputQueueRatio))/(boltTasks + 1));
+							maxRatio = maxRatioOutputQueueLengthBolts.get(componentId) > sample.outputQueueRatio ? maxRatioOutputQueueLengthBolts.get(componentId) : sample.outputQueueRatio;
+							maxRatioOutputQueueLengthBolts.put(componentId, maxRatio);//(((meanRatioOutputQueueLengthBolts.get(componentId) * boltTasks) + sample.outputQueueRatio))/(boltTasks + 1));
+							double maxLatency = maxAvgLatencyBolts.get(componentId) > sample.avgLatency ? maxAvgLatencyBolts.get(componentId) : sample.avgLatency;
+							maxAvgLatencyBolts.put(componentId, maxLatency);
 							totalProcessedBolts.put(componentId, totalProcessedBolts.get(componentId) + sample.processed);
 							totalEmittedBolts.put(componentId, totalEmittedBolts.get(componentId) + sample.emitted);
 							totalTransferredBolts.put(componentId, totalTransferredBolts.get(componentId) + sample.transferred);
-							boltTasks++;
+							
 						}
 					}
 				}
@@ -232,9 +242,10 @@ public class RLAgentAdapter {
 			// all of these have to be relative to a time period, not cumulative...the agent should ensure this
 			
 			//Spouts
-			for (String componentId : meanOutputQueueLengthSpouts.keySet()) {
-				aggMeanOutputQueueLengthSpouts += meanOutputQueueLengthSpouts.get(componentId);
-				aggMeanRatioOutputQueueLengthSpouts += meanRatioOutputQueueLengthSpouts.get(componentId);
+			for (String componentId : maxOutputQueueLengthSpouts.keySet()) {
+				aggMaxOutputQueueLengthSpouts = aggMaxOutputQueueLengthSpouts > maxOutputQueueLengthSpouts.get(componentId) ? aggMaxOutputQueueLengthSpouts : maxOutputQueueLengthSpouts.get(componentId);
+				aggMaxRatioOutputQueueLengthSpouts	= aggMaxRatioOutputQueueLengthSpouts > maxRatioOutputQueueLengthSpouts.get(componentId) ?  aggMaxRatioOutputQueueLengthSpouts : maxRatioOutputQueueLengthSpouts.get(componentId);	
+				
 				aggTotalProcessedSpouts += totalProcessedSpouts.get(componentId);
 				aggTotalEmittedSpouts += totalEmittedSpouts.get(componentId);
 				aggTotalTransferredSpouts += totalTransferredSpouts.get(componentId);
@@ -242,51 +253,45 @@ public class RLAgentAdapter {
 			}
 			
 			//Bolts
-			for (String componentId : meanInputQueueLengthBolts.keySet()) {
-				aggMeanInputQueueLengthBolts += meanInputQueueLengthBolts.get(componentId);
-				aggMeanOutputQueueLengthBolts += meanOutputQueueLengthBolts.get(componentId);
-				aggMeanRatioOutputQueueLengthBolts += meanRatioOutputQueueLengthBolts.get(componentId);
-				aggMeanRatioInputQueueLengthBolts += meanRatioInputQueueLengthBolts.get(componentId);
+			for (String componentId : maxInputQueueLengthBolts.keySet()) {
+				aggMaxOutputQueueLengthBolts = aggMaxOutputQueueLengthBolts > maxOutputQueueLengthBolts.get(componentId) ? aggMaxOutputQueueLengthBolts : maxOutputQueueLengthBolts.get(componentId);
+				aggMaxRatioOutputQueueLengthBolts	= aggMaxRatioOutputQueueLengthBolts > maxRatioOutputQueueLengthBolts.get(componentId) ?  aggMaxRatioOutputQueueLengthBolts : maxRatioOutputQueueLengthBolts.get(componentId);	
+				aggMaxInputQueueLengthBolts = aggMaxInputQueueLengthBolts > maxInputQueueLengthBolts.get(componentId) ? aggMaxInputQueueLengthBolts : maxInputQueueLengthBolts.get(componentId);
+				aggMaxRatioInputQueueLengthBolts = aggMaxRatioInputQueueLengthBolts > maxRatioInputQueueLengthBolts.get(componentId) ?  aggMaxRatioInputQueueLengthBolts : maxRatioInputQueueLengthBolts.get(componentId);	
+				aggMaxAvgLatencyBolts = aggMaxAvgLatencyBolts > maxAvgLatencyBolts.get(componentId) ? aggMaxAvgLatencyBolts : maxAvgLatencyBolts.get(componentId);
 				aggTotalProcessedBolts += totalProcessedBolts.get(componentId);
 				aggTotalEmittedBolts += totalEmittedBolts.get(componentId);
 				aggTotalTransferredBolts += totalTransferredBolts.get(componentId);
 				totalBolts++;
 			}
-			
-
 		}
 		
 		if (totalBolts != 0) {
-			aggMeanInputQueueLengthBolts = aggMeanInputQueueLengthBolts / totalBolts;
-			aggMeanOutputQueueLengthBolts = aggMeanOutputQueueLengthBolts / totalBolts;
-			aggMeanRatioOutputQueueLengthBolts = aggMeanRatioOutputQueueLengthBolts / totalBolts;
-			aggMeanRatioInputQueueLengthBolts = aggMeanRatioInputQueueLengthBolts / totalBolts;
 			aggTotalProcessedBolts = aggTotalProcessedBolts / totalBolts;
 			aggTotalEmittedBolts = aggTotalEmittedBolts / totalBolts;
 			aggTotalTransferredBolts = aggTotalTransferredBolts / totalBolts;
 		}
 
 		if (totalSpouts != 0) {
-			aggMeanOutputQueueLengthSpouts = aggMeanOutputQueueLengthSpouts / totalSpouts;
-			aggMeanRatioOutputQueueLengthSpouts = aggMeanRatioOutputQueueLengthSpouts / totalSpouts;
 			aggTotalProcessedSpouts = aggTotalProcessedSpouts / totalSpouts;
 			aggTotalEmittedSpouts = aggTotalEmittedSpouts / totalSpouts;
 			aggTotalTransferredSpouts = aggTotalTransferredSpouts / totalSpouts;
 		}
 		
 		state = new StringBuilder().append(System.currentTimeMillis()).append(',')
-				.append(aggMeanInputQueueLengthBolts).append(',')
-				.append(aggMeanOutputQueueLengthBolts).append(',')
-				.append(aggMeanRatioInputQueueLengthBolts).append(',')
-				.append(aggMeanRatioOutputQueueLengthBolts).append(',')
+				.append(aggMaxInputQueueLengthBolts).append(',')
+				.append(aggMaxOutputQueueLengthBolts).append(',')
+				.append(aggMaxRatioInputQueueLengthBolts).append(',')
+				.append(aggMaxRatioOutputQueueLengthBolts).append(',')
 				.append(aggTotalProcessedBolts).append(',')
 				.append(aggTotalEmittedBolts).append(',')
 				.append(aggTotalTransferredBolts).append(',')
-				.append(aggMeanOutputQueueLengthSpouts).append(',')
-				.append(aggMeanRatioOutputQueueLengthSpouts).append(',')
+				.append(aggMaxOutputQueueLengthSpouts).append(',')
+				.append(aggMaxRatioOutputQueueLengthSpouts).append(',')
 				.append(aggTotalProcessedSpouts).append(',')
 				.append(aggTotalEmittedSpouts).append(',')
-				.append(aggTotalTransferredSpouts).toString();
+				.append(aggTotalTransferredSpouts).append(',')
+				.append(aggMaxAvgLatencyBolts).toString();
 		
 		return state;
 	}

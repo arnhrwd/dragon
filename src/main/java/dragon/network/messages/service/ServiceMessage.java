@@ -61,7 +61,10 @@ public class ServiceMessage extends Message {
 		TOPOLOGY_ID,
 		EXEC_RL_ACTION, 
 		RL_ACTION_EXECUTED, 
-		EXEC_RL_ACTION_ERROR
+		EXEC_RL_ACTION_ERROR,
+		GET_RL_METRICS,
+		RL_METRICS,
+		GET_RL_METRICS_ERROR
 	}
 	
 	/**
