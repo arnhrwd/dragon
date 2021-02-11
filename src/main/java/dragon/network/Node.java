@@ -683,6 +683,19 @@ public class Node {
 			throw new DragonTopologyException("topology does not exist: " + topologyId);
 		localClusters.get(topologyId).haltTopology();
 	}
+	
+	/**
+	 * Throttle the local topology by suspending all of its threads.
+	 * 
+	 * @param topologyId the name of the topology to throttle
+	 * @throws DragonTopologyException if the topology does not exist
+	 * @throws DragonInvalidStateException if the topology can not be throttled 
+	 */
+	public synchronized void throttleTopology(String topologyId) throws DragonTopologyException, DragonInvalidStateException {
+		if (!localClusters.containsKey(topologyId))
+			throw new DragonTopologyException("topology does not exist: " + topologyId);
+		localClusters.get(topologyId).throttleTopology();
+	}
 
 	/**
 	 * Gather information about all of the local topologies running on this node.
@@ -730,7 +743,8 @@ public class Node {
 	 * Resume a halted topology, by signalling all the threads that they can
 	 * continue.
 	 * 
-	 * @param topologyId the name of the topology to resume
+	 * @param topologyId the name of the topology to resume, which is also used
+	 * to un-throttle a throttled topology
 	 * @throws DragonTopologyException if the topology does not exist
 	 * @throws DragonInvalidStateException if the topology can not change to halted state
 	 */

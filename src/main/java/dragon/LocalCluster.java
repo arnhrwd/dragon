@@ -180,6 +180,11 @@ public class LocalCluster {
 		HALTED,
 		
 		/**
+		 * Spouts have been suspended and are waiting for a signal.
+		 */
+		THROTTLED,
+		
+		/**
 		 * A fault has occurred and the topology will need to be restart.
 		 */
 		FAULT
@@ -602,8 +607,9 @@ public class LocalCluster {
 						log.info("starting up");
 						Spout thisComponent=component;
 						while(!isInterrupted()&&!component.isClosed()){
-							if(state==LocalCluster.State.HALTED) {
-								log.info("halted");
+							if(state==LocalCluster.State.HALTED || state==LocalCluster.State.THROTTLED) {
+								if(state==LocalCluster.State.HALTED) log.info("halted");
+								else log.info("throttled");
 								try {
 									haltLock.lock();
 									try {
@@ -620,16 +626,6 @@ public class LocalCluster {
 							}
 							
 							thisComponent.run();
-							
-							//Sleep based on agent's action
-							/*System.out.println("waiting for " + thisComponent.getDataEmissionInterval().longValue() + " nanoseconds before"
-									+ "invoking nextTuple() " + System.nanoTime()); 
-							log.debug("waiting for " + thisComponent.getDataEmissionInterval().longValue() + "nanoseconds before"
-										+ "invoking nextTuple()");*/ //this was for verifying purposes but it explodes the logs...
-							long start = System.nanoTime();
-							while (start + thisComponent.getDataEmissionInterval().longValue() >= System.nanoTime());
-							//System.out.println("done " + System.nanoTime());
-						
 							
 						}
 						log.info("shutting down");
@@ -1082,7 +1078,7 @@ public class LocalCluster {
 				|| state==State.ALLOCATED 
 				|| state==State.SUBMITTED) throw new DragonInvalidStateException("cannot change to terminate state");
 		log.info("terminating ["+getTopologyId()+"]");
-		if(state==State.HALTED) {
+		if(state==State.HALTED || state==State.THROTTLED) {
 			state=State.TERMINATING;
 			try {
 				haltLock.lock();
@@ -1116,9 +1112,20 @@ public class LocalCluster {
 	 */
 	public void haltTopology() throws DragonInvalidStateException {
 		if(state==State.HALTED) return;
-		if(state!=State.RUNNING) throw new DragonInvalidStateException("must be running to halt the topology");
+		if(!(state==State.THROTTLED || state==State.RUNNING)) throw new DragonInvalidStateException("must be running to halt the topology");
 		log.info("halting ["+getTopologyId()+"]");
 		state=State.HALTED;
+	}
+	
+	/**
+	 * Throttle the topology on this local cluster.
+	 * @throws DragonInvalidStateException 
+	 */
+	public void throttleTopology() throws DragonInvalidStateException {
+		if(state==State.THROTTLED) return;
+		if(state!=State.RUNNING) throw new DragonInvalidStateException("must be running to throttle the topology");
+		log.info("throttling ["+getTopologyId()+"]");
+		state=State.THROTTLED;
 	}
 	
 	/**
@@ -1126,7 +1133,7 @@ public class LocalCluster {
 	 * @throws DragonInvalidStateException 
 	 */
 	public void resumeTopology() throws DragonInvalidStateException {
-		if(state==State.HALTED) {
+		if(state==State.HALTED || state==State.THROTTLED) {
 			log.info("resuming topology");
 			state=State.RUNNING;
 			try {
